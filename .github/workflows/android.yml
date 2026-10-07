@@ -8,7 +8,7 @@ on:
     branches: [main]
   push:
     branches: [main]
-    paths: ['www/**', 'assets/**', 'scripts/prepare-web.mjs', 'capacitor.config.json', 'package.json', '.github/workflows/android.yml']
+    paths: ['www/**', 'assets/**', 'scripts/ci-report.sh', 'scripts/prepare-web.mjs', 'capacitor.config.json', 'package.json', '.github/workflows/android.yml']
 
 permissions:
   contents: write

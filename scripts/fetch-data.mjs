@@ -11,7 +11,7 @@ const OUT = path.resolve(process.argv[2] || 'data-out');
 fs.mkdirSync(OUT, { recursive: true });
 const cfg = JSON.parse(fs.readFileSync(new URL('../config/universe.json', import.meta.url)));
 const REPO = process.env.GITHUB_REPOSITORY || 'converge-app';
-const UA_SEC = `Converge/1.0 (open-source investing app; https://github.com/${REPO})`;
+const UA_SEC = process.env.SEC_USER_AGENT || 'Converge app 79805660+ZStamov@users.noreply.github.com';
 const UA_WEB = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(...a);
@@ -65,6 +65,13 @@ async function prices(t) {
 }
 
 // ---- news ----
+function relevant(t, title, name) {
+  const al = [...(cfg.companies?.[t]?.aliases || [name.split(/[ ,.]/)[0]]), ...(t.length >= 3 ? [t] : [])];
+  return al.some((a) => {
+    const re = a.length <= 4 && a === a.toUpperCase() ? new RegExp(`(^|[^A-Za-z])\\$?${a}([^A-Za-z]|$)`) : new RegExp(`\\b${a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`, 'i');
+    return re.test(title);
+  });
+}
 async function newsFor(t, name) {
   const items = [];
   const q = encodeURIComponent(`"${name.replace(/,? (Inc|Corp|Corporation|Co|Company|Ltd|Holdings|Platforms|Incorporated)\.?$/i, '')}" OR ${t} stock`);
@@ -82,7 +89,7 @@ async function newsFor(t, name) {
     for (const it of A.parseRss(xml)) items.push({ title: it.title, source: A.sourceFromUrl(it.link), url: it.link, pub: it.pubDate, via: 'Yahoo Finance RSS' });
   } catch (e) { errors.push(`news ${t} yahoo: ${e.message}`); }
   return items
-    .filter((x) => x.title && x.pub && !isNaN(Date.parse(x.pub)))
+    .filter((x) => x.title && x.pub && !isNaN(Date.parse(x.pub)) && relevant(t, x.title, name))
     .map((x) => {
       const date = new Date(Date.parse(x.pub)).toISOString();
       const s = A.scoreSentiment(x.title);
@@ -123,9 +130,11 @@ for (const t of cfg.tickers) {
   if (!s) continue;
   let cik = null, fund = null, filings = [];
   try {
-    const ref = await cikFor(t); await sleep(150);
+    const conf = cfg.companies?.[t];
+    const ref = conf?.cik ? { cik: String(conf.cik).padStart(10, '0'), title: null } : await cikFor(t);
+    await sleep(150);
     if (ref) {
-      cik = ref.cik; names[t] ||= ref.title;
+      cik = ref.cik; if (ref.title) names[t] ||= ref.title;
       try { filings = A.filingsFromSubmissions(await sec(`https://data.sec.gov/submissions/CIK${cik}.json`), cik, A.isoDay(now - 30 * A.DAY)); } catch (e) { errors.push(`filings ${t}: ${e.message}`); }
       await sleep(150);
       try { fund = A.fundamentalsFromFacts(await sec(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`)); } catch (e) { errors.push(`facts ${t}: ${e.message}`); }
@@ -162,7 +171,10 @@ hist.resolved = hist.resolved.filter((r) => r.date >= A.isoDay(now - 400 * A.DAY
 const stats = A.sourceStats(hist.resolved, cfg.minCallsForRating);
 
 // ---- clusters ----
-const clusters = A.clusterNews(news).filter((c) => c.date >= A.isoDay(now - cfg.newsWindowDays * A.DAY));
+const cap = cfg.maxStoriesPerTicker || 60, perT = {};
+const clusters = A.clusterNews(news)
+  .filter((c) => c.date >= A.isoDay(now - cfg.newsWindowDays * A.DAY))
+  .filter((c) => (perT[c.t] = (perT[c.t] || 0) + 1) <= cap);
 
 // ---- per ticker analytics ----
 const alerts = [], quantChanges = [];

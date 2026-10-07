@@ -4,6 +4,7 @@
 # results can be read without GitHub API access.
 set -u
 NAME="$1"; STATUS="$2"; LOG="${3:-}"
+if [ -n "$LOG" ] && [ -f "$LOG" ]; then LOG="$(cd "$(dirname "$LOG")" && pwd)/$(basename "$LOG")"; fi
 REMOTE="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 TMP="$(mktemp -d)"
 for attempt in 1 2 3 4; do

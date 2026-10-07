@@ -1,7 +1,222 @@
 {
   "benchmark": "SPY",
-  "tickers": ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO", "AMD", "NFLX", "ORCL", "CRM", "JPM", "V", "MA", "PYPL", "COST", "WMT", "DIS", "KO", "PEP", "XOM", "UNH", "LLY"],
+  "tickers": [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "TSLA",
+    "AVGO",
+    "AMD",
+    "NFLX",
+    "ORCL",
+    "CRM",
+    "JPM",
+    "V",
+    "MA",
+    "PYPL",
+    "COST",
+    "WMT",
+    "DIS",
+    "KO",
+    "PEP",
+    "XOM",
+    "UNH",
+    "LLY"
+  ],
   "accuracyHorizonDays": 5,
   "minCallsForRating": 10,
-  "newsWindowDays": 14
+  "newsWindowDays": 14,
+  "companies": {
+    "AAPL": {
+      "cik": 320193,
+      "aliases": [
+        "Apple",
+        "iPhone"
+      ]
+    },
+    "MSFT": {
+      "cik": 789019,
+      "aliases": [
+        "Microsoft",
+        "MSFT"
+      ]
+    },
+    "NVDA": {
+      "cik": 1045810,
+      "aliases": [
+        "Nvidia",
+        "NVDA"
+      ]
+    },
+    "AMZN": {
+      "cik": 1018724,
+      "aliases": [
+        "Amazon",
+        "AWS",
+        "AMZN"
+      ]
+    },
+    "GOOGL": {
+      "cik": 1652044,
+      "aliases": [
+        "Alphabet",
+        "Google",
+        "GOOGL",
+        "GOOG",
+        "YouTube",
+        "Waymo"
+      ]
+    },
+    "META": {
+      "cik": 1326801,
+      "aliases": [
+        "Meta Platforms",
+        "Meta",
+        "Facebook",
+        "Instagram",
+        "WhatsApp",
+        "Zuckerberg"
+      ]
+    },
+    "TSLA": {
+      "cik": 1318605,
+      "aliases": [
+        "Tesla",
+        "TSLA",
+        "Musk"
+      ]
+    },
+    "AVGO": {
+      "cik": 1730168,
+      "aliases": [
+        "Broadcom",
+        "AVGO"
+      ]
+    },
+    "AMD": {
+      "cik": 2488,
+      "aliases": [
+        "AMD",
+        "Advanced Micro"
+      ]
+    },
+    "NFLX": {
+      "cik": 1065280,
+      "aliases": [
+        "Netflix",
+        "NFLX"
+      ]
+    },
+    "ORCL": {
+      "cik": 1341439,
+      "aliases": [
+        "Oracle",
+        "ORCL"
+      ]
+    },
+    "CRM": {
+      "cik": 1108524,
+      "aliases": [
+        "Salesforce",
+        "CRM"
+      ]
+    },
+    "JPM": {
+      "cik": 19617,
+      "aliases": [
+        "JPMorgan",
+        "JP Morgan",
+        "JPM",
+        "Jamie Dimon",
+        "Chase"
+      ]
+    },
+    "V": {
+      "cik": 1403161,
+      "aliases": [
+        "Visa"
+      ]
+    },
+    "MA": {
+      "cik": 1141391,
+      "aliases": [
+        "Mastercard"
+      ]
+    },
+    "PYPL": {
+      "cik": 1633917,
+      "aliases": [
+        "PayPal",
+        "PYPL",
+        "Venmo"
+      ]
+    },
+    "COST": {
+      "cik": 909832,
+      "aliases": [
+        "Costco"
+      ]
+    },
+    "WMT": {
+      "cik": 104169,
+      "aliases": [
+        "Walmart",
+        "WMT"
+      ]
+    },
+    "DIS": {
+      "cik": 1744489,
+      "aliases": [
+        "Disney",
+        "DIS",
+        "ESPN"
+      ]
+    },
+    "KO": {
+      "cik": 21344,
+      "aliases": [
+        "Coca-Cola",
+        "Coke",
+        "Coca Cola"
+      ]
+    },
+    "PEP": {
+      "cik": 77476,
+      "aliases": [
+        "PepsiCo",
+        "Pepsi",
+        "Frito"
+      ]
+    },
+    "XOM": {
+      "cik": 34088,
+      "aliases": [
+        "Exxon",
+        "ExxonMobil",
+        "XOM"
+      ]
+    },
+    "UNH": {
+      "cik": 731766,
+      "aliases": [
+        "UnitedHealth",
+        "UNH",
+        "Optum"
+      ]
+    },
+    "LLY": {
+      "cik": 59478,
+      "aliases": [
+        "Eli Lilly",
+        "Lilly",
+        "LLY",
+        "Zepbound",
+        "Mounjaro"
+      ]
+    }
+  },
+  "maxStoriesPerTicker": 60
 }

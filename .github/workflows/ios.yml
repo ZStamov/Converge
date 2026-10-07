@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['www/**', 'assets/**', 'scripts/prepare-web.mjs', 'capacitor.config.json', 'package.json', '.github/workflows/ios.yml']
+    paths: ['www/**', 'assets/**', 'scripts/ci-report.sh', 'scripts/prepare-web.mjs', 'capacitor.config.json', 'package.json', '.github/workflows/ios.yml']
 
 permissions:
   contents: write

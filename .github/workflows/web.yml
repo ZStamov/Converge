@@ -8,7 +8,7 @@ on:
     branches: [main]
   push:
     branches: [main]
-    paths: ['www/**', 'assets/**', 'scripts/prepare-web.mjs', 'scripts/build-single.mjs', '.github/workflows/web.yml']
+    paths: ['www/**', 'assets/**', 'scripts/ci-report.sh', 'scripts/prepare-web.mjs', 'scripts/build-single.mjs', '.github/workflows/web.yml']
 
 permissions:
   contents: write
