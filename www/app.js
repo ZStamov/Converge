@@ -1290,7 +1290,7 @@
     var open = UI.pulseOpen;
     var h = '<section class="card pulse-card ' + tone + '" id="pulsebox"><button class="pulse-head" data-act="pulse-open" aria-expanded="' + !!open + '">' +
       '<span><span class="eyebrow">Market sentiment today</span><span class="pulse-mood">' + R.mood + ' <span class="mono">' + R.score + '</span><span class="muted" style="font-size:12px;font-weight:400">/100</span></span></span>' +
-      '<span style="text-align:right"><span class="mono" style="display:block;font-size:13px">S&amp;P 500 <span class="' + cls(R.spyChg) + '">' + arrowPct(R.spyChg) + '</span></span><span class="muted" style="font-size:11px">' + (R.live ? '<i class="live-dot"></i>Live · ' : 'Market closed · ') + esc(when) + ' ET</span></span></button>' +
+      '<span style="text-align:right"><span class="mono" style="display:block;font-size:13px">S&amp;P 500 <span class="' + cls(R.spyChg) + '">' + arrowPct(R.spyChg) + '</span></span><span class="muted" style="font-size:11px">' + (R.live ? '<i class="live-dot"></i>Live · ' : 'Closed · ') + esc(when) + ' ET</span></span></button>' +
       '<div class="pulse-meter" aria-hidden="true"><i style="left:' + R.score + '%"></i></div>' +
       '<div style="margin-top:8px">' + pulseSpark(R.spy) + '</div>';
     if (open) {
@@ -1436,7 +1436,7 @@
     side: function (el) { UI.side = el.dataset.side; render(); },
     feedf: function (el) { S.feedFilter = el.dataset.f; save(); render(); },
     vtab: function (el) { UI.vaultTab = el.dataset.v; render(); },
-    settings: function () { go({ name: 'settings' }); },
+    settings: function () { UI.sheet = null; go({ name: 'settings' }); },
     battle: function (el) { S.sel = el.dataset.t; if (el.dataset.side) UI.side = el.dataset.side; save(); NAV.tab = 'battle'; NAV.stack = []; render(); },
     alert: function (el) { go({ name: 'alert', t: el.dataset.t }); },
     source: function (el) { go({ name: 'source', name2: el.dataset.name }); },
