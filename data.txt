@@ -1,58 +1,78 @@
 job: data
 status: success
-time: 2026-10-07T19:18:35Z
-commit: 824131126c68f68504233dfcbf8548fd50ba2a04
-run: https://github.com/ZStamov/Converge/actions/runs/37673380866
+time: 2026-10-07T21:04:35Z
+commit: 97219c314d08efe5f41e0f09d87a85347ad2e6bf
+run: https://github.com/ZStamov/Converge/actions/runs/37686533670
 ----
-sec-probe configured UA https://data.sec.gov/submissions/CIK0000320193.json -> 403 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns="http://www.w3.org/1999/xh
-sec-probe configured UA https://www.sec.gov/files/company_tickers.json -> 403 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns="http://www.w3.org/1999/xh
-prices SPY 252 Yahoo Finance
-prices AAPL 252 Yahoo Finance
-prices MSFT 252 Yahoo Finance
-prices NVDA 252 Yahoo Finance
-prices AMZN 252 Yahoo Finance
-prices GOOGL 252 Yahoo Finance
-prices META 252 Yahoo Finance
-prices TSLA 252 Yahoo Finance
-prices AVGO 252 Yahoo Finance
-prices AMD 252 Yahoo Finance
-prices NFLX 252 Yahoo Finance
-prices ORCL 252 Yahoo Finance
-prices CRM 252 Yahoo Finance
-prices JPM 252 Yahoo Finance
-prices V 252 Yahoo Finance
-prices MA 252 Yahoo Finance
-prices PYPL 252 Yahoo Finance
-prices COST 252 Yahoo Finance
-prices WMT 252 Yahoo Finance
-prices DIS 252 Yahoo Finance
-prices KO 252 Yahoo Finance
-prices PEP 252 Yahoo Finance
-prices XOM 252 Yahoo Finance
-prices UNH 252 Yahoo Finance
-prices LLY 252 Yahoo Finance
-ticker AAPL news 106 filings 0 fund -
-ticker MSFT news 106 filings 0 fund -
-ticker NVDA news 101 filings 0 fund -
-ticker AMZN news 105 filings 0 fund -
-ticker GOOGL news 105 filings 0 fund -
-ticker META news 102 filings 0 fund -
-ticker TSLA news 104 filings 0 fund -
-ticker AVGO news 105 filings 0 fund -
-ticker AMD news 104 filings 0 fund -
-ticker NFLX news 108 filings 0 fund -
-ticker ORCL news 102 filings 0 fund -
-ticker CRM news 104 filings 0 fund -
-ticker JPM news 113 filings 0 fund -
-ticker V news 49 filings 0 fund -
-ticker MA news 59 filings 0 fund -
-ticker PYPL news 85 filings 0 fund -
-ticker COST news 93 filings 0 fund -
-ticker WMT news 101 filings 0 fund -
-ticker DIS news 105 filings 0 fund -
-ticker KO news 54 filings 0 fund -
-ticker PEP news 104 filings 0 fund -
-ticker XOM news 107 filings 0 fund -
-ticker UNH news 106 filings 0 fund -
-ticker LLY news 102 filings 0 fund -
-done: 24 tickers, 1339 stories, 2 alerts, 53 sources (8 rated), 48 errors
+prices SPY 251 Yahoo Finance
+prices AAPL 251 Yahoo Finance
+prices MSFT 251 Yahoo Finance
+prices NVDA 251 Yahoo Finance
+prices AMZN 251 Yahoo Finance
+prices GOOGL 251 Yahoo Finance
+prices META 251 Yahoo Finance
+prices TSLA 251 Yahoo Finance
+prices AVGO 251 Yahoo Finance
+prices AMD 251 Yahoo Finance
+prices NFLX 251 Yahoo Finance
+prices ORCL 251 Yahoo Finance
+prices CRM 251 Yahoo Finance
+prices JPM 251 Yahoo Finance
+prices V 251 Yahoo Finance
+prices MA 251 Yahoo Finance
+prices PYPL 251 Yahoo Finance
+prices COST 251 Yahoo Finance
+prices WMT 251 Yahoo Finance
+prices DIS 251 Yahoo Finance
+prices KO 251 Yahoo Finance
+prices PEP 251 Yahoo Finance
+prices XOM 251 Yahoo Finance
+prices UNH 251 Yahoo Finance
+prices LLY 251 Yahoo Finance
+ticker AAPL news 191 filings 0 fund -
+ticker MSFT news 162 filings 0 fund -
+ticker NVDA news 176 filings 0 fund -
+ticker AMZN news 134 filings 0 fund -
+ticker GOOGL news 158 filings 0 fund -
+ticker META news 157 filings 0 fund -
+ticker TSLA news 177 filings 0 fund -
+ticker AVGO news 122 filings 0 fund -
+ticker AMD news 122 filings 0 fund -
+ticker NFLX news 133 filings 0 fund -
+ticker ORCL news 142 filings 0 fund -
+ticker CRM news 118 filings 0 fund -
+ticker JPM news 136 filings 0 fund -
+ticker V news 68 filings 0 fund -
+ticker MA news 67 filings 0 fund -
+ticker PYPL news 88 filings 0 fund -
+ticker COST news 100 filings 0 fund -
+ticker WMT news 111 filings 0 fund -
+ticker DIS news 116 filings 0 fund -
+ticker KO news 56 filings 0 fund -
+ticker PEP news 115 filings 0 fund -
+ticker XOM news 119 filings 0 fund -
+ticker UNH news 108 filings 0 fund -
+ticker LLY news 117 filings 0 fund -
+done: 24 tickers, 1366 stories, 3 alerts, 54 sources (10 rated), 48 errors
+universe 503
+refreshing daily bars for 503 tickers
+bars ready 504 in 16 s
+live prices 503
+nasdaq rows 6992
+sec fundamentals no
+scanner: 501 rows, fundamentals=false, 3 errors, 17s
+[0;93m2026-10-07 21:04:32.134299693 [W:onnxruntime:Default, device_discovery.cc:146 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+Traceback (most recent call last):
+  File "/home/runner/work/Converge/Converge/scripts/tts.py", line 61, in <module>
+    item["audio"] = synth(item["say"], item["id"])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/Converge/Converge/scripts/tts.py", line 48, in synth
+    subprocess.run(
+  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/subprocess.py", line 548, in run
+    with Popen(*popenargs, **kwargs) as process:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/subprocess.py", line 1026, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "/opt/hostedtoolcache/Python/3.11.16/x64/lib/python3.11/subprocess.py", line 1955, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+FileNotFoundError: [Errno 2] No such file or directory: 'ffmpeg'
