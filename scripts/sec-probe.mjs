@@ -1,8 +1,6 @@
 // Diagnostic: which request styles does SEC EDGAR accept from this runner?
 const tries = [
-  ['node, app UA', 'Converge app 79805660+ZStamov@users.noreply.github.com', {}],
-  ['node, plain UA', 'Converge Research admin@converge-app.dev', {}],
-  ['node, UA + host + accept', 'Converge Research admin@converge-app.dev', { Accept: 'application/json', Host: 'data.sec.gov' }]
+  ['configured UA', process.env.SEC_USER_AGENT || 'Converge ZStamov@users.noreply.github.com', {}]
 ];
 for (const [label, ua, extra] of tries) {
   for (const url of ['https://data.sec.gov/submissions/CIK0000320193.json', 'https://www.sec.gov/files/company_tickers.json']) {

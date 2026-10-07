@@ -11,7 +11,7 @@ const OUT = path.resolve(process.argv[2] || 'data-out');
 fs.mkdirSync(OUT, { recursive: true });
 const cfg = JSON.parse(fs.readFileSync(new URL('../config/universe.json', import.meta.url)));
 const REPO = process.env.GITHUB_REPOSITORY || 'converge-app';
-const UA_SEC = process.env.SEC_USER_AGENT || 'Converge app 79805660+ZStamov@users.noreply.github.com';
+const UA_SEC = process.env.SEC_USER_AGENT || 'Converge ZStamov@users.noreply.github.com';
 const UA_WEB = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log(...a);

@@ -39,10 +39,9 @@ jobs:
         run: |
           set -o pipefail
           node scripts/sec-probe.mjs 2>&1 | tee data.log
-          for ua in "Converge Research admin@converge-app.dev" "Mozilla/5.0 (compatible; Converge/1.0; +https://github.com/${GITHUB_REPOSITORY})"; do
-            echo "sec-probe curl [$ua] -> $(curl -s -o /dev/null -w '%{http_code}' -A "$ua" https://data.sec.gov/submissions/CIK0000320193.json)" | tee -a data.log
-          done
           node scripts/fetch-data.mjs data-out 2>&1 | tee -a data.log
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
 
       - name: Publish to the data branch
         run: |
