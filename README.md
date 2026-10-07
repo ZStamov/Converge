@@ -58,6 +58,12 @@ The 24 tickers in `config/universe.json`. Add or remove symbols there; the next 
 
 Build results (with log tails) are written to the `ci-status` branch.
 
+## Search: every S&P 500 and Nasdaq stock
+
+The search box finds all S&P 500 members and every Nasdaq-listed common stock (about 3,800; warrants, rights, units, notes, preferreds and OTC stocks are left out). Picking one outside the 24 tracked tickers opens a page with its candle chart, buy/sell signals and backtest.
+
+`.github/workflows/history.yml` builds this from the S&P 500 list and the Nasdaq screener, and keeps 2 years of daily bars per stock on the `history` branch (`symbols.json`, `h/<TICKER>.json`). It runs after each US close and every 2 hours. On the website these stocks get 1D, 2D and 1W candles; the Android and iOS apps load every interval live from Yahoo Finance. News, sentiment, quant grades and the discussion stay limited to the tracked tickers.
+
 ## Market sentiment (5-minute)
 
 `.github/workflows/pulse.yml` runs every 5 minutes during US market hours and writes `pulse.json` to the `pulse` branch. The web app reads it from `https://raw.githubusercontent.com/ZStamov/converge/pulse/pulse.json`; the Android and iOS apps pull the 5-minute bars straight from Yahoo Finance. Every copy re-checks every 5 minutes while open.
@@ -108,7 +114,9 @@ Each ticker page has candles at 1m, 2m, 5m, 1h, 2h, 4h, 5h, 1D, 2D and 1W. The A
 
 - **Full screen:** tap *⤢ Full screen*; turn the phone sideways for a wide chart. Close with ✕ (or Back / Esc).
 - **Zoom:** pinch with two fingers (trackpad pinch or the mouse wheel in full screen on a computer), or use − / +. Drag to scroll back in time; tap a candle for its prices and any signal on it.
-- **Buy and sell signals** (`www/signals.js`, from the Master Trader Manual lessons 6–20) are marked on every interval: ▲ buy below the candle, ▼ sell above it, yellow ▼ for an ATR trailing-stop exit. Turn them off with *Signals on/off*.
+- **Buy and sell signals** (`www/signals.js`, from the Master Trader Manual lessons 6–20) are written on every interval: a green **BUY** label under the candle, an orange **SELL** label above it, and a yellow **STOP** label for an ATR trailing-stop exit. Turn them off with *Signals on/off*.
+- **Price scale** on the right side of every candle chart.
+- **Backtest in view:** a summary sits right under the chart (tap *Results ↓* for the full card at the bottom of the page). In full screen the backtest results sit below the chart in portrait, and in a panel on the left with the price chart on the right in landscape.
 
 | Lesson | Signal | Rule as coded |
 | --- | --- | --- |

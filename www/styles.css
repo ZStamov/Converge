@@ -366,7 +366,33 @@ a.btn { display: flex; align-items: center; justify-content: center; }
   padding: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 8px) calc(var(--safe-area-inset-right, env(safe-area-inset-right, 0px)) + 12px) calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 8px) calc(var(--safe-area-inset-left, env(safe-area-inset-left, 0px)) + 12px); }
 .cfull-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .cfull .civ { flex: none; }
-.cfull .ctools { margin-top: auto; }
+.cfull .ctools { margin-top: 6px; }
 @media (max-height: 460px) { .cfull { gap: 2px; } .cfull .siglegend { display: none; } }
 .ctools [data-act="csig"], .ctools [data-act="cfull"] { flex: 1 1 40%; }
 @media (max-height: 460px) { .cfull .civ button { min-height: 28px; } .cfull .civ { margin-bottom: 2px; } .cfull .ohlc { min-height: 22px; } .cfull .ctools { margin-top: 4px; } .cfull .ctools .btn { min-height: 34px; } .cfull .ctools [data-act="csig"] { flex: 1; } }
+
+/* right-hand price scale + text signal labels */
+.cax.tick { background: none; text-align: right; padding: 1px 2px 1px 0; box-sizing: border-box; }
+.cax.last { text-align: right; box-sizing: border-box; font-weight: 600; }
+.slab text { font: 700 8.5px var(--f-mono, ui-monospace, monospace); letter-spacing: .02em; }
+.lbl { display: inline-block; font: 700 9.5px var(--f-mono, ui-monospace, monospace); letter-spacing: .03em; padding: 1px 4px; border-radius: 3px; vertical-align: 1px; }
+.lbuy { background: var(--bull); color: var(--bull-ink); }
+.lsell { background: var(--bear); color: var(--bear-ink); }
+.lstop { background: var(--accent); color: var(--accent-ink); }
+.siglegend .lbl { margin-right: -6px; }
+.sigline { gap: 4px 12px; font-weight: 500; }
+.btstrip { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.btstrip b { font-size: 15px; }
+.btstrip .go { margin-left: auto; color: var(--accent); font-weight: 600; }
+.bttr .lbl { margin-right: 2px; }
+
+/* full screen: chart + backtest (backtest on the left in landscape, chart on the right) */
+.cfull { overflow: hidden; }
+.cfull-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.cfull-chart { flex: none; }
+.cfull-bt { flex: none; padding: 12px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.cfull.land .cfull-body { flex-direction: row; overflow: hidden; }
+.cfull.land .cfull-bt { order: -1; width: 34%; flex: none; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.cfull.land .cfull-chart { flex: 1; min-width: 0; overflow: hidden; }
+.cfull-bt .btgrid { grid-template-columns: 1fr 1fr; }
+.cfull-bt .bts b { font-size: 13px; }

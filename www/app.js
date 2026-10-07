@@ -7,6 +7,7 @@
     remote: 'https://raw.githubusercontent.com/ZStamov/converge/data/market.json',
     bundled: 'data/market.json',
     pulse: 'https://raw.githubusercontent.com/ZStamov/converge/pulse/pulse.json',
+    history: 'https://raw.githubusercontent.com/ZStamov/converge/history/',
     repo: 'https://github.com/ZStamov/converge'
   };
   var KEY = 'converge.v1';
@@ -947,7 +948,57 @@
       if (!hit || Date.now() - hit.at > 60000) fetchLive(t, iv).then(function () { refreshCandleBox(); }).catch(function () { });
       if (hit) { var d = hit.d; if (iv === '2m' || iv === '1m' || iv === '5m' || iv === '1h' || iv === '1D' || iv === '1W') return { s: d, live: true }; if (iv === '2h') return { s: aggregate(d, 2, true), live: true }; if (iv === '4h') return { s: aggregate(d, 4, true), live: true }; if (iv === '5h') return { s: aggregate(d, 5, true), live: true }; if (iv === '2D') return { s: aggregate(d, 2, false), live: true }; }
     }
-    return { s: snapshotSeries(t, iv), live: false };
+    var snap = snapshotSeries(t, iv); if (snap) return { s: snap, live: false };
+    var hs = histSeries(t, iv); return { s: hs, live: false, hist: !!hs };
+  }
+  // ---- stock directory (S&P 500 + Nasdaq-listed) and daily history for stocks outside the tracked list
+  var DIR = { rows: null, map: null, loading: false, error: null, at: null };
+  function loadDir() {
+    if (DIR.rows || DIR.loading) return;
+    DIR.loading = true;
+    var snap = window.__CONVERGE_SYMBOLS__;
+    fetchJson(CFG.history + 'symbols.json?t=' + Math.floor(Date.now() / 3600000), 15000)
+      .then(function (d) { if (!d || d.kind !== 'symbols') throw new Error('bad'); return d; })
+      .catch(function () { if (snap && snap.kind === 'symbols') return snap; throw new Error('none'); })
+      .then(function (d) { DIR.rows = d.rows; DIR.at = d.generatedAt; DIR.through = d.barsThrough; DIR.map = {}; d.rows.forEach(function (r, i) { DIR.map[r[0]] = i; }); })
+      .catch(function () { DIR.error = 'The stock list isn’t available right now.'; })
+      .then(function () { DIR.loading = false; if (UI.sheet && UI.sheet.kind === 'pick') render(); else if (current().name === 'quote') render(); });
+  }
+  function dirRow(t) { if (!DIR.map || DIR.map[t] == null) return null; var r = DIR.rows[DIR.map[t]]; return { t: r[0], n: r[1], ex: r[2], sp: !!r[3], sec: r[4], mc: r[5], p: r[6], ch: r[7] }; }
+  function dirSearch(q, limit) {
+    if (!DIR.rows || !q) return [];
+    var Q = q.toUpperCase(), a = [], b = [], c = [];
+    for (var i = 0; i < DIR.rows.length; i++) {
+      var r = DIR.rows[i], t = r[0];
+      if (t === Q) a.push(r); else if (t.indexOf(Q) === 0) b.push(r); else if (Q.length >= 2 && String(r[1]).toUpperCase().indexOf(Q) >= 0) c.push(r);
+    }
+    return a.concat(b, c).slice(0, limit || 40); // rows are sorted by market cap
+  }
+  var HIST = {};
+  function loadHist(t) {
+    if (HIST[t]) return;
+    HIST[t] = { loading: true };
+    fetchJson(CFG.history + 'h/' + encodeURIComponent(t) + '.json?t=' + Math.floor(Date.now() / 3600000), 15000)
+      .then(function (d) { if (!d || !d.t || d.t.length < 2) throw new Error('empty'); HIST[t] = { d: d }; })
+      .catch(function () { HIST[t] = { error: true }; })
+      .then(function () { refreshCandleBox(); if (current().name === 'quote') render(); });
+  }
+  function weekly(s) {
+    if (!s) return null;
+    var out = { t: [], o: [], h: [], l: [], c: [], v: [] }, wk = null;
+    for (var i = 0; i < s.t.length; i++) {
+      var d = new Date((s.t[i] - 4 * 3600) * 1000), mon = Math.floor((d.getTime() / 86400000 - ((d.getUTCDay() + 6) % 7)));
+      if (mon !== wk) { wk = mon; out.t.push(s.t[i]); out.o.push(s.o[i]); out.h.push(s.h[i]); out.l.push(s.l[i]); out.c.push(s.c[i]); out.v.push(s.v[i] || 0); }
+      else { var k = out.t.length - 1; out.h[k] = Math.max(out.h[k], s.h[i]); out.l[k] = Math.min(out.l[k], s.l[i]); out.c[k] = s.c[i]; out.v[k] += s.v[i] || 0; }
+    }
+    return out;
+  }
+  function histSeries(t, iv) {
+    if (T(t) || window.__CONVERGE_ARTIFACT__ && !HIST[t]) return null;
+    if (!HIST[t]) { loadHist(t); return null; }
+    var d = HIST[t].d; if (!d) return null;
+    if (iv === '1D') return d; if (iv === '2D') return aggregate(d, 2, false); if (iv === '1W') return weekly(d);
+    return null;
   }
   function candleLabel(sec, iv) {
     var d = new Date(sec * 1000);
@@ -966,51 +1017,80 @@
     SIGC = {}; SIGC[key] = { d: d, bt: bt, marks: marks }; // keep one chart's worth
     return SIGC[key];
   }
+  function isLand() { return window.innerWidth > window.innerHeight && window.innerWidth >= 600; }
   function chartDims() {
-    if (!UI.cfull) return { W: 330, PH: 176, VH: 34 };
-    var w = Math.max(300, Math.min(window.innerWidth, 1600) - 24), hAll = Math.max(140, window.innerHeight - (window.innerHeight < 500 ? 212 : 250));
-    return { W: w, PH: Math.round(hAll * 0.84), VH: Math.round(hAll * 0.16) - 8 };
+    if (!UI.cfull) return { W: 330, PH: 176, VH: 34, AX: 46 };
+    var land = isLand(), w = land ? Math.round(window.innerWidth * 0.66) - 28 : Math.min(window.innerWidth, 1600) - 24;
+    var hAll = land ? Math.max(150, window.innerHeight - (window.innerHeight < 500 ? 190 : 220)) : Math.max(240, Math.round(window.innerHeight * 0.52));
+    return { W: Math.max(280, w), PH: Math.round(hAll * 0.84), VH: Math.round(hAll * 0.16) - 8, AX: 58 };
+  }
+  function niceStep(range, n) { var raw = range / n, p = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), f = raw / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
+  function emptyChartMsg(t, iv) {
+    if (CDS.loading || (!CD && !CDS.error)) return 'Loading candles…';
+    if (!T(t)) {
+      if (window.__CONVERGE_ARTIFACT__) return 'Charts for stocks outside the tracked list load in the Converge app and website. This page can’t download them.';
+      var h = HIST[t];
+      if (/m$|h$/.test(iv) && !isNative) return 'Intraday candles for ' + esc(t) + ' are in the Android and iOS apps. On the web, pick 1D, 2D or 1W (2 years of daily history).';
+      if (!h || h.loading) return 'Loading ' + esc(t) + ' history…';
+      if (h.error) return 'Daily history for ' + esc(t) + ' isn’t ready yet. New stocks are added every couple of hours.';
+    }
+    return 'No ' + esc(iv) + ' candles for ' + esc(t) + ' yet.';
   }
   function candleSvg(t) {
     var iv = UI.civ || '1D', r = candleSeries(t, iv), s = r.s;
-    if (!s || s.t.length < 2) return '<div class="muted" style="padding:28px 0;text-align:center;font-size:13px">' + (CDS.loading || (!CD && !CDS.error) ? 'Loading candles…' : 'No ' + iv + ' candles for ' + esc(t) + ' yet.') + '</div>';
+    if (!s || s.t.length < 2) return '<div class="muted" style="padding:28px 8px;text-align:center;font-size:13px;line-height:1.5">' + emptyChartMsg(t, iv) + '</div>';
     var N = UI.cN || (UI.cfull ? 120 : 60), len = s.t.length; N = clamp(N, Math.min(15, len), len);
     var off = clamp(UI.cOff || 0, 0, Math.max(0, len - N)); UI.cOff = off;
     var a = len - N - off, b = len - off; // [a, b)
     var hi = -Infinity, lo = Infinity, vmax = 0;
     for (var i = a; i < b; i++) { hi = Math.max(hi, s.h[i]); lo = Math.min(lo, s.l[i]); vmax = Math.max(vmax, s.v[i]); }
-    var pad = (hi - lo) * 0.1 || hi * 0.01; hi += pad; lo -= pad;
-    var dim = chartDims(), W = dim.W, PH = dim.PH, VH = dim.VH, GAP = 8, H = PH + GAP + VH, step = W / N, bw = Math.max(1, step * 0.66);
     var SGN = UI.csig === false ? null : signalsFor(t, iv, s, r.live);
+    var pad = (hi - lo) * (SGN ? 0.16 : 0.08) || hi * 0.01; hi += pad; lo -= pad;
+    var dim = chartDims(), W = dim.W, PH = dim.PH, VH = dim.VH, AX = dim.AX, PW = W - AX, GAP = 8, H = PH + GAP + VH, step = PW / N, bw = Math.max(1, step * 0.66);
     var y = function (p) { return (hi - p) / (hi - lo) * PH; };
-    var body = '';
-    for (var g = 1; g < 4; g++) body += '<line x1="0" x2="' + W + '" y1="' + (PH * g / 4).toFixed(1) + '" y2="' + (PH * g / 4).toFixed(1) + '" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
+    var body = '', axis = '';
+    // right-hand price scale
+    var st = niceStep(hi - lo, UI.cfull ? 7 : 5), first = Math.ceil(lo / st) * st, dec = st >= 1 ? (st % 1 ? 1 : 0) : st >= 0.1 ? 1 : st >= 0.01 ? 2 : 3;
+    for (var pv = first; pv <= hi; pv += st) {
+      var gy = y(pv); if (gy < 6 || gy > PH - 6) continue;
+      body += '<line x1="0" x2="' + PW + '" y1="' + gy.toFixed(1) + '" y2="' + gy.toFixed(1) + '" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
+      axis += '<span class="cax tick mono" style="top:' + (gy - 7).toFixed(0) + 'px;width:' + AX + 'px">' + pv.toFixed(dec) + '</span>';
+    }
+    body += '<line x1="' + PW + '" x2="' + PW + '" y1="0" y2="' + H + '" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
     for (var k = a; k < b; k++) {
       var x = (k - a) * step + step / 2, up = s.c[k] >= s.o[k], col = up ? 'var(--bull)' : 'var(--bear)';
       var yo = y(s.o[k]), yc = y(s.c[k]), top = Math.min(yo, yc), hgt = Math.max(1, Math.abs(yo - yc));
       body += '<line x1="' + x.toFixed(2) + '" x2="' + x.toFixed(2) + '" y1="' + y(s.h[k]).toFixed(2) + '" y2="' + y(s.l[k]).toFixed(2) + '" stroke="' + col + '" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
-      body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + top.toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + hgt.toFixed(2) + '" fill="' + col + '"' + (up ? '' : '') + '></rect>';
+      body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + top.toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + hgt.toFixed(2) + '" fill="' + col + '"></rect>';
       if (vmax) { var vh = s.v[k] / vmax * VH; body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + (H - vh).toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + vh.toFixed(2) + '" fill="' + col + '" fill-opacity="0.35"></rect>'; }
     }
-    if (SGN) for (var m = a; m < b; m++) {
-      var mk = SGN.marks[m]; if (!mk) continue;
-      var mx = (m - a) * step + step / 2, tw = Math.max(3.5, Math.min(6, step * 0.45)), nb = 0, ns = 0;
-      mk.forEach(function (g) {
-        if (g.side === 'buy') { var yb = y(s.l[m]) + 4 + nb++ * 9; body += '<path d="M' + mx.toFixed(1) + ' ' + yb.toFixed(1) + 'l' + tw + ' 7h' + (-2 * tw) + 'z" fill="var(--bull)" stroke="var(--bg)" stroke-width=".8"></path>'; }
-        else { var ys = y(s.h[m]) - 4 - ns++ * 9; body += '<path d="M' + mx.toFixed(1) + ' ' + ys.toFixed(1) + 'l' + tw + ' -7h' + (-2 * tw) + 'z" fill="' + (g.id === 'atr' ? 'var(--accent)' : 'var(--bear)') + '" stroke="var(--bg)" stroke-width=".8"></path>'; }
-      });
+    // BUY / SELL / STOP labels (staggered when they would overlap)
+    var nlab = 0;
+    if (SGN) {
+      var endB = -1e9, endS = -1e9, rowB = 0, rowS = 0, LH = 12;
+      for (var m = a; m < b; m++) {
+        var mk = SGN.marks[m]; if (!mk) continue;
+        var mx = (m - a) * step + step / 2, hasB = null, hasS = null;
+        mk.forEach(function (g) { if (g.side === 'buy') hasB = hasB || g; else if (!hasS || hasS.id === 'atr') hasS = g; });
+        var lab = function (txt, xx, yy, fill, ink) { var w = txt.length * 5.6 + 6; nlab++; xx = clamp(xx, w / 2 + 1, PW - w / 2 - 1); return '<g class="slab"><rect x="' + (xx - w / 2).toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + LH + '" rx="2.5" fill="' + fill + '"></rect><text x="' + xx.toFixed(1) + '" y="' + (yy + 9).toFixed(1) + '" text-anchor="middle" fill="' + ink + '">' + txt + '</text></g>'; };
+        if (hasB) { var wB = 3 * 5.6 + 6; rowB = mx - wB / 2 < endB + 1 ? (rowB + 1) % 3 : 0; endB = mx + wB / 2; var yb = clamp(y(s.l[m]) + 4 + rowB * (LH + 2), 0, PH - LH); body += '<line x1="' + mx.toFixed(1) + '" x2="' + mx.toFixed(1) + '" y1="' + y(s.l[m]).toFixed(1) + '" y2="' + yb.toFixed(1) + '" stroke="var(--bull)" stroke-width="1" vector-effect="non-scaling-stroke"></line>' + lab('BUY', mx, yb, 'var(--bull)', 'var(--bull-ink)'); }
+        if (hasS) { var txt = hasS.id === 'atr' ? 'STOP' : 'SELL', wS = 4 * 5.6 + 6; rowS = mx - wS / 2 < endS + 1 ? (rowS + 1) % 3 : 0; endS = mx + wS / 2; var ys = clamp(y(s.h[m]) - 4 - LH - rowS * (LH + 2), 0, PH - LH); body += '<line x1="' + mx.toFixed(1) + '" x2="' + mx.toFixed(1) + '" y1="' + y(s.h[m]).toFixed(1) + '" y2="' + (ys + LH).toFixed(1) + '" stroke="' + (hasS.id === 'atr' ? 'var(--accent)' : 'var(--bear)') + '" stroke-width="1" vector-effect="non-scaling-stroke"></line>' + lab(txt, mx, ys, hasS.id === 'atr' ? 'var(--accent)' : 'var(--bear)', hasS.id === 'atr' ? 'var(--accent-ink)' : 'var(--bear-ink)'); }
+      }
     }
     var last = s.c[b - 1], ly = y(last);
-    body += '<line x1="0" x2="' + W + '" y1="' + ly.toFixed(2) + '" y2="' + ly.toFixed(2) + '" stroke="var(--accent)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
+    body += '<line x1="0" x2="' + PW + '" y1="' + ly.toFixed(2) + '" y2="' + ly.toFixed(2) + '" stroke="var(--accent)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
     var sel = UI.cSel != null && UI.cSel >= a && UI.cSel < b ? UI.cSel : b - 1;
     if (UI.cSel != null && UI.cSel >= a && UI.cSel < b) { var sx = (sel - a) * step + step / 2; body += '<line x1="' + sx.toFixed(2) + '" x2="' + sx.toFixed(2) + '" y1="0" y2="' + H + '" stroke="var(--fg2)" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"></line>'; }
     var chg = s.c[sel] - s.o[sel];
-    var selSig = SGN && SGN.marks[sel] ? '<div class="sigline">' + SGN.marks[sel].map(function (g) { var R = window.ConvergeSignals.BY_ID[g.id]; return '<span class="' + (g.side === 'buy' ? 'up' : g.id === 'atr' ? 'neu' : 'down') + '">' + (g.side === 'buy' ? '▲ BUY · ' : '▼ SELL · ') + esc(R.name) + ' (L' + R.lesson + ')</span>'; }).join('') + '</div>' : '';
+    var selSig = SGN && SGN.marks[sel] ? '<div class="sigline">' + SGN.marks[sel].map(function (g) { var R = window.ConvergeSignals.BY_ID[g.id]; return '<span><b class="lbl ' + (g.side === 'buy' ? 'lbuy' : g.id === 'atr' ? 'lstop' : 'lsell') + '">' + (g.side === 'buy' ? 'BUY' : g.id === 'atr' ? 'STOP' : 'SELL') + '</b> ' + esc(R.name) + ' (L' + R.lesson + ')</span>'; }).join('') + '</div>' : '';
     var readout = '<div class="ohlc mono"><span>' + esc(candleLabel(s.t[sel], iv)) + '</span><span>O ' + fmtP(s.o[sel]) + '</span><span>H ' + fmtP(s.h[sel]) + '</span><span>L ' + fmtP(s.l[sel]) + '</span><span class="' + (chg >= 0 ? 'up' : 'down') + '">C ' + fmtP(s.c[sel]) + '</span><span>Vol ' + bigNum(s.v[sel]) + '</span></div>';
-    return readout + selSig + '<div class="cwrap' + (UI.cfull ? ' full' : '') + '" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart">' + body + '</svg>' +
-      '<span class="cax top mono">' + fmtP(hi - pad) + '</span><span class="cax bot mono">' + fmtP(lo + pad) + '</span><span class="cax last mono" style="top:' + Math.max(0, Math.min(PH - 16, ly - 8)).toFixed(0) + 'px">' + fmtP(last) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:4px" class="muted mono"><span>' + esc(candleLabel(s.t[a], iv)) + '</span><span>' + (r.live ? 'Live' : 'Snapshot ' + (CD ? ago(CD.generatedAt) : '')) + '</span><span>' + esc(candleLabel(s.t[b - 1], iv)) + '</span></div>' +
-      (SGN ? '<div class="siglegend"><span class="up">▲ Buy</span><span class="down">▼ Sell</span><span class="neu">▼ ATR stop</span><span class="muted">Tap a candle for the rule · pinch to zoom</span></div>' : '');
+    var srcLbl = r.live ? 'Live' : r.hist ? 'Daily history' + (DIR.through ? ' through ' + DIR.through : '') : 'Snapshot ' + (CD ? ago(CD.generatedAt) : '');
+    var strip = '';
+    if (SGN && !UI.cfull) { var bt = SGN.bt; strip = '<button class="btstrip" data-act="bt-jump"><span>Backtest · ' + esc(iv) + '</span><b class="mono ' + cls(bt.total) + '">' + pct(bt.total * 100, 1) + '</b><span class="muted">vs hold <span class="mono ' + cls(bt.hold) + '">' + pct(bt.hold * 100, 1) + '</span> · ' + bt.n + ' trades' + (bt.winRate != null ? ' · ' + Math.round(bt.winRate * 100) + '% win' : '') + '</span><span class="go">Results ↓</span></button>'; }
+    return readout + selSig + '<div class="cwrap' + (UI.cfull ? ' full' : '') + '" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '" data-pr="' + (PW / W).toFixed(4) + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart with ' + nlab + ' signal labels">' + body + '</svg>' +
+      axis + '<span class="cax last mono" style="top:' + Math.max(0, Math.min(PH - 16, ly - 8)).toFixed(0) + 'px;width:' + AX + 'px">' + fmtP(last) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:4px;padding-right:' + AX + 'px" class="muted mono"><span>' + esc(candleLabel(s.t[a], iv)) + '</span><span>' + esc(srcLbl) + '</span><span>' + esc(candleLabel(s.t[b - 1], iv)) + '</span></div>' +
+      (SGN ? '<div class="siglegend"><b class="lbl lbuy">BUY</b><b class="lbl lsell">SELL</b><b class="lbl lstop">STOP</b><span class="muted">ATR trailing stop · tap a candle for the rule · pinch to zoom</span></div>' : '') + strip;
   }
   function civRow(iv) { return '<div class="civ">' + CINTERVALS.map(function (x) { return '<button data-act="civ" data-iv="' + x + '" aria-pressed="' + (iv === x) + '">' + x + '</button>'; }).join('') + '</div>'; }
   function ctools() {
@@ -1020,25 +1100,27 @@
   }
   function candleCard(t) {
     if (!CD && !CDS.loading && !CDS.error) setTimeout(loadCandles, 0);
-    var iv = UI.civ || '1D';
+    var iv = UI.civ || '1D'; UI.chartT = t;
     if (UI.cfull) return civRow(iv) + '<p class="muted" style="font-size:13px;text-align:center;padding:24px 0">Chart is open in full screen.</p>';
     return civRow(iv) + '<div id="candlebox" data-t="' + esc(t) + '">' + candleSvg(t) + '</div>' + ctools();
   }
   function fullChartHtml() {
-    var t = S.sel && T(S.sel) ? S.sel : firstTicker(), iv = UI.civ || '1D', bt = btFor(t);
-    return '<div class="cfull" role="dialog" aria-modal="true" aria-label="' + esc(t) + ' chart, full screen"><div class="cfull-h"><div><b class="disp" style="font-size:18px">' + esc(t) + '</b> <span class="muted mono" style="font-size:12px">' + esc(iv) + '</span>' +
-      (bt ? ' <span class="mono ' + cls(bt.total) + '" style="font-size:12px;margin-left:6px">Backtest ' + pct(bt.total * 100, 1) + ' · ' + bt.n + ' trades</span>' : '') + '</div><button class="iconbtn" data-act="cfull-close" aria-label="Close full screen">' + ic('x', 22) + '</button></div>' +
-      civRow(iv) + '<div id="candlebox" data-t="' + esc(t) + '">' + candleSvg(t) + '</div>' + ctools() + '</div>';
+    var t = UI.chartT || S.sel, iv = UI.civ || '1D', land = isLand(), x = T(t), dr = dirRow(t);
+    var price = x ? money(x.price) + ' <span class="' + cls(x.changePct) + '">' + arrowPct(x.changePct) + '</span>' : dr && dr.p ? money(dr.p) + (dr.ch != null ? ' <span class="' + cls(dr.ch) + '">' + arrowPct(dr.ch) + '</span>' : '') : '';
+    return '<div class="cfull' + (land ? ' land' : '') + '" role="dialog" aria-modal="true" aria-label="' + esc(t) + ' chart, full screen"><div class="cfull-h"><div style="min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"><b class="disp" style="font-size:18px">' + esc(t) + '</b> <span class="muted mono" style="font-size:12px">' + esc(iv) + '</span> <span class="mono" style="font-size:13px;margin-left:6px">' + price + '</span></div><button class="iconbtn" data-act="cfull-close" aria-label="Close full screen">' + ic('x', 22) + '</button></div>' +
+      '<div class="cfull-body"><div class="cfull-chart">' + civRow(iv) + '<div id="candlebox" data-t="' + esc(t) + '">' + candleSvg(t) + '</div>' + ctools() + '</div>' +
+      '<aside class="cfull-bt" id="btfull" data-t="' + esc(t) + '">' + backtestInner(t, true) + '</aside></div></div>';
   }
   function refreshCandleBox() {
     var box = document.getElementById('candlebox'); if (box) { box.innerHTML = candleSvg(box.dataset.t); bindCandles(); }
     var bb = document.getElementById('btbox'); if (bb) bb.innerHTML = backtestInner(bb.dataset.t);
+    var bf = document.getElementById('btfull'); if (bf) bf.innerHTML = backtestInner(bf.dataset.t, true);
   }
   function btFor(t) { var iv = UI.civ || '1D', r = candleSeries(t, iv); var g = r.s && signalsFor(t, iv, r.s, r.live); return g ? g.bt : null; }
-  function backtestInner(t) {
+  function backtestInner(t, compact) {
     var SG = window.ConvergeSignals, iv = UI.civ || '1D', r = candleSeries(t, iv), s = r.s;
     var head = '<div class="sechead"><h2 class="eyebrow">Signal backtest · ' + esc(t) + ' · <span style="text-transform:none">' + esc(iv) + '</span></h2></div>';
-    if (!SG || !s || s.t.length < 30) return head + '<p class="muted" style="margin:0;font-size:13px">' + (CDS.loading || !CD ? 'Loading candles…' : 'Not enough ' + esc(iv) + ' candles to test.') + '</p>';
+    if (!SG || !s || s.t.length < 30) return head + '<p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (!s ? emptyChartMsg(t, iv) : 'Not enough ' + esc(iv) + ' candles to test.') + '</p>';
     var g = signalsFor(t, iv, s, r.live), bt = g.bt, intra = !!SG.INTRADAY[iv];
     var stat = function (label, val, c) { return '<div class="bts"><span class="muted">' + label + '</span><b class="mono ' + (c || '') + '">' + val + '</b></div>'; };
     var h = head + '<p class="muted" style="margin:-4px 0 10px;font-size:12px">' + bt.bars + ' candles · ' + esc(candleLabel(s.t[0], iv)) + ' to ' + esc(candleLabel(s.t[s.t.length - 1], iv)) + (r.live ? ' · live' : '') + '</p>' +
@@ -1053,13 +1135,13 @@
       var p = bt.per[R.id], na = (R.intraday && !intra) || (R.orb && !(intra && SG.INTRADAY[iv] <= 5));
       var right = p && p.done ? Math.round(p.hits / p.done * 100) + '%' : '—', mv = p && p.done ? pct(p.sum / p.done * 100, 2) : '—';
       if (R.id === 'atr') { right = '—'; mv = '—'; }
-      return '<button class="btr" data-act="sig-info" data-id="' + R.id + '"><span><i class="' + (R.side === 'buy' ? 'up' : R.id === 'atr' ? 'neu' : 'down') + '">' + (R.side === 'buy' ? '▲' : '▼') + '</i> ' + esc(R.name) + ' <em class="muted">L' + R.lesson + '</em></span><span class="mono">' + (na ? '<em class="muted">n/a</em>' : p ? p.n : 0) + '</span><span class="mono">' + right + '</span><span class="mono ' + (p && p.done ? cls(p.sum) : '') + '">' + mv + '</span></button>' +
+      return '<button class="btr" data-act="sig-info" data-id="' + R.id + '"><span><b class="lbl ' + (R.side === 'buy' ? 'lbuy' : R.id === 'atr' ? 'lstop' : 'lsell') + '">' + (R.side === 'buy' ? 'BUY' : R.id === 'atr' ? 'STOP' : 'SELL') + '</b> ' + esc(R.name) + ' <em class="muted">L' + R.lesson + '</em></span><span class="mono">' + (na ? '<em class="muted">n/a</em>' : p ? p.n : 0) + '</span><span class="mono">' + right + '</span><span class="mono ' + (p && p.done ? cls(p.sum) : '') + '">' + mv + '</span></button>' +
         (UI.sigInfo === R.id ? '<p class="prule" style="margin:0 0 6px">' + esc(R.rule) + (na ? ' Not used on ' + esc(iv) + ' candles.' : '') + '</p>' : '');
     }).join('') + '</div>';
     if (bt.trades.length) h += '<h3 class="eyebrow" style="margin:14px 0 6px">Last trades</h3>' + bt.trades.slice(-5).reverse().map(function (tr) {
-      return '<div class="bttr"><span>' + esc(candleLabel(s.t[tr.in], iv)) + ' <span class="up">▲ ' + esc(SG.BY_ID[tr.why].name) + '</span><br><span class="muted">→ ' + esc(candleLabel(s.t[tr.out], iv)) + ' <span class="' + (tr.exitWhy === 'atr' ? 'neu' : 'down') + '">▼ ' + esc(SG.BY_ID[tr.exitWhy].name) + '</span></span></span><b class="mono ' + cls(tr.ret) + '">' + pct(tr.ret * 100, 2) + '</b></div>';
+      return '<div class="bttr"><span><b class="lbl lbuy">BUY</b> ' + esc(candleLabel(s.t[tr.in], iv)) + ' · ' + esc(SG.BY_ID[tr.why].name) + '<br><b class="lbl ' + (tr.exitWhy === 'atr' ? 'lstop' : 'lsell') + '">' + (tr.exitWhy === 'atr' ? 'STOP' : 'SELL') + '</b> <span class="muted">' + esc(candleLabel(s.t[tr.out], iv)) + ' · ' + esc(SG.BY_ID[tr.exitWhy].name) + '</span></span><b class="mono ' + cls(tr.ret) + '">' + pct(tr.ret * 100, 2) + '</b></div>';
     }).join('');
-    h += '<div style="margin-top:10px">' + civRow(iv) + '</div>';
+    if (!compact) h += '<div style="margin-top:10px">' + civRow(iv) + '</div>';
     h += '<p class="foot" style="text-align:left;margin:8px 0 0">Long only, on the ' + esc(iv) + ' candles shown above. Buys at the next candle’s open after any buy signal; sells at the next open after any sell signal, or when the 3× ATR trailing stop is hit. Includes 0.05% per side for costs and slippage' + (intra ? '; intraday trades can be held overnight' : '') + '. “Right” = price moved the signal’s way ' + bt.fwd + ' candles later. Rules from the Master Trader Manual, lessons 6–20. Past results don’t predict future returns; small samples are noisy. Not investment advice.</p>';
     return h;
   }
@@ -1067,7 +1149,7 @@
     var box = document.getElementById('candlebox'); if (!box || box.dataset.bound) return;
     box.dataset.bound = '1';
     var x0 = null, off0 = 0, moved = false, pts = {}, pinch = null, pinched = false;
-    function geo() { var el = document.getElementById('cwrap'); if (!el) return null; var rc = el.getBoundingClientRect(); return { a: +el.dataset.a, n: +el.dataset.n, len: +el.dataset.len, left: rc.left, width: rc.width, top: rc.top, bottom: rc.bottom }; }
+    function geo() { var el = document.getElementById('cwrap'); if (!el) return null; var rc = el.getBoundingClientRect(); return { a: +el.dataset.a, n: +el.dataset.n, len: +el.dataset.len, left: rc.left, width: rc.width * (+el.dataset.pr || 1), top: rc.top, bottom: rc.bottom }; }
     function zoomTo(g, newN, frac) {
       var len = g.len, n = clamp(Math.round(newN), Math.min(15, len), Math.min(len, 600));
       var center = g.a + frac * g.n, na = clamp(Math.round(center - frac * n), 0, len - n);
@@ -1436,6 +1518,32 @@
     'demo-tier': function () { S.demoTier = S.demoTier === 'premium' ? 'free' : 'premium'; save(); toast('Previewing the ' + planName() + ' plan'); render(); }
   };
 
+  function extResults(q, covered) {
+    var seen = {}; covered.forEach(function (u) { seen[u.t] = 1; });
+    if (!q) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.rows ? 'Type a ticker or company name to search all ' + DIR.rows.length.toLocaleString('en-US') + ' S&amp;P 500 and Nasdaq-listed stocks.' : DIR.loading ? 'Loading the S&amp;P 500 and Nasdaq stock list…' : esc(DIR.error || '')) + '</p>';
+    if (!DIR.rows) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.loading ? 'Searching all S&amp;P 500 and Nasdaq stocks…' : esc(DIR.error || 'The full stock list isn’t available here.')) + '</p>';
+    var hits = dirSearch(q, 40).filter(function (r) { return !seen[r[0]]; });
+    if (!hits.length) return covered.length ? '' : '<p class="muted" style="font-size:13px;margin:10px 2px">No S&amp;P 500 or Nasdaq stock matches “' + esc(q) + '”. OTC stocks aren’t included.</p>';
+    return '<h3 class="eyebrow" style="margin:14px 2px 6px">All S&amp;P 500 &amp; Nasdaq stocks</h3>' + hits.map(function (r) {
+      return '<button class="pickrow" data-act="picked-ext" data-t="' + esc(r[0]) + '"><span class="tk">' + esc(r[0]) + '</span><span class="nm">' + esc(r[1]) + '<br><span class="muted" style="font-size:11px">' + (r[3] ? 'S&amp;P 500 · ' : '') + esc(r[2] === 'NASDAQ' ? 'Nasdaq' : r[2]) + (r[5] ? ' · ' + compact(r[5]).replace('$', '$') : '') + '</span></span><span class="mono ' + cls(r[7]) + '" style="font-size:12px">' + (r[7] != null ? arrowPct(r[7]) : '') + '</span></button>';
+    }).join('');
+  }
+  // ---- quote page for any S&P 500 / Nasdaq stock outside the tracked list
+  function scrQuote(t) {
+    if (!DIR.rows && !DIR.loading) setTimeout(loadDir, 0);
+    var dr = dirRow(t) || { t: t, n: '', ex: '', sp: false, sec: '', mc: null, p: null, ch: null };
+    var r1 = candleSeries(t, '1D').s, lastC = r1 && r1.c.length ? r1.c[r1.c.length - 1] : null, prevC = r1 && r1.c.length > 1 ? r1.c[r1.c.length - 2] : null;
+    var price = dr.p != null ? dr.p : lastC, ch = dr.ch != null ? dr.ch : (lastC && prevC ? (lastC / prevC - 1) * 100 : null);
+    var h = '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px"><div style="min-width:0"><h1 class="disp" style="margin:0;font-size:24px;font-weight:700;line-height:1.15">' + esc(dr.n || t) + '</h1><div class="muted" style="font-size:12px;margin-top:2px">' + esc(t) + (dr.ex ? ' · ' + esc(dr.ex === 'NASDAQ' ? 'Nasdaq' : dr.ex) : '') + (dr.sp ? ' · S&amp;P 500' : '') + (dr.sec ? ' · ' + esc(dr.sec) : '') + (dr.mc ? ' · ' + compact(dr.mc) : '') + '</div></div>' +
+      '<div style="text-align:right;flex:none"><div class="mono" style="font-size:22px">' + (price != null ? money(price) : '—') + '</div><div class="mono ' + cls(ch) + '" style="font-size:12px">' + (ch != null ? arrowPct(ch) : '') + '</div></div></div>';
+    h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Chart · buy &amp; sell signals</h2></div>' + candleCard(t) + '</section>';
+    h += '<p class="note" style="margin:0">News, sentiment, quant grades and the discussion cover the ' + D.universe.length + ' tracked tickers. Charts, signals and backtests work for every S&amp;P 500 and Nasdaq stock.' + (dr.p != null && DIR.at ? ' Price as of ' + esc(ago(DIR.at)) + '.' : '') + '</p>';
+    h += '<section><h2 class="eyebrow" style="margin-bottom:8px">More on ' + esc(t) + '</h2><div class="lnkrow">' + extLinks(t) + '</div></section>';
+    h += '<section class="card" id="btbox" data-t="' + esc(t) + '">' + backtestInner(t) + '</section>';
+    h += '<p class="foot">Free public sources, may be delayed. Not investment advice.</p>';
+    return subBar(t) + '<main class="main" id="main">' + h + '</main>';
+  }
+
   // ---- sheets (picker, pin)
   function sheetHtml() {
     var sh = UI.sheet; if (!sh) return '';
@@ -1444,11 +1552,11 @@
       var q = UI.pickQuery.trim().toUpperCase();
       var list = D.universe.filter(function (u) { return !q || u.t.indexOf(q) >= 0 || (u.name || '').toUpperCase().indexOf(q) >= 0; });
       var multi = sh.mode === 'watch';
-      body = '<h2 class="disp" style="margin:0 0 10px;font-size:20px">' + (multi ? 'Watchlist' : 'Choose a ticker') + '</h2><label class="sr" for="pickq">Search tickers</label><input class="in" id="pickq" data-pickq="1" placeholder="Search ' + D.universe.length + ' covered tickers" value="' + esc(UI.pickQuery) + '" autocomplete="off">' +
+      body = '<h2 class="disp" style="margin:0 0 10px;font-size:20px">' + (multi ? 'Watchlist' : 'Choose a ticker') + '</h2><label class="sr" for="pickq">Search tickers</label><input class="in" id="pickq" data-pickq="1" placeholder="' + (sh.mode === 'draft' ? 'Search ' + D.universe.length + ' tracked tickers' : 'Search S&amp;P 500 and Nasdaq stocks') + '" value="' + esc(UI.pickQuery) + '" autocomplete="off">' +
         '<div class="scroll">' + list.map(function (u) {
           var on = multi ? S.watchlist.indexOf(u.t) >= 0 : false, y = T(u.t);
           return '<button class="pickrow" data-act="picked" data-t="' + u.t + '" aria-pressed="' + on + '"><span class="tk">' + u.t + '</span><span class="nm">' + esc(u.name || '') + '</span><span class="mono ' + cls(y && y.changePct) + '" style="font-size:12px">' + (y ? arrowPct(y.changePct) : '') + '</span>' + (multi ? '<span style="width:20px;color:var(--accent)">' + (on ? ic('check', 18) : '') + '</span>' : '') + '</button>';
-        }).join('') + (list.length ? '' : '<p class="muted" style="font-size:13px">No covered ticker matches. Add more in config/universe.json.</p>') + '</div>' +
+        }).join('') + (sh.mode === 'draft' ? (list.length ? '' : '<p class="muted" style="font-size:13px">Lots can be added for the ' + D.universe.length + ' tracked tickers. Add more in config/universe.json.</p>') : extResults(q, list)) + '</div>' +
         (multi ? '<button class="btn pri" data-act="sheet-close" style="margin-top:12px">Done</button>' : '');
     } else if (sh.kind === 'pin') {
       var d = UI.draft, t = d && d.t;
@@ -1493,10 +1601,11 @@
         case 'briefing': body = scrBriefing(); break;
         case 'source': body = scrSource(c.name2); break;
         case 'settings': body = scrSettings(); break;
+        case 'quote': body = scrQuote(c.t); break;
         default: body = scrCommand();
       }
-      var showNav = !NAV.stack.length || ['lot', 'alert', 'source', 'wthesis'].indexOf(c.name) >= 0;
-      if (UI.cfull && c.name !== 'battle') UI.cfull = false;
+      var showNav = !NAV.stack.length || ['lot', 'alert', 'source', 'wthesis', 'quote'].indexOf(c.name) >= 0;
+      if (UI.cfull && c.name !== 'battle' && c.name !== 'quote') UI.cfull = false;
       html = body + (showNav ? navBar() : '') + (UI.cfull ? fullChartHtml() : '') + sheetHtml() + (UI.toast ? '<div class="toast" role="status">' + esc(UI.toast) + '</div>' : '');
     }
     root.innerHTML = '<div class="app">' + html + '</div>';
@@ -1551,7 +1660,7 @@
       if (l.thesis) { UI.draft.title = th.title; UI.draft.why = th.why || ''; UI.draft.pins = (th.pins || []).slice(); UI.draft.target = th.target ? String(th.target) : ''; UI.draft.horizon = th.horizon || '12M'; UI.draft.kill = th.kill || ''; }
       go({ name: 'add' });
     },
-    pick: function (el) { UI.sheet = { kind: 'pick', mode: el.dataset.mode }; UI.pickQuery = ''; render(); },
+    pick: function (el) { UI.sheet = { kind: 'pick', mode: el.dataset.mode }; UI.pickQuery = ''; loadDir(); render(); },
     picked: function (el) {
       var t = el.dataset.t, mode = UI.sheet.mode;
       if (mode === 'watch') {
@@ -1619,8 +1728,10 @@
     czoom: function (el) { var n = UI.cN || (UI.cfull ? 120 : 60); UI.cN = Math.max(15, Math.min(600, Math.round(el.dataset.z === 'in' ? n / 1.5 : n * 1.5))); UI.cSel = null; refreshCandleBox(); },
     csig: function () { UI.csig = UI.csig === false; render(); },
     cfull: function () { UI.cfull = true; UI.cSel = null; render(); },
+    'bt-jump': function () { var bb = document.getElementById('btbox'); if (bb) bb.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
+    'picked-ext': function (el) { var t = el.dataset.t; UI.sheet = null; UI.cOff = 0; UI.cSel = null; if (T(t)) { S.sel = t; save(); NAV.tab = 'battle'; NAV.stack = []; render(); return; } go({ name: 'quote', t: t }); },
     'cfull-close': function () { UI.cfull = false; render(); },
-    'sig-info': function (el) { UI.sigInfo = UI.sigInfo === el.dataset.id ? null : el.dataset.id; var bb = document.getElementById('btbox'); if (bb) bb.innerHTML = backtestInner(bb.dataset.t); },
+    'sig-info': function (el) { UI.sigInfo = UI.sigInfo === el.dataset.id ? null : el.dataset.id; refreshCandleBox(); },
     cpan: function (el) { var n = UI.cN || 60; UI.cSel = null; if (el.dataset.p === 'end') UI.cOff = 0; else UI.cOff = Math.max(0, (UI.cOff || 0) + (el.dataset.p === 'back' ? Math.round(n / 2) : -Math.round(n / 2))); refreshCandleBox(); },
     preset: function (el) { if (!isPremium()) { UI.sheet = { kind: 'subscribe', why: 'preset' }; return render(); } var st = scanState(); st.presets = st.presets || {}; st.presets[el.dataset.id] = !st.presets[el.dataset.id]; if (st.presets[el.dataset.id]) st.view = 'strategy'; UI.scanLimit = 100; save(); render(); },
     'preset-info': function (el) { UI.presetOpen = UI.presetOpen === el.dataset.id ? null : el.dataset.id; render(); },
@@ -1795,7 +1906,7 @@
   render();
   loadData();
   setInterval(function () { if (document.visibilityState === 'visible') loadData(); }, 15 * 60000);
-  var rsT; window.addEventListener('resize', function () { if (!UI.cfull) return; clearTimeout(rsT); rsT = setTimeout(refreshCandleBox, 120); });
+  var rsT; window.addEventListener('resize', function () { if (!UI.cfull) return; clearTimeout(rsT); rsT = setTimeout(render, 120); });
   loadPulse();
   setInterval(function () { if (document.visibilityState === 'visible') loadPulse(); }, 5 * 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && Date.now() - PULSE.at > 5 * 60000) loadPulse(); });

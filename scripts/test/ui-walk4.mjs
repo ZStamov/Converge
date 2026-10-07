@@ -19,7 +19,17 @@ const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, de
 const page = await ctx.newPage();
 const errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
-await page.route('https://raw.githubusercontent.com/**', (r) => r.abort());
+// mock history branch: a small directory + 2 years of daily bars for PLTR (built from AAPL's shape)
+const C = JSON.parse(fs.readFileSync(path.join(www, 'data', 'candles.json'), 'utf8'));
+const base = C.tickers.AAPL.d1;
+const pltr = { t: base.t, o: base.o.map((x) => +(x / 2.1).toFixed(3)), h: base.h.map((x) => +(x / 2.1).toFixed(3)), l: base.l.map((x) => +(x / 2.1).toFixed(3)), c: base.c.map((x) => +(x / 2.1).toFixed(3)), v: base.v };
+const symbols = { app: 'Converge', kind: 'symbols', generatedAt: new Date().toISOString(), barsThrough: '2026-10-07', count: 4, rows: [['AAPL', 'Apple Inc.', 'NASDAQ', 1, 'Technology', 4e12, 336, 0.9], ['PLTR', 'Palantir Technologies Inc. Class A', 'NASDAQ', 1, 'Technology', 3e11, 160, 2.1], ['PLUG', 'Plug Power Inc.', 'NASDAQ', 0, 'Industrials', 2e9, 2.1, -1.5], ['PLD', 'Prologis, Inc.', 'NYSE', 1, 'Real Estate', 1e11, 120, 0.3]] };
+await page.route('https://raw.githubusercontent.com/**', (r) => {
+  const u = r.request().url();
+  if (u.includes('/history/symbols.json')) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(symbols) });
+  if (u.includes('/history/h/PLTR.json')) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(pltr) });
+  return r.abort();
+});
 await page.goto('http://localhost:8100/');
 await page.waitForSelector('.nav');
 let n = 0;
@@ -32,14 +42,19 @@ await click('[data-act="tab"][data-tab="battle"]');
 await page.waitForSelector('#cwrap');
 for (const iv of ['1D', '5m', '1h', '1W', '1m']) {
   await click(`[data-act="civ"][data-iv="${iv}"]`);
-  const m = await cnt('#cwrap path'); const bt = await page.$eval('#btbox', (e) => e.innerText.replace(/\s+/g, ' '));
+  const m = await cnt('#cwrap .slab'); const bt = await page.$eval('#btbox', (e) => e.innerText.replace(/\s+/g, ' '));
   check(`${iv}: ${m} signal markers; backtest card: ${bt.slice(0, 110)}`, m > 0 && /Strategy return/.test(bt));
 }
 await click('[data-act="civ"][data-iv="1D"]');
 await page.evaluate(() => document.getElementById('cwrap').scrollIntoView({ block: 'center' }));
 await shot('candles-signals-1D');
 // tap a candle that carries a signal
-const hitInfo = await page.evaluate(() => { const p = document.querySelector('#cwrap path'); const r = p.getBoundingClientRect(); return { x: r.left + r.width / 2, y: document.getElementById('cwrap').getBoundingClientRect().top + 40 }; });
+const labels = await page.$$eval('#cwrap .slab text', (a) => [...new Set(a.map((e) => e.textContent))]);
+check('chart labels are words: ' + labels.join(', '), labels.includes('BUY') && labels.includes('SELL') && !(await page.$('#cwrap path')));
+const ticks = await cnt('#cwrap .cax.tick');
+check(ticks + ' price-scale ticks on the right', ticks >= 3 && await page.$eval('#cwrap .cax.tick', (e) => { const w = document.getElementById('cwrap').getBoundingClientRect(); return e.getBoundingClientRect().right >= w.right - 2; }));
+check('backtest strip under the chart', /Backtest · 1D/.test(await page.$eval('.btstrip', (e) => e.innerText)));
+const hitInfo = await page.evaluate(() => { const p = document.querySelector('#cwrap .slab rect'); const r = p.getBoundingClientRect(); return { x: r.left + r.width / 2, y: document.getElementById('cwrap').getBoundingClientRect().top + 40 }; });
 await page.mouse.click(hitInfo.x, hitInfo.y);
 await page.waitForTimeout(200);
 check('tapping a marked candle names the rule: ' + (await page.$eval('#candlebox', (e) => (e.querySelector('.sigline') || {}).innerText || 'none')), !!(await page.$('#candlebox .sigline')));
@@ -53,6 +68,7 @@ await shot('backtest-rules');
 await page.evaluate(() => document.getElementById('cwrap').scrollIntoView({ block: 'center' }));
 await click('[data-act="cfull"]');
 check('full-screen overlay open', !!(await page.$('.cfull #cwrap')));
+check('full screen shows backtest results', /Strategy return/.test(await page.$eval('#btfull', (e) => e.innerText)));
 const n0 = await page.$eval('#cwrap', (e) => +e.dataset.n);
 await shot('fullscreen-portrait');
 // pinch in (fingers apart) with synthetic touch pointers
@@ -79,10 +95,30 @@ await page.mouse.move(r.x, r.y); await page.mouse.wheel(0, -400); await page.wai
 const n3 = await page.$eval('#cwrap', (e) => +e.dataset.n);
 check(`wheel zooms in: ${n2} -> ${n3}`, n3 < n2);
 await page.setViewportSize({ width: 844, height: 390 }); await page.waitForTimeout(400);
+const lay = await page.evaluate(() => { const a = document.getElementById('btfull').getBoundingClientRect(), c = document.getElementById('cwrap').getBoundingClientRect(); return { bt: [a.left, a.right], ch: [c.left, c.right] }; });
+check('landscape: backtest on the left, price chart on the right ' + JSON.stringify(lay), lay.bt[1] <= lay.ch[0] + 1);
 await shot('fullscreen-landscape');
+await page.evaluate(() => { document.getElementById('btfull').scrollTop = 400; });
+await shot('fullscreen-landscape-bt-scrolled');
 await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
 await click('[data-act="cfull-close"]');
 check('full screen closes', !(await page.$('.cfull')));
+// search any S&P 500 / Nasdaq stock
+await click('[data-act="pick"][data-mode="battle"]');
+await page.fill('#pickq', 'pl'); await page.waitForTimeout(300);
+const found = await page.$$eval('[data-act="picked-ext"]', (a) => a.map((e) => e.dataset.t));
+check('search "pl" finds directory stocks: ' + found.join(','), found.includes('PLTR') && found.includes('PLUG') && found.includes('PLD'));
+await shot('search-all-stocks');
+await click('[data-act="picked-ext"][data-t="PLTR"]');
+await page.waitForSelector('#cwrap .slab', { timeout: 8000 });
+check('PLTR quote page has chart, signals and backtest', /Palantir/.test(await page.$eval('#main', (e) => e.innerText)) && /Strategy return/.test(await page.$eval('#btbox', (e) => e.innerText)));
+await shot('quote-pltr');
+await click('[data-act="civ"][data-iv="5m"]');
+check('web: intraday explains the apps have it', /Android and iOS/.test(await page.$eval('#candlebox', (e) => e.innerText)));
+await click('[data-act="civ"][data-iv="1W"]');
+check('PLTR weekly from daily history', (await cnt('#cwrap rect')) > 20);
+await click('[data-act="civ"][data-iv="1D"]');
+await click('[data-act="back"]');
 // testing mode: presets unlocked without an account
 await click('[data-act="tab"][data-tab="scan"]');
 await page.waitForSelector('.preset');
