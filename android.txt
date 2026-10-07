@@ -1,115 +1,9 @@
 job: android
-status: cancelled
-time: 2026-10-07T02:22:04Z
-commit: f59b6ce54a9964664de9487215d050530720dd36
-run: https://github.com/ZStamov/Converge/actions/runs/37561505476
+status: success
+time: 2026-10-07T02:24:42Z
+commit: f5ead78b3682d0e020a34b0d78c370701c80101b
+run: https://github.com/ZStamov/Converge/actions/runs/37561617783
 ----
-CREATE android adaptive-icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android adaptive-icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png (2.86 KB)
-CREATE android adaptive-icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android adaptive-icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android adaptive-icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png (4.63 KB)
-CREATE android adaptive-icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android adaptive-icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-ldpi/ic_launcher.png (513 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-mdpi/ic_launcher.png (781 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-hdpi/ic_launcher.png (1.47 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png (2.25 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png (3.81 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png (5.35 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-ldpi/ic_launcher_round.png (872 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png (1.14 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png (1.66 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png (2.14 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png (3.18 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png (4.33 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable/splash.png (4.7 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-ldpi/splash.png (2.79 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-mdpi/splash.png (5.01 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-hdpi/splash.png (10.45 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-xhdpi/splash.png (22.63 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-xxhdpi/splash.png (35.74 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-xxxhdpi/splash.png (54.74 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-ldpi/splash.png (2.83 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-mdpi/splash.png (4.7 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-hdpi/splash.png (10.77 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-xhdpi/splash.png (23.32 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-xxhdpi/splash.png (34.53 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-xxxhdpi/splash.png (54.44 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-night/splash.png (2.79 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-ldpi/splash.png (2.79 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-mdpi/splash.png (5.01 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-hdpi/splash.png (10.45 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-xhdpi/splash.png (22.63 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-xxhdpi/splash.png (35.74 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-xxxhdpi/splash.png (54.74 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-night-ldpi/splash.png (2.83 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-night-mdpi/splash.png (4.7 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-night-hdpi/splash.png (10.77 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-night-xhdpi/splash.png (23.32 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-night-xxhdpi/splash.png (34.53 KB)
-CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-night-xxxhdpi/splash.png (54.44 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-ldpi/ic_launcher.png (557 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-mdpi/ic_launcher.png (889 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-hdpi/ic_launcher.png (1.64 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png (2.52 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png (4.32 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png (6.05 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-ldpi/ic_launcher_round.png (1.23 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png (1.68 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png (2.62 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png (3.54 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png (5.07 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png (6.5 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-ldpi/ic_launcher_foreground.png (460 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png (645 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png (938 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png (1.23 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png (1.88 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png (2.5 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-ldpi/ic_launcher_background.png (160 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-mdpi/ic_launcher_background.png (211 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-hdpi/ic_launcher_background.png (299 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.png (426 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png (834 B)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png (1.12 KB)
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-CREATE android icon /home/runner/work/Converge/Converge/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable/splash.png (7.2 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-ldpi/splash.png (4.35 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-mdpi/splash.png (7.53 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-hdpi/splash.png (14.52 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-xhdpi/splash.png (28.6 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-xxhdpi/splash.png (43.45 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-xxxhdpi/splash.png (64.05 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-ldpi/splash.png (4.51 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-mdpi/splash.png (7.2 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-hdpi/splash.png (15.14 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-xhdpi/splash.png (30.93 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-xxhdpi/splash.png (44.29 KB)
-CREATE android splash /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-port-xxxhdpi/splash.png (64.82 KB)
 CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-night/splash.png (4.35 KB)
 CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-ldpi/splash.png (4.35 KB)
 CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-mdpi/splash.png (7.53 KB)
@@ -127,16 +21,16 @@ CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/m
 
 Totals:
 android: 148 generated, 1.28 MB total
-✔ Copying web assets from www to android/app/src/main/assets/public in 8.87ms
-✔ Creating capacitor.config.json in android/app/src/main/assets in 650.50μs
-✔ copy android in 19.53ms
-✔ Updating Android plugins in 1.64ms
+✔ Copying web assets from www to android/app/src/main/assets/public in 25.00ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 627.94μs
+✔ copy android in 39.20ms
+✔ Updating Android plugins in 1.40ms
 [info] Found 3 Capacitor plugins for android:
        @capacitor-community/text-to-speech@8.0.2
        @capacitor/app@8.1.2
        @capacitor/local-notifications@8.3.1
-✔ update android in 29.86ms
-[info] Sync finished in 0.067s
+✔ update android in 25.26ms
+[info] Sync finished in 0.082s
 Downloading https://services.gradle.org/distributions/gradle-8.14.3-all.zip
 .....................10%.....................20%......................30%.....................40%......................50%.....................60%.....................70%......................80%.....................90%......................100%
 
@@ -167,13 +61,13 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-app:preBuild UP-TO-DATE
 > Task :capacitor-app:preDebugBuild UP-TO-DATE
 > Task :capacitor-community-text-to-speech:preBuild UP-TO-DATE
-> Task :capacitor-android:writeDebugAarMetadata
 > Task :capacitor-community-text-to-speech:preDebugBuild UP-TO-DATE
 > Task :capacitor-app:writeDebugAarMetadata
-> Task :app:javaPreCompileDebug
 > Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:preDebugBuild UP-TO-DATE
+> Task :capacitor-android:writeDebugAarMetadata
 > Task :capacitor-community-text-to-speech:writeDebugAarMetadata
+> Task :app:javaPreCompileDebug
 > Task :capacitor-cordova-android-plugins:writeDebugAarMetadata
 > Task :capacitor-local-notifications:preBuild UP-TO-DATE
 > Task :capacitor-local-notifications:preDebugBuild UP-TO-DATE
@@ -186,8 +80,8 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-local-notifications:processDebugNavigationResources
 > Task :app:processDebugNavigationResources
 > Task :app:generateDebugResValues
-> Task :app:compileDebugNavigationResources
 > Task :capacitor-android:generateDebugResValues
+> Task :app:compileDebugNavigationResources
 > Task :capacitor-android:generateDebugResources
 > Task :capacitor-android:packageDebugResources
 > Task :capacitor-app:generateDebugResValues
@@ -213,31 +107,32 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-community-text-to-speech:extractDeepLinksDebug
 > Task :app:parseDebugLocalResources
 > Task :capacitor-cordova-android-plugins:extractDeepLinksDebug
-> Task :capacitor-android:processDebugManifest
 > Task :capacitor-community-text-to-speech:processDebugManifest
 > Task :capacitor-app:processDebugManifest
-> Task :capacitor-local-notifications:extractDeepLinksDebug
 > Task :capacitor-cordova-android-plugins:processDebugManifest
+> Task :capacitor-android:processDebugManifest
+> Task :capacitor-local-notifications:extractDeepLinksDebug
 > Task :capacitor-local-notifications:processDebugManifest
 > Task :capacitor-android:compileDebugLibraryResources
-> Task :capacitor-app:compileDebugLibraryResources
-> Task :capacitor-android:parseDebugLocalResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
 > Task :app:processDebugManifestForPackage
+> Task :capacitor-android:parseDebugLocalResources
+> Task :capacitor-app:compileDebugLibraryResources
 > Task :capacitor-community-text-to-speech:compileDebugLibraryResources
 > Task :capacitor-app:parseDebugLocalResources
-> Task :capacitor-android:generateDebugRFile
-> Task :capacitor-cordova-android-plugins:compileDebugLibraryResources
 > Task :capacitor-community-text-to-speech:parseDebugLocalResources
-> Task :capacitor-local-notifications:compileDebugLibraryResources
-> Task :capacitor-community-text-to-speech:generateDebugRFile
+> Task :capacitor-cordova-android-plugins:compileDebugLibraryResources
 > Task :capacitor-app:generateDebugRFile
+> Task :capacitor-android:generateDebugRFile
+> Task :capacitor-community-text-to-speech:generateDebugRFile
 > Task :capacitor-cordova-android-plugins:parseDebugLocalResources
+> Task :capacitor-local-notifications:compileDebugLibraryResources
+> Task :capacitor-cordova-android-plugins:generateDebugRFile
 > Task :capacitor-android:javaPreCompileDebug
 > Task :capacitor-app:javaPreCompileDebug
 > Task :capacitor-local-notifications:parseDebugLocalResources
-> Task :capacitor-cordova-android-plugins:generateDebugRFile
+> Task :capacitor-community-text-to-speech:javaPreCompileDebug
 
 > Task :capacitor-android:compileDebugJavaWithJavac
 Note: Some input files use unchecked or unsafe operations.
@@ -246,10 +141,8 @@ Note: Recompile with -Xlint:unchecked for details.
 > Task :capacitor-local-notifications:generateDebugRFile
 > Task :capacitor-android:bundleLibCompileToJarDebug
 > Task :capacitor-app:compileDebugJavaWithJavac
-> Task :capacitor-community-text-to-speech:javaPreCompileDebug
-> Task :capacitor-app:bundleLibCompileToJarDebug
-> Task :capacitor-cordova-android-plugins:javaPreCompileDebug
 > Task :app:processDebugResources
+> Task :capacitor-app:bundleLibCompileToJarDebug
 
 > Task :capacitor-community-text-to-speech:compileDebugJavaWithJavac
 Note: /home/runner/work/Converge/Converge/node_modules/@capacitor-community/text-to-speech/android/src/main/java/com/getcapacitor/community/tts/TextToSpeech.java uses or overrides a deprecated API.
@@ -258,8 +151,9 @@ Note: /home/runner/work/Converge/Converge/node_modules/@capacitor-community/text
 Note: Recompile with -Xlint:unchecked for details.
 
 > Task :capacitor-community-text-to-speech:bundleLibCompileToJarDebug
-> Task :capacitor-cordova-android-plugins:compileDebugJavaWithJavac NO-SOURCE
 > Task :capacitor-local-notifications:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :capacitor-cordova-android-plugins:javaPreCompileDebug
+> Task :capacitor-cordova-android-plugins:compileDebugJavaWithJavac NO-SOURCE
 > Task :capacitor-cordova-android-plugins:bundleLibCompileToJarDebug
 > Task :capacitor-local-notifications:javaPreCompileDebug
 > Task :app:mergeDebugShaders
@@ -299,8 +193,114 @@ Note: Recompile with -Xlint:unchecked for details.
 > Task :capacitor-cordova-android-plugins:processDebugJavaRes NO-SOURCE
 > Task :capacitor-community-text-to-speech:bundleLibRuntimeToDirDebug
 > Task :app:checkDebugDuplicateClasses
-
 > Task :capacitor-local-notifications:compileDebugKotlin
-e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
-    1. Kotlin compile daemon is ready
-step outcomes: gate=success node=success java=success apk=cancelled upload=skipped release=skipped
+> Task :capacitor-local-notifications:compileDebugJavaWithJavac NO-SOURCE
+> Task :capacitor-local-notifications:bundleLibCompileToJarDebug
+> Task :capacitor-local-notifications:bundleLibRuntimeToJarDebug
+> Task :app:compileDebugJavaWithJavac
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :capacitor-local-notifications:processDebugJavaRes
+> Task :capacitor-app:bundleLibRuntimeToDirDebug
+> Task :capacitor-local-notifications:bundleLibRuntimeToDirDebug
+> Task :capacitor-android:bundleLibRuntimeToDirDebug
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirDebug
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJniLibFolders
+> Task :capacitor-android:mergeDebugJniLibFolders
+> Task :capacitor-android:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-android:copyDebugJniLibsProjectOnly
+> Task :capacitor-app:mergeDebugJniLibFolders
+> Task :capacitor-app:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-app:copyDebugJniLibsProjectOnly
+> Task :capacitor-community-text-to-speech:mergeDebugJniLibFolders
+> Task :capacitor-community-text-to-speech:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-community-text-to-speech:copyDebugJniLibsProjectOnly
+> Task :capacitor-cordova-android-plugins:mergeDebugJniLibFolders
+> Task :capacitor-cordova-android-plugins:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectOnly
+> Task :capacitor-local-notifications:mergeDebugJniLibFolders
+> Task :capacitor-local-notifications:mergeDebugNativeLibs NO-SOURCE
+> Task :capacitor-local-notifications:copyDebugJniLibsProjectOnly
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:mergeDebugJavaResource
+> Task :app:mergeExtDexDebug
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:mergeLibDexDebug
+> Task :capacitor-android:checkDebugAarMetadata
+> Task :capacitor-android:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-android:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-android:extractDebugAnnotations
+> Task :capacitor-android:extractDeepLinksForAarDebug
+> Task :capacitor-android:mergeDebugGeneratedProguardFiles
+> Task :capacitor-android:mergeDebugConsumerProguardFiles
+> Task :capacitor-android:prepareDebugArtProfile
+> Task :capacitor-android:prepareLintJarForPublish
+> Task :capacitor-android:mergeDebugJavaResource
+> Task :capacitor-app:checkDebugAarMetadata
+> Task :capacitor-android:syncDebugLibJars
+> Task :capacitor-android:bundleDebugAar
+> Task :capacitor-android:assembleDebug
+> Task :capacitor-app:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-app:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-app:extractDebugAnnotations
+> Task :capacitor-app:extractDeepLinksForAarDebug
+> Task :capacitor-app:mergeDebugGeneratedProguardFiles
+> Task :capacitor-app:mergeDebugConsumerProguardFiles
+> Task :capacitor-app:prepareDebugArtProfile
+> Task :capacitor-app:prepareLintJarForPublish
+> Task :capacitor-app:mergeDebugJavaResource
+> Task :capacitor-community-text-to-speech:checkDebugAarMetadata
+> Task :capacitor-app:syncDebugLibJars
+> Task :capacitor-app:bundleDebugAar
+> Task :capacitor-app:assembleDebug
+> Task :capacitor-community-text-to-speech:stripDebugDebugSymbols NO-SOURCE
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+> Task :capacitor-community-text-to-speech:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-community-text-to-speech:extractDebugAnnotations
+> Task :capacitor-community-text-to-speech:extractDeepLinksForAarDebug
+> Task :capacitor-community-text-to-speech:mergeDebugGeneratedProguardFiles
+> Task :capacitor-community-text-to-speech:mergeDebugConsumerProguardFiles
+> Task :capacitor-community-text-to-speech:prepareDebugArtProfile
+> Task :capacitor-community-text-to-speech:prepareLintJarForPublish
+> Task :capacitor-community-text-to-speech:mergeDebugJavaResource
+> Task :capacitor-cordova-android-plugins:checkDebugAarMetadata
+> Task :capacitor-community-text-to-speech:syncDebugLibJars
+> Task :capacitor-community-text-to-speech:bundleDebugAar
+> Task :capacitor-community-text-to-speech:assembleDebug
+> Task :capacitor-cordova-android-plugins:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-cordova-android-plugins:extractDebugAnnotations
+> Task :capacitor-cordova-android-plugins:extractDeepLinksForAarDebug
+> Task :capacitor-cordova-android-plugins:mergeDebugGeneratedProguardFiles
+> Task :capacitor-cordova-android-plugins:mergeDebugConsumerProguardFiles
+> Task :capacitor-cordova-android-plugins:prepareDebugArtProfile
+> Task :capacitor-cordova-android-plugins:prepareLintJarForPublish
+> Task :capacitor-cordova-android-plugins:mergeDebugJavaResource
+> Task :capacitor-local-notifications:checkDebugAarMetadata
+> Task :capacitor-cordova-android-plugins:syncDebugLibJars
+> Task :capacitor-cordova-android-plugins:bundleDebugAar
+> Task :capacitor-cordova-android-plugins:assembleDebug
+> Task :capacitor-local-notifications:stripDebugDebugSymbols NO-SOURCE
+> Task :capacitor-local-notifications:copyDebugJniLibsProjectAndLocalJars
+> Task :capacitor-local-notifications:extractDebugAnnotations
+> Task :capacitor-local-notifications:extractDeepLinksForAarDebug
+> Task :capacitor-local-notifications:mergeDebugGeneratedProguardFiles
+> Task :capacitor-local-notifications:mergeDebugConsumerProguardFiles
+> Task :capacitor-local-notifications:prepareDebugArtProfile
+> Task :capacitor-local-notifications:prepareLintJarForPublish
+> Task :capacitor-local-notifications:mergeDebugJavaResource
+> Task :capacitor-local-notifications:syncDebugLibJars
+> Task :capacitor-local-notifications:bundleDebugAar
+> Task :capacitor-local-notifications:assembleDebug
+
+[Incubating] Problems report is available at: file:///home/runner/work/Converge/Converge/android/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 2m
+184 actionable tasks: 184 executed
+step outcomes: gate=success node=success java=success apk=success upload=success release=success
