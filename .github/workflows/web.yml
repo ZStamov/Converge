@@ -23,8 +23,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment:
-      name: github-pages
+    outputs:
+      pages: ${{ steps.pages.outputs.on }}
     steps:
       - uses: actions/checkout@v4
 
@@ -56,9 +56,6 @@ jobs:
         with:
           path: www
 
-      - uses: actions/deploy-pages@v4
-        if: steps.pages.outputs.on == 'true'
-
       - name: Publish single-file web app
         if: github.event_name != 'workflow_run'
         uses: softprops/action-gh-release@v2
@@ -70,7 +67,18 @@ jobs:
           body: One-file version of the Converge web app with a data snapshot built in. Open it in any browser.
 
       - name: Report status
-        if: always()
+        if: always() && github.event_name != 'workflow_run'
         run: bash scripts/ci-report.sh web "${{ job.status }} (pages: ${{ steps.pages.outputs.on }})" build.log
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.pages == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
