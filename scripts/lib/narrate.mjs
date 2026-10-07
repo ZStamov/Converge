@@ -20,7 +20,7 @@ export function cleanForSpeech(s, tickerNames = {}) {
     .replace(/\bYoY\b/gi, 'year over year').replace(/\bQoQ\b/gi, 'quarter over quarter')
     .replace(/\bEPS\b/g, 'earnings per share').replace(/\bAI\b/g, 'A.I.').replace(/\bCEO\b/g, 'C.E.O.').replace(/\bCFO\b/g, 'C.F.O.')
     .replace(/\bvs\.?\s/gi, 'versus ').replace(/&/g, ' and ').replace(/\s*\|\s*/g, '. ')
-    .replace(/(\d)%/g, '$1 percent').replace(/→/g, ' to ')
+    .replace(/(\d)%/g, '$1 percent').replace(/(\d+)\/100\b/g, '$1 out of 100').replace(/→/g, ' to ')
     .replace(/[“”"]/g, '').replace(/\s+/g, ' ').trim();
   for (const [t, n] of Object.entries(tickerNames)) if (t.length >= 3) x = x.replace(new RegExp(`\\b${t}\\b`, 'g'), n);
   if (!/[.!?]$/.test(x)) x += '.';
