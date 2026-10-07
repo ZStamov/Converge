@@ -43,4 +43,11 @@ mk(path.join(www, 'data'));
 if (fs.existsSync(src)) fs.copyFileSync(src, path.join(www, 'data', 'market.json'));
 const scan = path.join(root, 'data-out', 'scanner.json');
 if (fs.existsSync(scan)) fs.copyFileSync(scan, path.join(www, 'data', 'scanner.json'));
+// runtime config (forum backend) and the profanity list for the client-side filter
+fs.writeFileSync(path.join(www, 'config.js'), 'window.CONVERGE_CONFIG = ' + JSON.stringify({ supabaseUrl: process.env.SUPABASE_URL || '', supabaseKey: process.env.SUPABASE_ANON_KEY || '' }) + ';\n');
+const { createRequire } = await import('node:module');
+const words = createRequire(import.meta.url)('naughty-words').en;
+fs.writeFileSync(path.join(www, 'profanity.js'), '/* LDNOOBW word list (CC-BY-4.0) */ window.CONVERGE_BADWORDS = ' + JSON.stringify(words) + ';\n');
+const cand = path.join(root, 'data-out', 'candles.json');
+if (fs.existsSync(cand)) fs.copyFileSync(cand, path.join(www, 'data', 'candles.json'));
 console.log('web assets ready');

@@ -29,6 +29,9 @@ jobs:
           xcode-version: latest-stable
 
       - name: Build Xcode project and simulator app
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
           set -o pipefail
           {

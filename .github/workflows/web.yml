@@ -33,6 +33,9 @@ jobs:
           node-version: 22
 
       - name: Build web app
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
           set -o pipefail
           {
@@ -43,6 +46,12 @@ jobs:
             node scripts/build-single.mjs data-out/market.json
             cp dist/converge.html www/converge-single.html
           } 2>&1 | tee build.log
+
+      - name: Try to turn on GitHub Pages
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Check whether GitHub Pages is turned on
         id: pages

@@ -34,7 +34,7 @@ def synth(text, stem, speed=1.0):
     pause = np.zeros(int(sr * 0.45), dtype=np.float32)  # breath between items
     pcm = (np.clip(np.concatenate([samples, pause]), -1, 1) * 32767).astype(np.int16).tobytes()
     enc = lameenc.Encoder()
-    enc.set_bit_rate(64)
+    enc.set_bit_rate(48)
     enc.set_in_sample_rate(sr)
     enc.set_channels(1)
     enc.set_quality(2)

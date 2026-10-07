@@ -57,6 +57,25 @@ The 24 tickers in `config/universe.json`. Add or remove symbols there; the next 
 
 Build results (with log tails) are written to the `ci-status` branch.
 
+## Discussion board (per stock)
+
+Signed-in users can comment under each ticker. Posts with foul language are blocked twice: in the app, and on the server by a database trigger (it also catches leetspeak, spaced-out letters and stretched spellings, and limits posting to 5 per minute). Word list: [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) (CC-BY-4.0).
+
+One-time setup (free):
+1. Create a project at [supabase.com](https://supabase.com).
+2. In **SQL Editor**, paste the contents of `supabase/schema.sql` and press **Run**.
+3. In **Authentication → URL Configuration**, set the Site URL to `https://zstamov.github.io/Converge/`. (Optional: turn off "Confirm email" under Authentication → Providers → Email for instant sign-up.)
+4. In **Project Settings → API**, copy the Project URL and the `anon` public key.
+5. In GitHub: **Settings → Secrets and variables → Actions → Variables**, add `SUPABASE_URL` and `SUPABASE_ANON_KEY`, then re-run the Web app, Android app and iOS app workflows.
+
+## Candlestick charts
+
+Each ticker page has candles at 1m, 2m, 5m, 1h, 2h, 4h, 5h, 1D, 2D and 1W. The Android and iOS apps load them live from Yahoo Finance; the web app uses the hourly snapshot (`candles.json` on the `data` branch).
+
+## Strategy scanners
+
+Five toggles in the Scanner (scalping, short-term swing, medium-term swing, position/trend, multi-year value) apply the criteria from the strategy playbook. Criteria that need data free sources don't provide (float, VWAP) are listed and skipped; fundamental criteria need the `SEC_USER_AGENT` secret.
+
 ## Your data
 
 Lots, theses, watchlist and settings are stored only on your device (browser local storage or the app's WebView storage). Nothing is sent to a server.

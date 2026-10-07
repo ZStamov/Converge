@@ -49,20 +49,36 @@ async function yahooSeries(t) {
   }
   throw new Error(out.join('; ') || 'no data');
 }
-// extra ranges for charts: intraday (1D/1W), weekly 5 years, monthly full history
-async function chartRaw(t, range, interval) {
+// candles for the ticker chart (OHLCV) plus line-chart ranges derived from them
+async function chartOHLC(t, range, interval) {
   const j = await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?range=${range}&interval=${interval}&includePrePost=false`, { type: 'json' });
   const r = j?.chart?.result?.[0]; if (!r) throw new Error('no data');
-  const ts = r.timestamp || [], cl = r.indicators?.quote?.[0]?.close || [];
-  const tt = [], c = [];
-  ts.forEach((x, i) => { if (cl[i] != null) { tt.push(x); c.push(+cl[i].toFixed(2)); } });
-  return { tt, c };
+  const ts = r.timestamp || [], q = r.indicators?.quote?.[0] || {};
+  const out = { t: [], o: [], h: [], l: [], c: [], v: [] };
+  const f = (x) => +x.toFixed(x < 10 ? 4 : 2);
+  ts.forEach((x, i) => {
+    if (q.close?.[i] == null || q.open?.[i] == null) return;
+    out.t.push(x); out.o.push(f(q.open[i])); out.h.push(f(q.high[i])); out.l.push(f(q.low[i])); out.c.push(f(q.close[i])); out.v.push(q.volume?.[i] || 0);
+  });
+  return out;
 }
+const CANDLE_SETS = { m1: ['1d', '1m'], m5: ['5d', '5m'], h1: ['3mo', '60m'], d1: ['1y', '1d'], w1: ['5y', '1wk'] };
+const candles = {};
 async function extraSeries(t) {
-  const out = {};
-  try { const a = await chartRaw(t, '5d', '15m'); out.intra = { t: a.tt, c: a.c }; } catch (e) { errors.push(`intraday ${t}: ${e.message}`); }
-  try { const a = await chartRaw(t, '5y', '1wk'); out.w5 = { d: a.tt.map((x) => A.isoDay(x * 1000)), c: a.c }; } catch (e) { errors.push(`5y ${t}: ${e.message}`); }
-  try { const a = await chartRaw(t, 'max', '1mo'); out.max = { d: a.tt.map((x) => A.isoDay(x * 1000)), c: a.c }; } catch (e) { errors.push(`max ${t}: ${e.message}`); }
+  const out = {}, cs = {};
+  for (const [k, [range, interval]] of Object.entries(CANDLE_SETS)) {
+    try { cs[k] = await chartOHLC(t, range, interval); } catch (e) { errors.push(`candles ${t} ${k}: ${e.message}`); }
+    await sleep(120);
+  }
+  candles[t] = cs;
+  if (cs.m5) out.intra = { t: cs.m5.t, c: cs.m5.c };
+  if (cs.w1) out.w5 = { d: cs.w1.t.map((x) => A.isoDay(x * 1000)), c: cs.w1.c };
+  try {
+    const j = await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?range=max&interval=1mo`, { type: 'json' });
+    const r = j?.chart?.result?.[0], ts = r?.timestamp || [], cl = r?.indicators?.quote?.[0]?.close || [];
+    const d = [], c = []; ts.forEach((x, i) => { if (cl[i] != null) { d.push(A.isoDay(x * 1000)); c.push(+cl[i].toFixed(2)); } });
+    if (c.length > 2) out.max = { d, c };
+  } catch (e) { errors.push(`max ${t}: ${e.message}`); }
   return out;
 }
 async function stooqSeries(t) {
@@ -336,6 +352,7 @@ const market = {
 };
 
 fs.writeFileSync(path.join(OUT, 'market.json'), JSON.stringify(market));
+fs.writeFileSync(path.join(OUT, 'candles.json'), JSON.stringify({ app: 'Converge', kind: 'candles', generatedAt: now.toISOString(), source: 'Yahoo Finance chart API', tickers: candles }));
 fs.writeFileSync(histPath, JSON.stringify(hist));
 log(`done: ${Object.keys(tickers).length} tickers, ${clusters.length} stories, ${alerts.length} alerts, ${Object.keys(sources).length} sources (${ratedAcc.length} rated), ${errors.length} errors`);
 if (Object.keys(tickers).length === 0) { console.error('No ticker data — aborting so the previous data stays live.'); process.exit(1); }

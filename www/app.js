@@ -9,7 +9,7 @@
     repo: 'https://github.com/ZStamov/converge'
   };
   var KEY = 'converge.v1';
-  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null };
+  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null, auth: null };
 
   // ------------------------------------------------------------------ utils
   var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -401,8 +401,12 @@
     }
     h += '</section>';
     // chart
-    h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Price</h2><span class="mono ' + cls(brch) + '" style="font-size:12px">' + (brch == null ? '' : pct(brch, 2) + ' ' + RANGE_NAME[UI.battleRange]) + '</span></div>' + lineChart(r.c, { h: 120, label: sel + ' price, ' + UI.battleRange }) +
-      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px" class="muted mono"><span>' + esc(rangeLabel(r.k[0], r.intraday, UI.battleRange)) + '</span><span>' + esc(rangeLabel(r.k[r.k.length - 1], r.intraday, UI.battleRange)) + '</span></div><div style="margin-top:10px">' + rangeBtns('brange', UI.battleRange) + '</div></section>';
+    var cmode = UI.cmode || 'candles';
+    h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Chart</h2><div class="seg" style="min-width:150px">' + [['candles', 'Candles'], ['line', 'Line']].map(function (m) { return '<button data-act="cmode" data-m="' + m[0] + '" aria-pressed="' + (cmode === m[0]) + '">' + m[1] + '</button>'; }).join('') + '</div></div>';
+    if (cmode === 'candles') h += candleCard(sel);
+    else h += '<div style="display:flex;justify-content:flex-end;margin-bottom:4px"><span class="mono ' + cls(brch) + '" style="font-size:12px">' + (brch == null ? '' : pct(brch, 2) + ' ' + RANGE_NAME[UI.battleRange]) + '</span></div>' + lineChart(r.c, { h: 120, label: sel + ' price, ' + UI.battleRange }) +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px" class="muted mono"><span>' + esc(rangeLabel(r.k[0], r.intraday, UI.battleRange)) + '</span><span>' + esc(rangeLabel(r.k[r.k.length - 1], r.intraday, UI.battleRange)) + '</span></div><div style="margin-top:10px">' + rangeBtns('brange', UI.battleRange) + '</div>';
+    h += '</section>';
     // drivers
     h += '<section class="card drv"><h2 class="eyebrow" style="margin-bottom:10px">What drives the score</h2><div style="display:flex;flex-direction:column;gap:12px">' + s.drivers.map(function (d) {
       return '<div><div class="r"><span>' + esc(d.label) + (d.key === 'quant' && Object.keys(x.grades).length < 5 ? ' (' + Object.keys(x.grades).length + ' of 5 available)' : '') + '</span><span class="mono ' + (d.bull >= 50 ? 'up' : 'down') + '" style="white-space:nowrap">' + d.bull + '% bull · w ' + d.w + '%</span></div><div class="track"><i style="width:' + d.bull + '%"></i></div></div>';
@@ -421,6 +425,7 @@
     // filings + headlines
     var st = streamFor([sel], { limit: 10 });
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">Latest on ' + sel + '</h2><div class="list">' + (st.length ? st.map(itemRow).join('') : '<p class="muted" style="font-size:13px;margin:0">No recent items.</p>') + '</div></section>';
+    h += forumCard(sel);
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">More on ' + sel + '</h2><div class="lnkrow">' + extLinks(sel) + '</div></section>';
     var watching = S.watchlist.indexOf(sel) >= 0;
     h += '<div class="btnrow"><button class="btn" data-act="watch" data-t="' + sel + '">' + (watching ? 'Watching ✓' : 'Watch') + '</button><button class="btn pri" data-act="add" data-t="' + sel + '">Add a lot</button></div>';
@@ -658,6 +663,7 @@
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">News &amp; data sources</h2>' + Object.keys(ss).map(function (k) { var x = ss[k], ok = x.ok > 0; return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>' + esc(k) + '</span><span class="mono ' + (ok ? 'up' : 'down') + '">' + (ok ? 'Live · ' + x.items + ' items' : 'Unavailable') + '</span></div>'; }).join('') +
       '<p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.5">Finviz, StockAnalysis and X open as links from each ticker. Their terms or paid APIs don’t allow pulling their data into the app.</p></section>';
     if (isNative && plugin('LocalNotifications')) h += '<button class="rowtoggle" data-act="notify" aria-pressed="' + S.notify + '"><span><span class="t1">Divergence alerts</span><span class="t2">Notify me when a stock I hold or watch diverges</span></span><span class="sw"></span></button>';
+    if (forumReady()) h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Discussion account</h2>' + (S.auth ? '<p style="margin:0 0 10px;font-size:13px">Signed in as <b>' + esc(S.auth.name || S.auth.user.email) + '</b></p><button class="btn sm" data-act="forum-signout">Sign out</button>' : '<button class="btn sm pri" data-act="forum-auth">Sign in or create an account</button>') + '</section>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Muted sources</h2>' + (S.muted.length ? S.muted.map(function (m) { return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0"><span>' + esc(m) + '</span><button class="btn sm" data-act="mute" data-name="' + esc(m) + '">Unmute</button></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">None. Mute a source from its profile.</p>') + '</section>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Lots, theses and your watchlist are stored only on this device.</p><button class="btn sm dng" data-act="reset">' + (UI.confirmReset ? 'Tap again to erase everything' : 'Erase all my data') + '</button></section>';
     h += '<p class="foot">Converge · Covers ' + D.universe.length + ' tickers · <a href="' + CFG.repo + '" target="_blank" rel="noopener noreferrer">Source code</a><br>Information only, not investment advice.</p>';
@@ -794,14 +800,16 @@
     dy: ['Dividend', fpct], roa: ['ROA', fpct], roe: ['ROE', fpct], cr: ['Curr R', fx(2)], de: ['LTDebt/Eq', fx(2)], gm: ['Gross M', fpct], om: ['Oper M', fpct], nm: ['Profit M', fpct], po: ['Payout', fpct],
     pw: ['Perf Week', fpct], pm: ['Perf Month', fpct], pq: ['Perf Quart', fpct], ph: ['Perf Half', fpct], py: ['Perf Year', fpct], pytd: ['Perf YTD', fpct], vw: ['Volatility W', fpct], vm: ['Volatility M', fpct],
     av: ['Avg Volume', bigNum], rv: ['Rel Volume', fx(2)], beta: ['Beta', fx(2)], atr: ['ATR', fx(2)], s20: ['SMA20', fpct], s50: ['SMA50', fpct], s200: ['SMA200', fpct], hi52: ['52W High', fpct], lo52: ['52W Low', fpct], rsi: ['RSI', fx(1)],
-    p: ['Price', fx(2)], ch: ['Change', fpct], v: ['Volume', bigNum]
+    p: ['Price', fx(2)], ch: ['Change', fpct], v: ['Volume', bigNum],
+    av30: ['Avg Vol 30D', bigNum], rs3m: ['3M vs S&P', fpct], atrp: ['ATR %', fpct], udv: ['Up/Down Vol', fx(2)], qepsg: ['EPS Q/Q', fpct], qsg: ['Sales Q/Q', fpct], fcfy: ['FCF Yield', fpct], shy: ['Holder Yield', fpct]
   };
   var VIEWS = {
     overview: ['Overview', ['t', 'n', 'sec', 'ind', 'ctry', 'mc', 'pe', 'p', 'ch', 'v']],
     valuation: ['Valuation', ['t', 'mc', 'pe', 'ps', 'pb', 'eps', 'epsg', 'sg', 'p', 'ch', 'v']],
     financial: ['Financial', ['t', 'mc', 'dy', 'roa', 'roe', 'cr', 'de', 'gm', 'om', 'nm', 'po', 'p', 'ch', 'v']],
     performance: ['Performance', ['t', 'pw', 'pm', 'pq', 'ph', 'pytd', 'py', 'vw', 'vm', 'av', 'rv', 'p', 'ch', 'v']],
-    technical: ['Technical', ['t', 'beta', 'atr', 's20', 's50', 's200', 'hi52', 'lo52', 'rsi', 'p', 'ch', 'v']]
+    technical: ['Technical', ['t', 'beta', 'atr', 's20', 's50', 's200', 'hi52', 'lo52', 'rsi', 'p', 'ch', 'v']],
+    strategy: ['Strategy', ['t', 'p', 'ch', 'rv', 'mc', 'av30', 'rsi', 's20', 's50', 'rs3m', 'atrp', 'udv', 'hi52', 'qepsg', 'qsg', 'roe', 'pe', 'fcfy', 'shy', 'de']]
   };
   function scanResults() {
     var st = scanState(), preds = [];
@@ -811,6 +819,7 @@
       for (var i = 0; i < def.o.length; i++) if (def.o[i][0] === st.f[id]) { preds.push(def.o[i][1]); break; }
     });
     var sig = sigDef(st.signal); if (sig[2]) preds.push(sig[2]);
+    preds = preds.concat(presetPreds());
     var rows = SC.rows.filter(function (r) { for (var i = 0; i < preds.length; i++) if (!preds[i](r)) return false; return true; });
     var k = st.sort.k, dir = st.sort.dir;
     rows.sort(function (a, b) {
@@ -830,6 +839,7 @@
     var nActive = Object.keys(st.f).length;
     var h = '<div class="scan-top"><label class="sr" for="scan-signal">Signal</label><select class="in" id="scan-signal" data-scan="signal">' + SIGNALS.map(function (s) { return '<option value="' + s[0] + '"' + (st.signal === s[0] ? ' selected' : '') + '>Signal: ' + esc(s[1]) + '</option>'; }).join('') + '</select>' +
       '<button class="btn sm" data-act="scan-toggle" aria-expanded="' + !!st.open + '">Filters' + (nActive ? ' (' + nActive + ')' : '') + '</button></div>';
+    h += presetsCard();
     if (st.saved && st.saved.length) h += '<div class="chips">' + st.saved.map(function (s, i) { return '<button class="chip" data-act="scan-load" data-i="' + i + '">' + esc(s.name) + '</button>'; }).join('') + '</div>';
     if (st.open) {
       var groups = ['Descriptive', 'Fundamental', 'Technical', 'All'];
@@ -843,7 +853,7 @@
         '<p class="foot" style="text-align:left;margin:8px 0 0">Not available from free sources: analyst recommendation, short float, insider and institutional ownership, earnings date, target price, gap, change from open, chart patterns.</p></section>';
     }
     var rows = scanResults(), view = VIEWS[st.view] || VIEWS.overview, cols = view[1];
-    h += '<div class="seg" role="tablist" aria-label="Table view">' + Object.keys(VIEWS).map(function (v) { return '<button role="tab" data-act="scan-view" data-v="' + v + '" aria-pressed="' + (st.view === v) + '">' + VIEWS[v][0].slice(0, 5) + (VIEWS[v][0].length > 5 ? '.' : '') + '</button>'; }).join('') + '</div>';
+    h += '<div class="seg" role="tablist" aria-label="Table view">' + Object.keys(VIEWS).map(function (v) { return '<button role="tab" data-act="scan-view" data-v="' + v + '" aria-pressed="' + (st.view === v) + '">' + ({ overview: 'Overv.', valuation: 'Valua.', financial: 'Finan.', performance: 'Perf.', technical: 'Tech.', strategy: 'Strat.' })[v] + '</button>'; }).join('') + '</div>';
     h += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px" class="muted"><span><b style="color:var(--fg)">' + rows.length + '</b> of ' + SC.count + ' stocks · ' + esc(SC.universe) + '</span><span>' + ago(SC.generatedAt) + '</span></div>';
     var shown = rows.slice(0, UI.scanLimit || 100);
     h += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No.</th>' + cols.map(function (k) { var on = st.sort.k === k; return '<th><button data-act="scan-sort" data-k="' + k + '" class="' + (on ? 'on' : '') + '">' + esc(COLS[k][0]) + (on ? (st.sort.dir < 0 ? ' ▼' : ' ▲') : '') + '</button></th>'; }).join('') + '</tr></thead><tbody>' +
@@ -876,6 +886,335 @@
     return L.map(function (l) { return '<a class="chip" href="' + esc(l[1]) + '" target="_blank" rel="noopener noreferrer">' + esc(l[0]) + ' ↗</a>'; }).join('');
   }
 
+  // ------------------------------------------------------------------ candlestick chart
+  var CD = null, CDS = { loading: false, error: null };
+  var CINTERVALS = ['1m', '2m', '5m', '1h', '2h', '4h', '5h', '1D', '2D', '1W'];
+  // native apps fetch live candles straight from Yahoo; web uses the hourly snapshot
+  var LIVE_Q = { '1m': ['1d', '1m'], '2m': ['5d', '2m'], '5m': ['5d', '5m'], '1h': ['1mo', '60m'], '2h': ['3mo', '60m'], '4h': ['3mo', '60m'], '5h': ['3mo', '60m'], '1D': ['1y', '1d'], '2D': ['2y', '1d'], '1W': ['5y', '1wk'] };
+  var liveCache = {};
+  function loadCandles() {
+    if (CD || CDS.loading) return;
+    CDS.loading = true;
+    var snap = window.__CONVERGE_CANDLES__;
+    fetchJson(CFG.remote.replace('market.json', 'candles.json') + '?t=' + Math.floor(Date.now() / 60000), 15000)
+      .then(function (d) { if (!d || d.kind !== 'candles') throw new Error('bad'); return d; })
+      .catch(function () { if (snap && snap.kind === 'candles') return snap; return fetchJson(CFG.bundled.replace('market.json', 'candles.json')).then(function (d) { if (!d || d.kind !== 'candles') throw new Error('bad'); return d; }); })
+      .then(function (d) { CD = d; CDS.loading = false; CDS.error = null; refreshCandleBox(); })
+      .catch(function () { CDS.loading = false; CDS.error = 'Candles are not available yet.'; refreshCandleBox(); });
+  }
+  function parseYahoo(j) {
+    var r = j && j.chart && j.chart.result && j.chart.result[0]; if (!r) return null;
+    var q = (r.indicators && r.indicators.quote && r.indicators.quote[0]) || {}, ts = r.timestamp || [], o = { t: [], o: [], h: [], l: [], c: [], v: [] };
+    ts.forEach(function (x, i) { if (q.close && q.close[i] != null && q.open && q.open[i] != null) { o.t.push(x); o.o.push(q.open[i]); o.h.push(q.high[i]); o.l.push(q.low[i]); o.c.push(q.close[i]); o.v.push((q.volume && q.volume[i]) || 0); } });
+    return o.t.length ? o : null;
+  }
+  function fetchLive(t, iv) {
+    var key = t + '|' + iv, hit = liveCache[key];
+    if (hit && Date.now() - hit.at < 60000) return Promise.resolve(hit.d);
+    var q = LIVE_Q[iv];
+    return fetchJson('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(t.replace('.', '-')) + '?range=' + q[0] + '&interval=' + q[1] + '&includePrePost=false', 9000)
+      .then(function (j) { var d = parseYahoo(j); if (!d) throw new Error('empty'); liveCache[key] = { at: Date.now(), d: d }; return d; });
+  }
+  function etDay(sec) { return new Date((sec - 4 * 3600) * 1000).toISOString().slice(0, 10); }
+  function aggregate(s, n, bySession) {
+    if (!s) return null;
+    var out = { t: [], o: [], h: [], l: [], c: [], v: [] }, i = 0, len = s.t.length;
+    var push = function (a, b) { out.t.push(s.t[a]); out.o.push(s.o[a]); out.c.push(s.c[b]); out.h.push(Math.max.apply(null, s.h.slice(a, b + 1))); out.l.push(Math.min.apply(null, s.l.slice(a, b + 1))); out.v.push(s.v.slice(a, b + 1).reduce(function (x, y) { return x + y; }, 0)); };
+    if (bySession) {
+      while (i < len) { var day = etDay(s.t[i]), j = i; while (j < len && etDay(s.t[j]) === day) j++; for (var k = i; k < j; k += n) push(k, Math.min(k + n, j) - 1); i = j; }
+    } else {
+      var start = (len % n); if (start) push(0, start - 1);
+      for (var m = start; m < len; m += n) push(m, m + n - 1);
+    }
+    return out;
+  }
+  function snapshotSeries(t, iv) {
+    var c = CD && CD.tickers && CD.tickers[t]; if (!c) return null;
+    switch (iv) {
+      case '1m': return c.m1; case '2m': return aggregate(c.m1, 2, true); case '5m': return c.m5;
+      case '1h': return c.h1; case '2h': return aggregate(c.h1, 2, true); case '4h': return aggregate(c.h1, 4, true); case '5h': return aggregate(c.h1, 5, true);
+      case '1D': return c.d1; case '2D': return aggregate(c.d1, 2, false); case '1W': return c.w1;
+    }
+    return null;
+  }
+  function candleSeries(t, iv) {
+    if (isNative) {
+      var key = t + '|' + iv, hit = liveCache[key];
+      if (!hit || Date.now() - hit.at > 60000) fetchLive(t, iv).then(function () { refreshCandleBox(); }).catch(function () { });
+      if (hit) { var d = hit.d; if (iv === '2m' || iv === '1m' || iv === '5m' || iv === '1h' || iv === '1D' || iv === '1W') return { s: d, live: true }; if (iv === '2h') return { s: aggregate(d, 2, true), live: true }; if (iv === '4h') return { s: aggregate(d, 4, true), live: true }; if (iv === '5h') return { s: aggregate(d, 5, true), live: true }; if (iv === '2D') return { s: aggregate(d, 2, false), live: true }; }
+    }
+    return { s: snapshotSeries(t, iv), live: false };
+  }
+  function candleLabel(sec, iv) {
+    var d = new Date(sec * 1000);
+    if (/m$|h$/.test(iv)) return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function fmtP(x) { return x >= 1000 ? x.toFixed(1) : x >= 10 ? x.toFixed(2) : x.toFixed(3); }
+  function candleSvg(t) {
+    var iv = UI.civ || '1D', r = candleSeries(t, iv), s = r.s;
+    if (!s || s.t.length < 2) return '<div class="muted" style="padding:28px 0;text-align:center;font-size:13px">' + (CDS.loading || (!CD && !CDS.error) ? 'Loading candles…' : 'No ' + iv + ' candles for ' + esc(t) + ' yet.') + '</div>';
+    var N = UI.cN || 60, len = s.t.length; N = Math.min(N, len);
+    var off = clamp(UI.cOff || 0, 0, Math.max(0, len - N)); UI.cOff = off;
+    var a = len - N - off, b = len - off; // [a, b)
+    var hi = -Infinity, lo = Infinity, vmax = 0;
+    for (var i = a; i < b; i++) { hi = Math.max(hi, s.h[i]); lo = Math.min(lo, s.l[i]); vmax = Math.max(vmax, s.v[i]); }
+    var pad = (hi - lo) * 0.06 || hi * 0.01; hi += pad; lo -= pad;
+    var W = 330, PH = 176, VH = 34, GAP = 8, H = PH + GAP + VH, step = W / N, bw = Math.max(1, step * 0.66);
+    var y = function (p) { return (hi - p) / (hi - lo) * PH; };
+    var body = '';
+    for (var g = 1; g < 4; g++) body += '<line x1="0" x2="' + W + '" y1="' + (PH * g / 4).toFixed(1) + '" y2="' + (PH * g / 4).toFixed(1) + '" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
+    for (var k = a; k < b; k++) {
+      var x = (k - a) * step + step / 2, up = s.c[k] >= s.o[k], col = up ? 'var(--bull)' : 'var(--bear)';
+      var yo = y(s.o[k]), yc = y(s.c[k]), top = Math.min(yo, yc), hgt = Math.max(1, Math.abs(yo - yc));
+      body += '<line x1="' + x.toFixed(2) + '" x2="' + x.toFixed(2) + '" y1="' + y(s.h[k]).toFixed(2) + '" y2="' + y(s.l[k]).toFixed(2) + '" stroke="' + col + '" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
+      body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + top.toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + hgt.toFixed(2) + '" fill="' + col + '"' + (up ? '' : '') + '></rect>';
+      if (vmax) { var vh = s.v[k] / vmax * VH; body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + (H - vh).toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + vh.toFixed(2) + '" fill="' + col + '" fill-opacity="0.35"></rect>'; }
+    }
+    var last = s.c[b - 1], ly = y(last);
+    body += '<line x1="0" x2="' + W + '" y1="' + ly.toFixed(2) + '" y2="' + ly.toFixed(2) + '" stroke="var(--accent)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
+    var sel = UI.cSel != null && UI.cSel >= a && UI.cSel < b ? UI.cSel : b - 1;
+    if (UI.cSel != null && UI.cSel >= a && UI.cSel < b) { var sx = (sel - a) * step + step / 2; body += '<line x1="' + sx.toFixed(2) + '" x2="' + sx.toFixed(2) + '" y1="0" y2="' + H + '" stroke="var(--fg2)" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"></line>'; }
+    var chg = s.c[sel] - s.o[sel];
+    var readout = '<div class="ohlc mono"><span>' + esc(candleLabel(s.t[sel], iv)) + '</span><span>O ' + fmtP(s.o[sel]) + '</span><span>H ' + fmtP(s.h[sel]) + '</span><span>L ' + fmtP(s.l[sel]) + '</span><span class="' + (chg >= 0 ? 'up' : 'down') + '">C ' + fmtP(s.c[sel]) + '</span><span>Vol ' + bigNum(s.v[sel]) + '</span></div>';
+    return readout + '<div class="cwrap" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart">' + body + '</svg>' +
+      '<span class="cax top mono">' + fmtP(hi - pad) + '</span><span class="cax bot mono">' + fmtP(lo + pad) + '</span><span class="cax last mono" style="top:' + Math.max(0, Math.min(PH - 16, ly - 8)).toFixed(0) + 'px">' + fmtP(last) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:4px" class="muted mono"><span>' + esc(candleLabel(s.t[a], iv)) + '</span><span>' + (r.live ? 'Live' : 'Snapshot ' + (CD ? ago(CD.generatedAt) : '')) + '</span><span>' + esc(candleLabel(s.t[b - 1], iv)) + '</span></div>';
+  }
+  function candleCard(t) {
+    if (!CD && !CDS.loading && !CDS.error) setTimeout(loadCandles, 0);
+    var iv = UI.civ || '1D';
+    return '<div class="civ">' + CINTERVALS.map(function (x) { return '<button data-act="civ" data-iv="' + x + '" aria-pressed="' + (iv === x) + '">' + x + '</button>'; }).join('') + '</div>' +
+      '<div id="candlebox" data-t="' + esc(t) + '">' + candleSvg(t) + '</div>' +
+      '<div class="ctools"><button class="btn sm" data-act="czoom" data-z="out" aria-label="Show more candles">−</button><button class="btn sm" data-act="czoom" data-z="in" aria-label="Show fewer candles">+</button><button class="btn sm" data-act="cpan" data-p="back" aria-label="Earlier">◀</button><button class="btn sm" data-act="cpan" data-p="fwd" aria-label="Later">▶</button><button class="btn sm" data-act="cpan" data-p="end">Latest</button></div>';
+  }
+  function refreshCandleBox() { var box = document.getElementById('candlebox'); if (box) { box.innerHTML = candleSvg(box.dataset.t); bindCandles(); } }
+  function bindCandles() {
+    var box = document.getElementById('candlebox'); if (!box || box.dataset.bound) return;
+    box.dataset.bound = '1';
+    var x0 = null, off0 = 0, moved = false;
+    function geo() { var el = document.getElementById('cwrap'); if (!el) return null; var rc = el.getBoundingClientRect(); return { a: +el.dataset.a, n: +el.dataset.n, left: rc.left, width: rc.width, top: rc.top, bottom: rc.bottom }; }
+    box.addEventListener('pointerdown', function (e) { var g = geo(); if (!g || e.clientY < g.top || e.clientY > g.bottom) return; x0 = e.clientX; off0 = UI.cOff || 0; moved = false; try { box.setPointerCapture(e.pointerId); } catch (er) { } });
+    box.addEventListener('pointermove', function (e) {
+      if (x0 == null) return; var g = geo(); if (!g) return;
+      var dx = e.clientX - x0, per = g.width / g.n;
+      if (Math.abs(dx) > 6) moved = true;
+      if (moved) { var no = Math.max(0, off0 + Math.round(dx / per)); if (no !== UI.cOff) { UI.cOff = no; UI.cSel = null; box.innerHTML = candleSvg(box.dataset.t); } }
+    });
+    box.addEventListener('pointerup', function (e) { if (x0 != null && !moved) { var g = geo(); if (g) { UI.cSel = g.a + clamp(Math.floor((e.clientX - g.left) / g.width * g.n), 0, g.n - 1); box.innerHTML = candleSvg(box.dataset.t); } } x0 = null; });
+    box.addEventListener('pointercancel', function () { x0 = null; });
+  }
+  // ------------------------------------------------------------------ forum (Supabase backend, signed-in users only)
+  var FCONF = window.CONVERGE_CONFIG || {};
+  var FORUM = { posts: {}, loading: {}, error: {}, busy: false, draft: '', mode: 'signin', form: { email: '', password: '', name: '' } };
+  function forumReady() { return !!(FCONF.supabaseUrl && FCONF.supabaseKey) && !window.__CONVERGE_ARTIFACT__; }
+  function sb(path, opts) {
+    opts = opts || {};
+    var headers = { apikey: FCONF.supabaseKey, 'Content-Type': 'application/json' };
+    var tok = opts.auth && S.auth && S.auth.access_token;
+    headers.Authorization = 'Bearer ' + (tok || FCONF.supabaseKey);
+    if (opts.prefer) headers.Prefer = opts.prefer;
+    return fetch(FCONF.supabaseUrl.replace(/\/$/, '') + path, { method: opts.method || 'GET', headers: headers, body: opts.body ? JSON.stringify(opts.body) : undefined })
+      .then(function (r) {
+        return r.text().then(function (t) {
+          var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { j = null; }
+          if (!r.ok) { var m = (j && (j.msg || j.message || j.error_description || j.error)) || ('Request failed (' + r.status + ')'); var err = new Error(m); err.status = r.status; throw err; }
+          return j;
+        });
+      });
+  }
+  function saveSession(j) {
+    if (!j || !j.access_token) return;
+    S.auth = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, user: { id: j.user && j.user.id, email: j.user && j.user.email }, name: (j.user && j.user.user_metadata && j.user.user_metadata.display_name) || (S.auth && S.auth.name) || '' };
+    save();
+  }
+  function ensureSession() {
+    if (!S.auth) return Promise.resolve(null);
+    if (Date.now() < S.auth.expires_at - 60000) return Promise.resolve(S.auth);
+    return sb('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: S.auth.refresh_token } })
+      .then(function (j) { saveSession(j); return S.auth; })
+      .catch(function () { S.auth = null; save(); return null; });
+  }
+  function loadPosts(t, force) {
+    if (!forumReady() || (FORUM.loading[t] && !force)) return;
+    FORUM.loading[t] = true;
+    sb('/rest/v1/forum_posts?select=id,ticker,user_id,display_name,body,created_at&ticker=eq.' + encodeURIComponent(t) + '&order=created_at.desc&limit=60')
+      .then(function (rows) { FORUM.posts[t] = rows || []; FORUM.error[t] = null; })
+      .catch(function (e) { FORUM.error[t] = 'Could not load the discussion: ' + e.message; })
+      .then(function () { FORUM.loading[t] = false; refreshForum(t); });
+  }
+  function refreshForum(t) { var box = document.getElementById('forumbox'); if (box && box.dataset.t === t) box.innerHTML = forumInner(t); }
+  // --- profanity filter (same rules run server-side in supabase/schema.sql) ---
+  var LEET = { '0': 'o', '1': 'i', '!': 'i', '|': 'i', '3': 'e', '4': 'a', '@': 'a', '5': 's', '$': 's', '7': 't', '+': 't', '8': 'b', '9': 'g' };
+  function normText(t) {
+    var x = String(t || '').toLowerCase();
+    try { x = x.normalize('NFKD').replace(/[̀-ͯ]/g, ''); } catch (e) { }
+    x = x.replace(/[01!|3@4$57+89]/g, function (c) { return LEET[c] || c; }).replace(/[^a-z]+/g, ' ').trim();
+    // join runs of single letters ("f u c k" -> "fuck")
+    x = x.replace(/\b([a-z])(?: ([a-z])\b)+/g, function (m) { return m.replace(/ /g, ''); });
+    return x;
+  }
+  var BAD = null;
+  function badList() {
+    if (BAD) return BAD;
+    BAD = (window.CONVERGE_BADWORDS || []).map(function (w) { var n = normText(w); return { n: n, sq: n.replace(/(.)\1+/g, '$1') }; }).filter(function (w) { return w.n.length >= 3; });
+    return BAD;
+  }
+  function isProfane(text) {
+    var n = normText(text), sq = n.replace(/(.)\1+/g, '$1'), pn = ' ' + n + ' ', ps = ' ' + sq + ' ', joined = sq.replace(/ /g, '');
+    if (/(fuck|fuk|shit|bitch|nigg|whore|motherf|cocksuck|dickhead|asshole|bastard|retard)/.test(joined)) return true;
+    return badList().some(function (w) { return pn.indexOf(' ' + w.n + ' ') >= 0 || ps.indexOf(' ' + w.sq + ' ') >= 0 || (w.sq.length >= 5 && w.sq.indexOf(' ') < 0 && joined.indexOf(w.sq) >= 0); });
+  }
+  function forumCard(t) {
+    if (!forumReady()) {
+      var msg = window.__CONVERGE_ARTIFACT__ ? 'The discussion is available in the Converge app and on the Converge website, where you can sign in.' : 'The discussion board isn’t connected yet. The owner needs to add the Supabase settings described in the README.';
+      return '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Discussion · ' + esc(t) + '</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + msg + '</p></section>';
+    }
+    if (FORUM.posts[t] === undefined && !FORUM.loading[t]) setTimeout(function () { loadPosts(t); }, 0);
+    return '<section class="card" id="forumbox" data-t="' + esc(t) + '">' + forumInner(t) + '</section>';
+  }
+  function forumInner(t) {
+    var h = '<div class="sechead"><h2 class="eyebrow">Discussion · ' + esc(t) + '</h2><button class="lnk" data-act="forum-refresh" data-t="' + esc(t) + '" style="color:var(--muted)">Refresh</button></div>';
+    if (S.auth) {
+      h += '<div class="field"><label for="forum-text">Post as <b>' + esc(S.auth.name || 'you') + '</b></label><textarea class="in" id="forum-text" rows="3" maxlength="1000" placeholder="Share your take on ' + esc(t) + '. Keep it civil.">' + esc(FORUM.draft) + '</textarea></div>' +
+        '<div class="btnrow" style="margin-top:8px"><button class="btn sm" data-act="forum-signout">Sign out</button><button class="btn sm pri" data-act="forum-post" data-t="' + esc(t) + '"' + (FORUM.busy ? ' disabled' : '') + '>' + (FORUM.busy ? 'Posting…' : 'Post') + '</button></div>';
+    } else {
+      h += '<button class="btn sm pri" data-act="forum-auth" style="width:100%">Sign in to comment</button>';
+    }
+    if (FORUM.error[t]) h += '<p class="note" style="margin:10px 0 0">' + esc(FORUM.error[t]) + '</p>';
+    var posts = FORUM.posts[t];
+    if (!posts) h += '<p class="muted" style="margin:12px 0 0;font-size:13px">Loading…</p>';
+    else if (!posts.length) h += '<p class="muted" style="margin:12px 0 0;font-size:13px">No comments yet. Start the conversation.</p>';
+    else h += '<div class="posts">' + posts.map(function (p) {
+      var mine = S.auth && S.auth.user && p.user_id === S.auth.user.id;
+      return '<article class="post"><div class="post-h"><b>' + esc(p.display_name) + '</b><span class="muted">' + esc(ago(p.created_at)) + '</span>' + (mine ? '<button class="lnk" data-act="forum-del" data-id="' + esc(p.id) + '" data-t="' + esc(t) + '" style="color:var(--muted);padding:0;margin-left:auto">Delete</button>' : '') + '</div><p>' + esc(p.body) + '</p></article>';
+    }).join('') + '</div>';
+    h += '<p class="foot" style="text-align:left;margin:10px 0 0">Posts with offensive language are blocked. Not investment advice.</p>';
+    return h;
+  }
+  function authSheet() {
+    var m = FORUM.mode, f = FORUM.form;
+    return '<h2 class="disp" style="margin:0 0 4px;font-size:22px">' + (m === 'signup' ? 'Create your account' : 'Sign in') + '</h2><p class="muted" style="margin:0 0 12px;font-size:13px">Your account is used only for the stock discussions.</p>' +
+      '<div class="scroll" style="padding-top:0">' + (m === 'signup' ? '<div class="field"><label for="au-name">Display name</label><input class="in" id="au-name" data-au="name" maxlength="30" autocomplete="nickname" value="' + esc(f.name) + '"></div>' : '') +
+      '<div class="field"><label for="au-email">Email</label><input class="in" id="au-email" data-au="email" type="email" autocomplete="email" value="' + esc(f.email) + '"></div>' +
+      '<div class="field"><label for="au-pass">Password</label><input class="in" id="au-pass" data-au="password" type="password" autocomplete="' + (m === 'signup' ? 'new-password' : 'current-password') + '" value="' + esc(f.password) + '"></div>' +
+      (FORUM.authMsg ? '<p class="note" style="margin:4px 0 0">' + esc(FORUM.authMsg) + '</p>' : '') + '</div>' +
+      '<button class="btn pri" data-act="forum-auth-go" style="margin-top:12px"' + (FORUM.busy ? ' disabled' : '') + '>' + (FORUM.busy ? 'Please wait…' : m === 'signup' ? 'Create account' : 'Sign in') + '</button>' +
+      '<button class="btn sm" data-act="forum-auth-mode" style="margin-top:8px;border:0;color:var(--accent)">' + (m === 'signup' ? 'I already have an account' : 'New here? Create an account') + '</button>';
+  }
+  var FA = {
+    'forum-refresh': function (el) { loadPosts(el.dataset.t, true); },
+    'forum-auth': function () { FORUM.authMsg = ''; UI.sheet = { kind: 'auth' }; render(); },
+    'forum-auth-mode': function () { FORUM.mode = FORUM.mode === 'signup' ? 'signin' : 'signup'; FORUM.authMsg = ''; render(); },
+    'forum-auth-go': function () {
+      var f = FORUM.form, email = f.email.trim(), pw = f.password, name = f.name.trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { FORUM.authMsg = 'Enter a valid email address.'; return render(); }
+      if (pw.length < 8) { FORUM.authMsg = 'Use a password of at least 8 characters.'; return render(); }
+      if (FORUM.mode === 'signup') {
+        if (name.length < 2) { FORUM.authMsg = 'Pick a display name of at least 2 characters.'; return render(); }
+        if (isProfane(name)) { FORUM.authMsg = 'Please choose a different display name.'; return render(); }
+      }
+      FORUM.busy = true; FORUM.authMsg = ''; render();
+      var p = FORUM.mode === 'signup'
+        ? sb('/auth/v1/signup', { method: 'POST', body: { email: email, password: pw, data: { display_name: name } } }).then(function (j) {
+          if (j && j.access_token) { saveSession(j); S.auth.name = name; save(); return 'in'; }
+          return 'confirm';
+        })
+        : sb('/auth/v1/token?grant_type=password', { method: 'POST', body: { email: email, password: pw } }).then(function (j) { saveSession(j); return 'in'; });
+      p.then(function (res) {
+        FORUM.busy = false; f.password = '';
+        if (res === 'confirm') { FORUM.mode = 'signin'; FORUM.authMsg = 'Check your email to confirm your account, then sign in.'; render(); return; }
+        UI.sheet = null; toast('Signed in as ' + (S.auth.name || email)); render();
+      }).catch(function (e) { FORUM.busy = false; FORUM.authMsg = /invalid login/i.test(e.message) ? 'Wrong email or password.' : e.message; render(); });
+    },
+    'forum-signout': function () { var tok = S.auth; S.auth = null; save(); if (tok) sb('/auth/v1/logout', { method: 'POST', auth: false }).catch(function () { }); toast('Signed out'); render(); },
+    'forum-post': function (el) {
+      var t = el.dataset.t, body = (FORUM.draft || '').trim();
+      if (!body) return toast('Write something first');
+      if (isProfane(body)) { FORUM.error[t] = 'Your post contains language that isn’t allowed here. Please rephrase it.'; return refreshForum(t); }
+      FORUM.busy = true; FORUM.error[t] = null; refreshForum(t);
+      ensureSession().then(function (sess) {
+        if (!sess) { FORUM.busy = false; FORUM.error[t] = 'Your session expired. Please sign in again.'; render(); return; }
+        return sb('/rest/v1/forum_posts', { method: 'POST', auth: true, prefer: 'return=representation', body: { ticker: t, body: body, display_name: sess.name || 'Investor' } })
+          .then(function (rows) { FORUM.draft = ''; FORUM.busy = false; FORUM.posts[t] = (rows || []).concat(FORUM.posts[t] || []); refreshForum(t); toast('Posted'); });
+      }).catch(function (e) { FORUM.busy = false; FORUM.error[t] = /civil|blocked|language/i.test(e.message) ? 'Your post contains language that isn’t allowed here. Please rephrase it.' : e.message; refreshForum(t); });
+    },
+    'forum-del': function (el) {
+      var t = el.dataset.t, id = el.dataset.id;
+      ensureSession().then(function (sess) {
+        if (!sess) return;
+        return sb('/rest/v1/forum_posts?id=eq.' + encodeURIComponent(id), { method: 'DELETE', auth: true }).then(function () { FORUM.posts[t] = (FORUM.posts[t] || []).filter(function (p) { return String(p.id) !== String(id); }); refreshForum(t); toast('Post deleted'); });
+      }).catch(function (e) { toast(e.message); });
+    }
+  };
+  // ------------------------------------------------------------------ scanner strategy presets (from the user's playbook)
+  function sectorMedianPE() {
+    if (SC._medPE) return SC._medPE;
+    var by = {}; SC.rows.forEach(function (r) { if (nz(r.pe) && r.pe > 0) (by[r.sec] = by[r.sec] || []).push(r.pe); });
+    var out = {}; Object.keys(by).forEach(function (k) { var a = by[k].sort(function (x, y) { return x - y; }); out[k] = a[Math.floor(a.length / 2)]; });
+    SC._medPE = out; return out;
+  }
+  // criterion: [label, predicate | null (not in free data), needsFundamentals]
+  var PRESETS = [
+    { id: 'scalp', name: 'Ultra-short scalping', horizon: '1–15 minute hold', crit: [
+      ['Relative volume > 3', function (r) { return r.rv > 3; }],
+      ['Today’s change > +3% or < −3%', function (r) { return nz(r.ch) && Math.abs(r.ch) > 3; }],
+      ['Price $2 to $30', function (r) { return r.p >= 2 && r.p <= 30; }],
+      ['Float < 20 million shares', null],
+      ['Price above VWAP (long) / below (short)', null]],
+      rules: 'Entry: buy when a 1-minute candle closes above the 9 EMA after a relative-volume spike. Exit: profit target at 1.5× ATR(14) or stop at the signal candle’s low.',
+      note: 'Your playbook: ~58–65% win rate, ~1.1:1 payoff, very sensitive to slippage. Low-float stocks are rare in the S&P 500, so this scan often returns nothing here.' },
+    { id: 'swing', name: 'Short-term swing', horizon: '2 days–2 weeks', crit: [
+      ['Market cap > $1B', function (r) { return r.mc > 1e9; }],
+      ['Average volume (30 days) > 1M', function (r) { return r.av30 > 1e6; }],
+      ['RSI(14) between 45 and 60', function (r) { return r.rsi >= 45 && r.rsi <= 60; }],
+      ['Price > SMA20 > SMA50', function (r) { return r.s20 > 0 && r.s20v50 === 1; }],
+      ['3-day high breakout or touching SMA20', function (r) { return r.brk3 === 1 || (nz(r.s20) && Math.abs(r.s20) <= 1.5); }]],
+      rules: 'Entry: buy at the next open after a close above the 10-day high. Exit: trailing stop at 2× ATR(14), or a close below SMA20.',
+      note: 'Your playbook: ~45–52% win rate, profit factor ~1.8.' },
+    { id: 'mswing', name: 'Medium-term swing', horizon: '1–5 weeks', crit: [
+      ['Market cap > $5B', function (r) { return r.mc > 5e9; }],
+      ['Up > 10% over 3 months and beating the S&P 500', function (r) { return r.pq > 10 && r.rs3m > 0; }],
+      ['Price > SMA50 and SMA50 > SMA200', function (r) { return r.s50 > 0 && r.s50v200 === 1; }],
+      ['ATR(14) under 3% of price (contraction)', function (r) { return nz(r.atrp) && r.atrp < 3; }],
+      ['Up-day volume > down-day volume (20 days)', function (r) { return r.udv > 1; }]],
+      rules: 'Entry: 20-day-high breakout on more than 1.5× the 20-day average volume. Exit: close below SMA50, or after 25 trading days.',
+      note: 'Your playbook: ~50% win rate, 12–15% max drawdown in choppy markets; best in bull regimes.' },
+    { id: 'position', name: 'Position / trend', horizon: '6 months–2 years', crit: [
+      ['Quarterly EPS growth (YoY) > 20%', function (r) { return r.qepsg > 20; }, true],
+      ['Quarterly sales growth (YoY) > 15%', function (r) { return r.qsg > 15; }, true],
+      ['Return on equity > 15%', function (r) { return r.roe > 15; }, true],
+      ['Price > SMA200 and SMA200 rising over 50 days', function (r) { return r.s200 > 0 && r.s200up === 1; }],
+      ['Within 15% of the 52-week high', function (r) { return nz(r.hi52) && r.hi52 >= -15; }]],
+      rules: 'Entry: 20-week EMA crosses above the 50-week EMA while price is within 10% of its 52-week high. Exit: close below SMA200, or a 20% drop from the peak.',
+      note: 'Your playbook: ~38–45% win rate, reward-to-risk of 3:1 to 5:1.' },
+    { id: 'value', name: 'Multi-year value', horizon: '2–5 years', crit: [
+      ['Market cap > $10B', function (r) { return r.mc > 1e10; }],
+      ['P/E below its sector’s median today (5-year sector history isn’t in free data)', function (r) { var m = sectorMedianPE()[r.sec]; return nz(r.pe) && r.pe > 0 && m && r.pe < m; }, true],
+      ['Free cash flow yield > 5%', function (r) { return r.fcfy > 5; }, true],
+      ['Long-term debt/equity < 1.0', function (r) { return nz(r.de) && r.de < 1; }, true],
+      ['Dividend + buyback yield > 3%', function (r) { return r.shy > 3; }, true]],
+      rules: 'Rebalance once a year into the top 10 matches. Sell only after two straight quarters of negative earnings, or if debt/equity goes above 1.5.',
+      note: 'Your playbook: ~70%+ win rate over multi-year periods, low beta.' }
+  ];
+  function presetPreds() {
+    var st = scanState(), on = st.presets || {}, preds = [];
+    PRESETS.forEach(function (p) { if (!on[p.id]) return; p.crit.forEach(function (c) { if (c[1] && !(c[2] && !SC.fundamentals)) preds.push(c[1]); }); });
+    return preds;
+  }
+  function presetsCard() {
+    var st = scanState(), on = st.presets || {}, open = UI.presetOpen;
+    return '<section class="card" style="padding:12px"><h2 class="eyebrow" style="margin:2px 2px 8px">Strategy scanners</h2>' + PRESETS.map(function (p) {
+      var active = !!on[p.id];
+      var rows = active || open === p.id ? '<div class="pdet">' + p.crit.map(function (c) {
+        var avail = !!c[1], fundOff = c[2] && !SC.fundamentals;
+        return '<div class="pcrit"><span class="' + (!avail || fundOff ? 'dim' : 'up') + '">' + (!avail || fundOff ? '○' : '●') + '</span><span>' + esc(c[0]) + (!avail ? ' <em class="dim">· not in free data, skipped</em>' : fundOff ? ' <em class="dim">· needs SEC data, skipped</em>' : '') + '</span></div>';
+      }).join('') + '<p class="prule"><b>Rules:</b> ' + esc(p.rules) + '</p><p class="prule muted">' + esc(p.note) + '</p></div>' : '';
+      return '<div class="preset' + (active ? ' on' : '') + '"><button class="rowtoggle" data-act="preset" data-id="' + p.id + '" aria-pressed="' + active + '" style="border:0;background:none;padding:6px 2px;min-height:48px"><span><span class="t1">' + esc(p.name) + '</span><span class="t2">' + esc(p.horizon) + '</span></span><span class="sw"></span></button>' +
+        '<button class="lnk pmore" data-act="preset-info" data-id="' + p.id + '">' + (active || open === p.id ? 'Criteria' : 'Criteria ▾') + '</button>' + rows + '</div>';
+    }).join('') + '</section>';
+  }
+
   // ---- sheets (picker, pin)
   function sheetHtml() {
     var sh = UI.sheet; if (!sh) return '';
@@ -902,6 +1241,7 @@
       }
     }
     if (sh.kind === 'scanrow') body = SC ? scanRowSheet(sh.t) : '';
+    if (sh.kind === 'auth') body = authSheet();
     return '<div class="sheet" data-act="sheet-bg"><div class="panel" role="dialog" aria-modal="true" data-stop="1"><div class="grab"></div>' + body + '</div></div>';
   }
 
@@ -943,6 +1283,7 @@
     lastScreenKey = key;
     if (focusId) { var f = document.getElementById(focusId); if (f) { f.focus(); try { if (selStart != null) f.setSelectionRange(selStart, selStart); } catch (e) { } } }
     bindSwipe();
+    bindCandles();
   }
   function go(scr) { NAV.stack.push(scr); render(); }
   function back() {
@@ -1049,6 +1390,12 @@
       if (S.notify) { S.notify = false; save(); render(); return; }
       LN.requestPermissions().then(function (r) { S.notify = r && r.display === 'granted'; save(); render(); if (!S.notify) toast('Notifications are off in system settings'); });
     },
+    civ: function (el) { UI.civ = el.dataset.iv; UI.cOff = 0; UI.cSel = null; render(); },
+    cmode: function (el) { UI.cmode = el.dataset.m; render(); },
+    czoom: function (el) { var Ns = [30, 60, 120, 240], i = Ns.indexOf(UI.cN || 60); i = el.dataset.z === 'in' ? Math.max(0, i - 1) : Math.min(Ns.length - 1, i + 1); UI.cN = Ns[i]; UI.cSel = null; refreshCandleBox(); },
+    cpan: function (el) { var n = UI.cN || 60; UI.cSel = null; if (el.dataset.p === 'end') UI.cOff = 0; else UI.cOff = Math.max(0, (UI.cOff || 0) + (el.dataset.p === 'back' ? Math.round(n / 2) : -Math.round(n / 2))); refreshCandleBox(); },
+    preset: function (el) { var st = scanState(); st.presets = st.presets || {}; st.presets[el.dataset.id] = !st.presets[el.dataset.id]; if (st.presets[el.dataset.id]) st.view = 'strategy'; UI.scanLimit = 100; save(); render(); },
+    'preset-info': function (el) { UI.presetOpen = UI.presetOpen === el.dataset.id ? null : el.dataset.id; render(); },
     'scan-refresh': function () { SC = null; SCS.error = null; loadScanner(true); },
     'scan-toggle': function () { var st = scanState(); st.open = !st.open; save(); render(); },
     'scan-group': function (el) { scanState().group = el.dataset.g; save(); render(); },
@@ -1070,6 +1417,7 @@
     'brief-reset': function () { S.brief = { day: today(), picked: [], skipped: [] }; save(); render(); },
     'brief-play': function () { if (UI.speaking) stopSpeech(); else playBriefing(); }
   };
+  Object.keys(FA).forEach(function (k) { A[k] = FA[k]; });
   function finishDraft(withThesis) {
     var d = UI.draft, thesis = null;
     if (withThesis) {
@@ -1107,7 +1455,7 @@
     el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   }
   function ttsAvailable() { return !!plugin('TextToSpeech') || ('speechSynthesis' in window); }
-  function naturalVoice() { return !!(D && D.briefingAudio && D.briefingAudio.base && !window.__CONVERGE_ARTIFACT__); }
+  function naturalVoice() { return !!(D && D.briefingAudio && D.briefingAudio.base && (!window.__CONVERGE_ARTIFACT__ || window.__CONVERGE_AUDIO__)); }
   var SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//NwwAAAAAAAAAAAAEluZm8AAAAPAAAACAAAA/oAR0dHR0dHR0dHR0dHYmJiYmJiYmJiYmJifHx8fHx8fHx8fHx8fJaWlpaWlpaWlpaWlrGxsbGxsbGxsbGxsbHLy8vLy8vLy8vLy8vl5eXl5eXl5eXl5eXl////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQC1AAAAAAAAAP6yysejgAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NAxKQAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80LEowAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80DEpAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsSjAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==';
   function bestVoice() {
     if (!('speechSynthesis' in window)) return null;
@@ -1129,6 +1477,7 @@
   }
   function fetchClip(name) {
     var a = D.briefingAudio; if (!name || !a) return Promise.resolve(null);
+    var inl = window.__CONVERGE_AUDIO__; if (inl) return Promise.resolve(inl[name] || null);
     return fetch(a.base + name).then(function (r) { if (!r.ok) throw new Error('clip'); return r.arrayBuffer(); })
       .then(function (b) { return URL.createObjectURL(new Blob([b], { type: 'audio/mpeg' })); }).catch(function () { return null; });
   }
@@ -1193,6 +1542,8 @@
     if (el.dataset.f && UI.draft) UI.draft[el.dataset.f] = el.value;
     if (el.dataset.rf && UI.reflect) UI.reflect[el.dataset.rf] = el.value;
     if (el.dataset.pickq) { UI.pickQuery = el.value; render(); }
+    if (el.dataset.au) FORUM.form[el.dataset.au] = el.value;
+    if (el.id === 'forum-text') FORUM.draft = el.value;
   });
   document.addEventListener('change', function (e) {
     var el = e.target;
@@ -1209,6 +1560,7 @@
     var LN0 = plugin('LocalNotifications');
     if (LN0) LN0.addListener('localNotificationActionPerformed', function (ev) { var t = ev && ev.notification && ev.notification.extra && ev.notification.extra.t; if (t && D) { NAV.stack = [{ name: 'alert', t: t }]; render(); } });
   }
+  window.__convergeTest = { isProfane: isProfane };
   if (window.__CONVERGE_ARTIFACT__) document.documentElement.classList.add('in-artifact');
 
   render();

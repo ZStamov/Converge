@@ -107,7 +107,7 @@ try {
 console.log('nasdaq rows', Object.keys(nas).length);
 
 // ---- SEC frames (optional fundamentals) ----
-const F = {}; let secOk = false;
+const F = {}; let secOk = false, quarter = null;
 async function frame(tag, unit, period) {
   const j = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/${tag}/${unit}/${period}.json`, { json: true, headers: { 'User-Agent': UA_SEC }, tries: 2 });
   return new Map((j.data || []).map((x) => [x.cik, x.val]));
@@ -136,6 +136,22 @@ async function frameAny(tags, unit, period) {
     F.ac = await frameAny(['AssetsCurrent'], 'USD', I);
     F.lc = await frameAny(['LiabilitiesCurrent'], 'USD', I);
     F.ltd = await frameAny(['LongTermDebtNoncurrent', 'LongTermDebt'], 'USD', I);
+    F.ocf = await frameAny(['NetCashProvidedByUsedInOperatingActivities'], 'USD', 'CY' + Y);
+    F.capex = await frameAny(['PaymentsToAcquirePropertyPlantAndEquipment'], 'USD', 'CY' + Y);
+    F.buyback = await frameAny(['PaymentsForRepurchaseOfCommonStock'], 'USD', 'CY' + Y);
+    // latest quarter with broad coverage, compared with the same quarter a year earlier
+    const now = new Date(); let qy = now.getUTCFullYear(), qn = Math.floor(now.getUTCMonth() / 3); // last completed quarter
+    if (qn === 0) { qy--; qn = 4; }
+    for (let tries = 0; tries < 3; tries++) {
+      const cur = await frameAny(REV, 'USD', `CY${qy}Q${qn}`);
+      if (cur.size >= 250) {
+        F.qrev = cur; F.qrevPrev = await frameAny(REV, 'USD', `CY${qy - 1}Q${qn}`);
+        F.qeps = await frameAny(['EarningsPerShareDiluted'], 'USD-per-shares', `CY${qy}Q${qn}`);
+        F.qepsPrev = await frameAny(['EarningsPerShareDiluted'], 'USD-per-shares', `CY${qy - 1}Q${qn}`);
+        quarter = `Q${qn} ${qy}`; break;
+      }
+      qn--; if (qn === 0) { qy--; qn = 4; }
+    }
   }
 }
 console.log('sec fundamentals', secOk ? 'yes' : 'no');
@@ -154,7 +170,7 @@ for (const u of universe) {
 }
 const out = {
   app: 'Converge', kind: 'scanner', generatedAt: new Date().toISOString(), barsAsOf: cache.asOf,
-  universe: 'S&P 500', count: rows.length, fundamentals: secOk,
+  universe: 'S&P 500', count: rows.length, fundamentals: secOk, quarter,
   sources: ['S&P 500 constituents (datasets/s-and-p-500-companies)', 'Yahoo Finance (daily bars, live prices)', 'Nasdaq screener (volume, market cap, country)', ...(secOk ? ['SEC EDGAR XBRL frames (fundamentals)'] : [])],
   rows, errors: errors.slice(0, 30)
 };

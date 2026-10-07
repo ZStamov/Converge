@@ -79,6 +79,10 @@ export function technicals(bars, live, bench) {
     x20v50: cross(s20, s50, p20, p50), x20v200: cross(s20, s200, p20, p200), x50v200: cross(s50, s200, p50, p200),
     hi20: r2(pctFrom(p, h20.hi)), lo20: r2(pctFrom(p, h20.lo)), hi50: r2(pctFrom(p, h50.hi)), lo50: r2(pctFrom(p, h50.lo)), hi52: r2(pctFrom(p, h52.hi)), lo52: r2(pctFrom(p, h52.lo)),
     beta: bench ? r2(beta(d, c, bench.d, bench.c)) : null, atr: r2(atr(h, l, bars.c)),
+    atrp: r2(atr(h, l, bars.c) / p * 100), av30: v.length >= 31 ? Math.round(v.slice(-31, -1).reduce((a, x) => a + x, 0) / 30) : null,
+    udv: upDownVol(c, v, 20), brk3: h.length >= 4 ? (p > Math.max(...h.slice(-4, -1)) ? 1 : 0) : null, brk10: h.length >= 11 ? (p > Math.max(...h.slice(-11, -1)) ? 1 : 0) : null,
+    s200up: c.length >= 251 ? (sma(c, 200) > sma(c, 200, c.length - 51) ? 1 : -1) : null,
+    rs3m: bench && perf(bench.c, 63) != null && perf(c, 63) != null ? r2(perf(c, 63) - perf(bench.c, 63)) : null,
     day: d[d.length - 1]
   };
 }
@@ -97,11 +101,22 @@ export function fundamentals(cik, F, price, marketCap) {
     cr: ac && lc ? r2(ac / lc) : null, de: ltd != null && eq > 0 ? r2(ltd / eq) : null,
     gm: gp != null && rev ? r2(gp / rev * 100, 1) : null, om: op != null && rev ? r2(op / rev * 100, 1) : null, nm: ni != null && rev ? r2(ni / rev * 100, 1) : null,
     dy: dps != null && price ? r2(dps / price * 100) : div != null && marketCap ? r2(div / marketCap * 100) : null,
-    po: div != null && ni > 0 ? r2(div / ni * 100, 1) : null
+    po: div != null && ni > 0 ? r2(div / ni * 100, 1) : null,
+    qepsg: g('qeps') != null && g('qepsPrev') ? r2((g('qeps') / Math.abs(g('qepsPrev')) - Math.sign(g('qepsPrev'))) * 100, 1) : null,
+    qsg: g('qrev') && g('qrevPrev') ? r2((g('qrev') / g('qrevPrev') - 1) * 100, 1) : null,
+    fcfy: g('ocf') != null && marketCap ? r2((g('ocf') - (g('capex') || 0)) / marketCap * 100) : null,
+    shy: marketCap && (div != null || g('buyback') != null) ? r2(((div || 0) + (g('buyback') || 0)) / marketCap * 100) : null
   };
   return out;
 }
 
+// ratio of volume on up days to volume on down days over the last n sessions
+export function upDownVol(c, v, n) {
+  const k = Math.min(n, v.length - 1, c.length - 1); if (k < 5) return null;
+  let up = 0, dn = 0;
+  for (let i = 1; i <= k; i++) { const ci = c.length - i, vi = v.length - i; if (c[ci] > c[ci - 1]) up += v[vi]; else if (c[ci] < c[ci - 1]) dn += v[vi]; }
+  return dn ? r2(up / dn) : null;
+}
 export function exchangeName(code) {
   return { NMS: 'NASDAQ', NGM: 'NASDAQ', NCM: 'NASDAQ', NAS: 'NASDAQ', NYQ: 'NYSE', NYS: 'NYSE', ASE: 'AMEX', PCX: 'NYSE Arca', BTS: 'BATS' }[code] || code || null;
 }

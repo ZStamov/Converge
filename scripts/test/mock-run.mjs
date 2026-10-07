@@ -40,11 +40,13 @@ const facts = { facts: { 'us-gaap': {
 globalThis.fetch = async (url) => {
   const u = String(url);
   const ok = (body, json) => ({ ok: true, status: 200, json: async () => body, text: async () => (json ? JSON.stringify(body) : body) });
-  if (u.includes('/v8/finance/chart/') && /range=(5d|5y|max)/.test(u)) {
-    const step = u.includes('range=5d') ? 900 : u.includes('range=5y') ? 7 * 86400 : 30 * 86400, n = u.includes('range=5d') ? 130 : u.includes('range=5y') ? 260 : 400;
-    const now = Math.floor(Date.now() / 1000), ts = [], cl = []; let p = 50;
-    for (let i = n; i > 0; i--) { p *= 1 + (rnd() - 0.47) * 0.02; ts.push(now - i * step); cl.push(+p.toFixed(2)); }
-    return ok({ chart: { result: [{ meta: {}, timestamp: ts, indicators: { quote: [{ close: cl }] } }] } }, true);
+  if (u.includes('/v8/finance/chart/') && /range=(1d|5d|3mo|5y|max)/.test(u) || /interval=(1m|5m|60m|1wk|1mo)/.test(u)) {
+    const iv = (u.match(/interval=(\w+)/) || [])[1];
+    const step = { '1m': 60, '5m': 300, '60m': 3600, '1d': 86400, '1wk': 7 * 86400, '1mo': 30 * 86400 }[iv] || 86400;
+    const n = { '1m': 390, '5m': 390, '60m': 455, '1d': 252, '1wk': 260, '1mo': 400 }[iv] || 200;
+    const now = Math.floor(Date.now() / 1000), ts = [], o = [], h = [], l = [], cl = [], v = []; let p = 190;
+    for (let i = n; i > 0; i--) { const op = p; p *= 1 + (rnd() - 0.49) * 0.01; ts.push(now - i * step); o.push(+op.toFixed(2)); cl.push(+p.toFixed(2)); h.push(+(Math.max(op, p) * (1 + rnd() * 0.004)).toFixed(2)); l.push(+(Math.min(op, p) * (1 - rnd() * 0.004)).toFixed(2)); v.push(Math.round(rnd() * 1e6)); }
+    return ok({ chart: { result: [{ meta: {}, timestamp: ts, indicators: { quote: [{ open: o, high: h, low: l, close: cl, volume: v }] } }] } }, true);
   }
   if (u.includes('/v8/finance/chart/')) return ok(chart(decodeURIComponent(u.split('/chart/')[1].split('?')[0])), true);
   if (u.includes('news.google.com')) { const d = decodeURIComponent(u); const m = d.match(/OR (\w+) stock/) || d.match(/"([A-Za-z]+)/); return ok(gnews(m ? m[1] : 'AAPL')); }
