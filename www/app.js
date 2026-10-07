@@ -366,11 +366,11 @@
       '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px" class="muted mono"><span>' + esc(fmtDate(r.d[0])) + '</span><span>' + esc(fmtDate(r.d[r.d.length - 1])) + '</span></div></section>';
     // drivers
     h += '<section class="card drv"><h2 class="eyebrow" style="margin-bottom:10px">What drives the score</h2><div style="display:flex;flex-direction:column;gap:12px">' + s.drivers.map(function (d) {
-      return '<div><div class="r"><span>' + esc(d.label) + '</span><span class="mono ' + (d.bull >= 50 ? 'up' : 'down') + '" style="white-space:nowrap">' + d.bull + '% bull · w ' + d.w + '%</span></div><div class="track"><i style="width:' + d.bull + '%"></i></div></div>';
+      return '<div><div class="r"><span>' + esc(d.label) + (d.key === 'quant' && Object.keys(x.grades).length < 5 ? ' (' + Object.keys(x.grades).length + ' of 5 available)' : '') + '</span><span class="mono ' + (d.bull >= 50 ? 'up' : 'down') + '" style="white-space:nowrap">' + d.bull + '% bull · w ' + d.w + '%</span></div><div class="track"><i style="width:' + d.bull + '%"></i></div></div>';
     }).join('') + '</div></section>';
     // grades
     var order = ['value', 'growth', 'profit', 'momentum', 'trend'];
-    h += '<section><div class="sechead"><h2 class="eyebrow">Quant grades</h2><span class="mono muted" style="font-size:12px">Score ' + (x.quant.score == null ? '—' : x.quant.score) + '/100</span></div><div class="grades">' + order.map(function (k) {
+    h += '<section><div class="sechead"><h2 class="eyebrow">Quant grades</h2><span class="mono muted" style="font-size:12px">Score ' + (x.quant.score == null ? '—' : x.quant.score) + '/100' + (Object.keys(x.grades).length < 5 ? ' · ' + Object.keys(x.grades).length + ' of 5 grades' : '') + '</span></div><div class="grades">' + order.map(function (k) {
       var g = x.grades[k]; return '<div class="grade"><div class="g g' + (g ? g.g : '') + '">' + (g ? g.g : '—') + '</div><div class="l">' + (g ? g.label : k) + '</div><div class="v">' + esc(g ? g.v : 'n/a') + '</div></div>';
     }).join('') + '</div>' + (x.fundamentals && x.fundamentals.fy ? '<p class="foot" style="text-align:left">Fundamentals from SEC filings, fiscal ' + esc(x.fundamentals.fy) + ': revenue ' + compact(x.fundamentals.revenue) + ', net income ' + compact(x.fundamentals.netIncome) + ', diluted EPS ' + money(x.fundamentals.eps) + '.</p>' : '') + '</section>';
     // filings + headlines
