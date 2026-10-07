@@ -70,7 +70,7 @@ jobs:
           V=https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium
           [ -f ~/.piper/en_US-lessac-medium.onnx ] || curl -fsSL "$V/en_US-lessac-medium.onnx" -o ~/.piper/en_US-lessac-medium.onnx
           [ -f ~/.piper/en_US-lessac-medium.onnx.json ] || curl -fsSL "$V/en_US-lessac-medium.onnx.json" -o ~/.piper/en_US-lessac-medium.onnx.json
-          pip install -q piper-tts
+          pip install -q piper-tts lameenc
           python scripts/tts.py data-out audio-out ~/.piper/en_US-lessac-medium.onnx "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/audio/" 2>&1 | tail -n 20 | tee -a data.log
 
       - name: Publish audio, then data

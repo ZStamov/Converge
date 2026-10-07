@@ -7,7 +7,6 @@ deletes clips no longer referenced, and writes clip names back into market.json.
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import wave
@@ -18,6 +17,7 @@ market = json.load(open(market_path))
 os.makedirs(audio_dir, exist_ok=True)
 existing = set(os.listdir(audio_dir))
 
+import lameenc  # noqa: E402
 from piper import PiperVoice  # noqa: E402
 
 voice = PiperVoice.load(model)
@@ -45,11 +45,17 @@ def synth(text, stem):
             voice.synthesize_wav(text, wf, syn_config=syn) if syn else voice.synthesize_wav(text, wf)
         else:
             voice.synthesize(text, wf)
-    subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-i", wav_path, "-af", "apad=pad_dur=0.35",
-         "-ac", "1", "-codec:a", "libmp3lame", "-b:a", "56k", os.path.join(audio_dir, name)],
-        check=True,
-    )
+    with wave.open(wav_path, "rb") as wr:
+        rate, ch, width = wr.getframerate(), wr.getnchannels(), wr.getsampwidth()
+        pcm = wr.readframes(wr.getnframes())
+    pcm += b"\x00" * int(rate * 0.35) * ch * width  # short pause after each clip
+    enc = lameenc.Encoder()
+    enc.set_bit_rate(56)
+    enc.set_in_sample_rate(rate)
+    enc.set_channels(ch)
+    enc.set_quality(2)
+    with open(os.path.join(audio_dir, name), "wb") as out:
+        out.write(enc.encode(pcm) + enc.flush())
     os.unlink(wav_path)
     made += 1
     return name
