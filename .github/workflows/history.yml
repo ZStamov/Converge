@@ -1,0 +1,50 @@
+name: Stock directory and daily history
+
+on:
+  schedule:
+    - cron: '35 21 * * 1-5'   # after the US close: add today's daily bar
+    - cron: '50 */2 * * *'    # keep backfilling until every stock has history
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/fetch-history.mjs', '.github/workflows/history.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stock-history
+  cancel-in-progress: false
+
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check out the history branch
+        run: |
+          url="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads "$url" history >/dev/null; then
+            git clone -q --depth 1 --branch history "$url" hist
+          else
+            mkdir hist && cd hist && git init -q -b history && git remote add origin "$url"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Directory and daily bars
+        run: node scripts/fetch-history.mjs hist 1560
+      - name: Publish
+        run: |
+          cd hist
+          git config user.name "converge-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -qm "History $(date -u +%FT%TZ)"
+          git push -q origin history
