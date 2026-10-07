@@ -40,6 +40,12 @@ const facts = { facts: { 'us-gaap': {
 globalThis.fetch = async (url) => {
   const u = String(url);
   const ok = (body, json) => ({ ok: true, status: 200, json: async () => body, text: async () => (json ? JSON.stringify(body) : body) });
+  if (u.includes('/v8/finance/chart/') && /range=(5d|5y|max)/.test(u)) {
+    const step = u.includes('range=5d') ? 900 : u.includes('range=5y') ? 7 * 86400 : 30 * 86400, n = u.includes('range=5d') ? 130 : u.includes('range=5y') ? 260 : 400;
+    const now = Math.floor(Date.now() / 1000), ts = [], cl = []; let p = 50;
+    for (let i = n; i > 0; i--) { p *= 1 + (rnd() - 0.47) * 0.02; ts.push(now - i * step); cl.push(+p.toFixed(2)); }
+    return ok({ chart: { result: [{ meta: {}, timestamp: ts, indicators: { quote: [{ close: cl }] } }] } }, true);
+  }
   if (u.includes('/v8/finance/chart/')) return ok(chart(decodeURIComponent(u.split('/chart/')[1].split('?')[0])), true);
   if (u.includes('news.google.com')) { const d = decodeURIComponent(u); const m = d.match(/OR (\w+) stock/) || d.match(/"([A-Za-z]+)/); return ok(gnews(m ? m[1] : 'AAPL')); }
   if (u.includes('search.cnbc.com')) return ok(gnews('Apple').replace(/ - [^<]+<\/title>/g, '</title>'));

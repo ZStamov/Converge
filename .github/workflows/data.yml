@@ -59,19 +59,20 @@ jobs:
       - name: Cache neural voice
         uses: actions/cache@v4
         with:
-          path: ~/.piper
-          key: piper-en_US-lessac-medium-v1
+          path: ~/.kokoro
+          key: kokoro-v1.0-fp16
 
-      - name: Briefing audio (neural voice)
+      - name: Briefing audio (Kokoro neural voice)
         continue-on-error: true
         run: |
           set -o pipefail
-          mkdir -p ~/.piper
-          V=https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium
-          [ -f ~/.piper/en_US-lessac-medium.onnx ] || curl -fsSL "$V/en_US-lessac-medium.onnx" -o ~/.piper/en_US-lessac-medium.onnx
-          [ -f ~/.piper/en_US-lessac-medium.onnx.json ] || curl -fsSL "$V/en_US-lessac-medium.onnx.json" -o ~/.piper/en_US-lessac-medium.onnx.json
-          pip install -q piper-tts lameenc
-          python scripts/tts.py data-out audio-out ~/.piper/en_US-lessac-medium.onnx "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/audio/" 2>&1 | tail -n 20 | tee -a data.log
+          mkdir -p ~/.kokoro
+          R=https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0
+          [ -f ~/.kokoro/kokoro-v1.0.fp16.onnx ] || curl -fsSL "$R/kokoro-v1.0.fp16.onnx" -o ~/.kokoro/kokoro-v1.0.fp16.onnx
+          [ -f ~/.kokoro/voices-v1.0.bin ] || curl -fsSL "$R/voices-v1.0.bin" -o ~/.kokoro/voices-v1.0.bin
+          pip install -q kokoro-onnx lameenc
+          VOICE=$(node -p "require('./config/universe.json').briefingVoice || 'af_heart'")
+          python scripts/tts.py data-out audio-out ~/.kokoro/kokoro-v1.0.fp16.onnx ~/.kokoro/voices-v1.0.bin "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/audio/" "$VOICE" 2>&1 | tail -n 20 | tee -a data.log
 
       - name: Publish audio, then data
         run: |

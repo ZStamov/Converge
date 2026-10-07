@@ -56,6 +56,8 @@ await fill('#f-kill', 'Services growth below 10% two quarters running');
 await shot('thesis-prompt');
 await click('[data-act="draft-save"]');
 await shot('command-with-lot');
+await click('[data-act="range"][data-r="1D"]'); await shot('range-1D');
+await click('[data-act="range"][data-r="Max"]'); await shot('range-Max');
 await page.evaluate(() => document.getElementById('main').scrollTo(0, 9999));
 await shot('command-bottom');
 await click('[data-act="signal"]');
@@ -81,6 +83,8 @@ await click('[data-act="back"]');
 // battleground
 await click('[data-act="tab"][data-tab="battle"]');
 await shot('battle');
+await click('[data-act="brange"][data-r="1W"]'); await page.evaluate(() => document.getElementById('main').scrollTo(0, 700)); await shot('battle-1W');
+await page.evaluate(() => document.getElementById('main').scrollTo(0, 0));
 await click('[data-act="side"][data-side="bear"]');
 await page.evaluate(() => document.getElementById('main').scrollTo(0, 500));
 await shot('battle-bear-scrolled');

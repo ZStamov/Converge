@@ -49,6 +49,22 @@ async function yahooSeries(t) {
   }
   throw new Error(out.join('; ') || 'no data');
 }
+// extra ranges for charts: intraday (1D/1W), weekly 5 years, monthly full history
+async function chartRaw(t, range, interval) {
+  const j = await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?range=${range}&interval=${interval}&includePrePost=false`, { type: 'json' });
+  const r = j?.chart?.result?.[0]; if (!r) throw new Error('no data');
+  const ts = r.timestamp || [], cl = r.indicators?.quote?.[0]?.close || [];
+  const tt = [], c = [];
+  ts.forEach((x, i) => { if (cl[i] != null) { tt.push(x); c.push(+cl[i].toFixed(2)); } });
+  return { tt, c };
+}
+async function extraSeries(t) {
+  const out = {};
+  try { const a = await chartRaw(t, '5d', '15m'); out.intra = { t: a.tt, c: a.c }; } catch (e) { errors.push(`intraday ${t}: ${e.message}`); }
+  try { const a = await chartRaw(t, '5y', '1wk'); out.w5 = { d: a.tt.map((x) => A.isoDay(x * 1000)), c: a.c }; } catch (e) { errors.push(`5y ${t}: ${e.message}`); }
+  try { const a = await chartRaw(t, 'max', '1mo'); out.max = { d: a.tt.map((x) => A.isoDay(x * 1000)), c: a.c }; } catch (e) { errors.push(`max ${t}: ${e.message}`); }
+  return out;
+}
 async function stooqSeries(t) {
   const csv = await get(`https://stooq.com/q/d/l/?s=${t.toLowerCase().replace('.', '-')}.us&i=d`);
   const rows = csv.trim().split('\n').slice(1).map((l) => l.split(','));
@@ -202,8 +218,9 @@ for (const t of cfg.tickers) {
   const name = names[t] || t;
   const news = await newsFor(t, name); await sleep(300);
   const crowd = await crowdFor(t); await sleep(400);
+  const ext = await extraSeries(t); await sleep(200);
   allNews.push(...news);
-  meta[t] = { cik, fund, filings, name, crowd };
+  meta[t] = { cik, fund, filings, name, crowd, ext };
   log('ticker', t, 'news', news.length, 'filings', filings.length, 'fund', fund ? fund.fy : '-');
 }
 
@@ -261,7 +278,7 @@ for (const t of cfg.tickers) {
     t, name: m.name, price: A.round(c[end], 2), prevClose: A.round(c[end - 1], 2),
     changePct: A.round((c[end] / c[end - 1] - 1) * 100, 2), chg5d: A.round(chg5d * 100, 2), chg1m: A.round(chg1m * 100, 2),
     asOf: s.asOf, priceSource: s.src,
-    hist: { d: s.d, c: s.c.map((x) => A.round(x, 2)) },
+    hist: { d: s.d, c: s.c.map((x) => A.round(x, 2)) }, intra: m.ext?.intra || null, w5: m.ext?.w5 || null, max: m.ext?.max || null,
     grades, quant, fundamentals: m.fund, sentiment: sent, filings: m.filings || [], cik: m.cik, crowd: m.crowd || null
   };
 }

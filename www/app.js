@@ -211,12 +211,46 @@
       '<g transform="translate(0 ' + pad + ')"><path d="' + path(a, w, h - pad * 2, la, ha) + '" stroke="var(--bear)" stroke-width="2.5" fill="none" vector-effect="non-scaling-stroke"></path>' +
       '<path d="' + path(b, w, h - pad * 2, lb, hb) + '" stroke="var(--info)" stroke-width="2.5" stroke-dasharray="6 4" fill="none" vector-effect="non-scaling-stroke"></path></g></svg>';
   }
-  function rangeSlice(x, r) { var n = { '1M': 22, '6M': 127, '1Y': 9999 }[r] || 22; return { d: x.hist.d.slice(-n), c: x.hist.c.slice(-n) }; }
-  function portfolioSeries(r) {
-    var hs = holdings(); if (!hs.length) return [];
-    var ref = T(hs[0].t); var days = rangeSlice(ref, r).d;
-    return days.map(function (day) { var v = 0; hs.forEach(function (h) { v += h.shares * (closeOn(h.t, day) || 0); }); return v; });
+  var RANGES = ['1D', '1W', '1M', '3M', '6M', '1Y', '5Y', 'Max'];
+  function dayMs(d) { return Date.parse(d + 'T21:00:00Z'); }
+  // returns { k: [epoch ms], c: [close], intraday: bool } for a ticker and range
+  function rangeSlice(x, r) {
+    var daily = function (n) { return { k: x.hist.d.slice(-n).map(dayMs), c: x.hist.c.slice(-n), intraday: false }; };
+    if ((r === '1D' || r === '1W') && x.intra && x.intra.t && x.intra.t.length > 2) {
+      var t = x.intra.t, c = x.intra.c;
+      if (r === '1W') return { k: t.map(function (v) { return v * 1000; }), c: c.slice(), intraday: true };
+      var lastDay = new Date((t[t.length - 1] - 4 * 3600) * 1000).toISOString().slice(0, 10), i0 = t.length - 1;
+      while (i0 > 0 && new Date((t[i0 - 1] - 4 * 3600) * 1000).toISOString().slice(0, 10) === lastDay) i0--;
+      var prevClose = x.prevClose, k = t.slice(i0).map(function (v) { return v * 1000; }), cc = c.slice(i0);
+      if (prevClose) { k.unshift(k[0] - 900000); cc.unshift(prevClose); }
+      return { k: k, c: cc, intraday: true };
+    }
+    if (r === '1D') return daily(2);
+    if (r === '1W') return daily(6);
+    if (r === '5Y' && x.w5 && x.w5.c.length > 2) return { k: x.w5.d.map(dayMs), c: x.w5.c.slice(), intraday: false };
+    if (r === 'Max' && x.max && x.max.c.length > 2) return { k: x.max.d.map(dayMs), c: x.max.c.slice(), intraday: false };
+    return daily({ '1M': 22, '3M': 64, '6M': 127, '1Y': 9999, '5Y': 9999, 'Max': 9999 }[r] || 22);
   }
+  function valueAt(ser, key) {
+    var k = ser.k, lo = 0, hi = k.length - 1, ans = -1;
+    while (lo <= hi) { var m = (lo + hi) >> 1; if (k[m] <= key) { ans = m; lo = m + 1; } else hi = m - 1; }
+    return ans < 0 ? null : ser.c[ans];
+  }
+  function portfolioSeries(r) {
+    var hs = holdings(); if (!hs.length) return { k: [], c: [] };
+    var sers = hs.map(function (h) { return { h: h, s: rangeSlice(T(h.t), r) }; });
+    var ref = sers.reduce(function (a, b) { return b.s.k.length > a.s.k.length ? b : a; }).s;
+    return { k: ref.k, intraday: ref.intraday, c: ref.k.map(function (key) { var v = 0; sers.forEach(function (o) { var p = valueAt(o.s, key); v += o.h.shares * (p == null ? (o.s.c[0] || 0) : p); }); return v; }) };
+  }
+  function rangeLabel(ms, intraday, r) {
+    var d = new Date(ms);
+    if (intraday && r === '1D') return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (intraday) return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (r === '5Y' || r === 'Max') return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function rangeChange(c) { var v = c.filter(num); return v.length > 1 && v[0] ? (v[v.length - 1] / v[0] - 1) * 100 : null; }
+  var RANGE_NAME = { '1D': 'today', '1W': 'past week', '1M': 'past month', '3M': 'past 3 months', '6M': 'past 6 months', '1Y': 'past year', '5Y': 'past 5 years', 'Max': 'all time' };
 
   // ------------------------------------------------------------------ shell pieces
   function sigToggle() {
@@ -252,11 +286,13 @@
     // portfolio
     if (hs.length) {
       var val = 0, day = 0, cost = 0; hs.forEach(function (o) { val += o.value || 0; day += o.day || 0; cost += o.cost; });
-      var prev = val - day, ser = portfolioSeries(S.range);
+      var prev = val - day, ser = portfolioSeries(S.range), rch = rangeChange(ser.c);
       h += '<section class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="min-width:0"><h2 class="eyebrow">Portfolio value</h2><div class="big">' + money(val) + '</div>' +
         '<div class="mono ' + cls(day) + '" style="font-size:13px;margin-top:2px">' + (day >= 0 ? '▲ ' : '▼ ') + money(Math.abs(day)) + ' (' + pct(prev ? day / prev * 100 : 0, 2) + ') today</div>' +
         '<div class="mono ' + cls(val - cost) + '" style="font-size:12px;margin-top:2px">' + (val - cost >= 0 ? '+' : '−') + money(Math.abs(val - cost)).replace('−', '') + ' total (' + pct(cost ? (val / cost - 1) * 100 : 0) + ')</div></div>' +
-        rangeBtns('range', S.range) + '</div><div style="margin-top:10px">' + lineChart(ser, { h: 70, label: 'Value of current holdings, ' + S.range }) + '</div></section>';
+        '</div><div style="margin-top:12px">' + lineChart(ser.c, { h: 84, label: 'Value of current holdings, ' + S.range }) + '</div>' +
+        (ser.k.length ? '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px" class="muted mono"><span>' + esc(rangeLabel(ser.k[0], ser.intraday, S.range)) + '</span><span class="' + cls(rch) + '">' + (rch == null ? '' : pct(rch, 2) + ' ' + RANGE_NAME[S.range]) + '</span><span>' + esc(rangeLabel(ser.k[ser.k.length - 1], ser.intraday, S.range)) + '</span></div>' : '') +
+        '<div style="margin-top:10px">' + rangeBtns('range', S.range) + '</div><p class="foot" style="text-align:left;margin:6px 0 0">Chart shows today’s share counts at past prices.</p></section>';
     } else {
       h += '<section class="empty"><h3>Start with your first lot</h3><p>Add a position and the reason you bought it. Converge tracks the price, the news and your thesis together.</p><button class="btn pri sm" data-act="add">' + ic('plus', 16) + 'Add a lot</button></section>';
     }
@@ -295,10 +331,12 @@
     return topBar('Converge', '<div style="display:flex;align-items:center;gap:2px"><button class="iconbtn" data-act="settings" aria-label="Settings">' + ic('gear', 20) + '</button>' + sigToggle() + '</div>') + '<main class="main" id="main">' + h + '</main>';
   }
   function fmtShares(n) { return (Math.round(n * 1000) / 1000).toLocaleString('en-US'); }
-  function rangeBtns(act, cur) { return '<div class="ranges">' + ['1M', '6M', '1Y'].map(function (r) { return '<button data-act="' + act + '" data-r="' + r + '" aria-pressed="' + (cur === r) + '">' + r + '</button>'; }).join('') + '</div>'; }
+  function rangeBtns(act, cur) { return '<div class="ranges wide">' + RANGES.map(function (r) { return '<button data-act="' + act + '" data-r="' + r + '" aria-pressed="' + (cur === r) + '">' + r + '</button>'; }).join('') + '</div>'; }
+  function isNeutral(s) { return s && s.bull >= 45 && s.bull <= 55; }
   function sentBar(s, small) {
     if (!s) return '';
-    return '<div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span class="up">' + s.bull + '% Bull</span><span class="down">' + s.bear + '% Bear</span></div><div class="bar" style="height:' + (small ? 8 : 10) + 'px"><div class="b" style="width:' + s.bull + '%"></div><div class="s"></div></div></div>';
+    var n = isNeutral(s);
+    return '<div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span class="' + (n ? 'neu' : 'up') + '">' + s.bull + '% Bull</span>' + (n ? '<span class="neu" style="font-weight:600">Neutral</span>' : '') + '<span class="' + (n ? 'neu' : 'down') + '">' + s.bear + '% Bear</span></div><div class="bar' + (n ? ' neutral' : '') + '" style="height:' + (small ? 8 : 10) + 'px"><div class="b" style="width:' + s.bull + '%"></div><div class="s"></div></div></div>';
   }
   function alertCard(a) {
     var seen = S.seenAlerts.indexOf(alertKey(a)) >= 0;
@@ -345,14 +383,14 @@
     var row = mine.slice(); if (row.indexOf(sel) < 0) row.unshift(sel);
     var head = '<header class="subhead" style="gap:6px"><div class="tick-row" style="flex:1;padding-left:8px">' + row.map(function (t) { return '<button class="chip" data-act="sel" data-t="' + t + '" aria-pressed="' + (t === sel) + '">' + t + '</button>'; }).join('') + '</div><button class="iconbtn" data-act="pick" data-mode="battle" aria-label="Find a ticker">' + ic('search', 20) + '</button></header>';
     if (!x) return head + '<main class="main"><div class="empty"><h3>Pick a ticker</h3></div></main>';
-    var s = x.sentiment, r = rangeSlice(x, UI.battleRange);
+    var s = x.sentiment, r = rangeSlice(x, UI.battleRange), neu = isNeutral(s), brch = rangeChange(r.c);
     var h = '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px"><div style="min-width:0"><h1 class="disp" style="margin:0;font-size:26px;font-weight:700;letter-spacing:-.4px;line-height:1.15">' + esc(x.name || sel) + '</h1><div class="muted" style="font-size:12px;margin-top:2px">' + sel + ' · ' + esc(x.priceSource) + ' · ' + ago(x.asOf) + '</div></div>' +
       '<div style="text-align:right;flex:none"><div class="mono" style="font-size:22px">' + money(x.price) + '</div><div class="mono ' + cls(x.changePct) + '" style="font-size:12px">' + (x.changePct >= 0 ? '▲ +' : '▼ ') + money(Math.abs(x.price - x.prevClose)) + ' (' + Math.abs(x.changePct).toFixed(1) + '%)</div></div></div>';
     // slider
-    h += '<section class="card"><div class="sechead" style="margin-bottom:12px"><h2 class="eyebrow">Consensus balance</h2><span class="muted" style="font-size:11px">' + s.n + ' stories · weighted</span></div>' +
-      '<div class="slider"><button class="bl" style="width:' + clamp(s.bull, 18, 82) + '%" data-act="side" data-side="bull" aria-pressed="' + (UI.side === 'bull') + '" aria-label="Bull case, ' + s.bull + ' percent"><span class="pct">' + s.bull + '%</span><span class="sd">BULLISH</span></button>' +
+    h += '<section class="card"><div class="sechead" style="margin-bottom:12px"><h2 class="eyebrow">Consensus balance</h2>' + (neu ? '<span class="status st-neutral">Neutral</span>' : '<span class="status ' + (s.bull > 55 ? 'st-ok">Leaning bullish' : 'st-broken">Leaning bearish') + '</span>') + '</div>' +
+      '<div class="slider' + (neu ? ' neutral' : '') + '"><button class="bl" style="width:' + clamp(s.bull, 18, 82) + '%" data-act="side" data-side="bull" aria-pressed="' + (UI.side === 'bull') + '" aria-label="Bull case, ' + s.bull + ' percent"><span class="pct">' + s.bull + '%</span><span class="sd">BULLISH</span></button>' +
       '<button class="br" data-act="side" data-side="bear" aria-pressed="' + (UI.side === 'bear') + '" aria-label="Bear case, ' + s.bear + ' percent"><span class="pct">' + s.bear + '%</span><span class="sd">BEARISH</span></button></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:8px" class="muted"><span>News tone this week: ' + s.newsBull7d + '% bull (prior week ' + s.newsBullPrev7d + '%)</span><span>Tap a side</span></div>';
+      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:8px" class="muted"><span>News tone this week: ' + s.newsBull7d + '% bull (prior week ' + s.newsBullPrev7d + '%)</span><span>' + s.n + ' stories · tap a side</span></div>' + (neu ? '<p class="neu" style="margin:8px 0 0;font-size:12px">Bulls and bears are close to even (45–55% bullish counts as neutral).</p>' : '');
     if (UI.side === 'bull' || UI.side === 'bear') {
       var bull = UI.side === 'bull', ps = s.pillars[UI.side] || [];
       h += '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)"><div class="sechead"><span style="font-size:13px;font-weight:600" class="' + (bull ? 'up' : 'down') + '">' + (bull ? 'Bull' : 'Bear') + ' case: core pillars</span><button class="lnk" data-act="side" data-side="none" style="color:var(--muted)">Collapse</button></div><div class="list">' +
@@ -363,8 +401,8 @@
     }
     h += '</section>';
     // chart
-    h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Price</h2>' + rangeBtns('brange', UI.battleRange) + '</div>' + lineChart(r.c, { h: 120, label: sel + ' price, ' + UI.battleRange }) +
-      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px" class="muted mono"><span>' + esc(fmtDate(r.d[0])) + '</span><span>' + esc(fmtDate(r.d[r.d.length - 1])) + '</span></div></section>';
+    h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Price</h2><span class="mono ' + cls(brch) + '" style="font-size:12px">' + (brch == null ? '' : pct(brch, 2) + ' ' + RANGE_NAME[UI.battleRange]) + '</span></div>' + lineChart(r.c, { h: 120, label: sel + ' price, ' + UI.battleRange }) +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px" class="muted mono"><span>' + esc(rangeLabel(r.k[0], r.intraday, UI.battleRange)) + '</span><span>' + esc(rangeLabel(r.k[r.k.length - 1], r.intraday, UI.battleRange)) + '</span></div><div style="margin-top:10px">' + rangeBtns('brange', UI.battleRange) + '</div></section>';
     // drivers
     h += '<section class="card drv"><h2 class="eyebrow" style="margin-bottom:10px">What drives the score</h2><div style="display:flex;flex-direction:column;gap:12px">' + s.drivers.map(function (d) {
       return '<div><div class="r"><span>' + esc(d.label) + (d.key === 'quant' && Object.keys(x.grades).length < 5 ? ' (' + Object.keys(x.grades).length + ' of 5 available)' : '') + '</span><span class="mono ' + (d.bull >= 50 ? 'up' : 'down') + '" style="white-space:nowrap">' + d.bull + '% bull · w ' + d.w + '%</span></div><div class="track"><i style="width:' + d.bull + '%"></i></div></div>';

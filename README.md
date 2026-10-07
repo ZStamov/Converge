@@ -12,7 +12,7 @@ An investing command center that keeps your portfolio, your reasons for owning e
 | **Battleground** | A bull vs. bear consensus bar on every ticker. Tap a side to see the strongest arguments for it. Also shows score drivers, five quant grades and price history. |
 | **Vault** | Every lot with its thesis, pinned evidence, target exit, horizon and kill criteria. Before you sell, a reflection screen puts your original reasoning next to today's numbers and logs why you sold. A performance view tracks your decision record. |
 | **Divergence alerts** | Flags stocks whose price moves against their fundamentals or news tone (for example, down 4% this week while the quant score is at a 6-month high). On phones these arrive as notifications. |
-| **Executive Flash Briefing** | Swipe through the last 72 hours of items that affect only your holdings and watchlist, then listen in a natural neural voice (Piper TTS clips rendered hourly in CI; on-device best voice as fallback). |
+| **Executive Flash Briefing** | Swipe through the last 72 hours of items that affect only your holdings and watchlist, then listen in a human-sounding neural voice (Kokoro TTS clips rendered hourly in CI; set `briefingVoice` in `config/universe.json`, e.g. `af_heart` or `am_michael`; on-device best voice as fallback). |
 | **Scanner** | Finviz-style screener over the S&P 500: Descriptive, Fundamental and Technical filters with Finviz's option lists, signals (Top Gainers, New High, Unusual Volume, Oversold, Golden cross…), five table views, sorting and saved screens. |
 | **Source credibility** | Each news outlet earns a Prediction Accuracy Score: its positive and negative headlines are checked against the stock's return vs. the S&P 500 five trading days later. |
 
@@ -28,7 +28,7 @@ A GitHub Actions job (`.github/workflows/data.yml`) runs every hour. It writes `
 | Reuters (via Google News), CNBC (RSS and via Google News), Google News, Yahoo Finance RSS | Headlines, tone, story clustering, source track records |
 | Stocktwits public API | Retail crowd sentiment (bullish/bearish tags, post rate, watchers) |
 | S&P 500 list, Yahoo Finance spark/chart, Nasdaq screener API, SEC XBRL frames | Scanner rows |
-| Piper (open-source neural TTS, en_US lessac voice) | Briefing audio |
+| Kokoro (open-source neural TTS, Apache-2.0) | Briefing audio |
 
 Finviz, StockAnalysis and X are linked from every ticker but not pulled: StockAnalysis's terms forbid automated collection, Finviz restricts automated access, and X's API is paid.
 | SEC EDGAR submissions | Recent 10-K, 10-Q, 8-K, Form 4 and other filings |
