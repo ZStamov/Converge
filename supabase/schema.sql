@@ -51,11 +51,41 @@ create table if not exists public.forum_posts (
 );
 create index if not exists forum_posts_ticker_created on public.forum_posts (ticker, created_at desc);
 
+-- membership tiers: everyone signs up as 'free'; only premium members can post
+create table if not exists public.profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  tier text not null default 'free' check (tier in ('free', 'premium')),
+  premium_until timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table public.profiles enable row level security;
+drop policy if exists "members read their own profile" on public.profiles;
+create policy "members read their own profile" on public.profiles for select to authenticated using (id = auth.uid());
+-- no insert/update policies: tiers change only from the dashboard, SQL, or a payment webhook using the service role
+
+create or replace function public.converge_new_user() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles (id) values (new.id) on conflict (id) do nothing;
+  return new;
+end $$;
+drop trigger if exists converge_new_user on auth.users;
+create trigger converge_new_user after insert on auth.users for each row execute function public.converge_new_user();
+insert into public.profiles (id) select id from auth.users on conflict (id) do nothing;
+
+create or replace function public.converge_is_premium(uid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.profiles p where p.id = uid and p.tier = 'premium' and (p.premium_until is null or p.premium_until > now()));
+$$;
+
 alter table public.forum_posts enable row level security;
 drop policy if exists "anyone can read posts" on public.forum_posts;
 create policy "anyone can read posts" on public.forum_posts for select using (true);
 drop policy if exists "signed-in users post as themselves" on public.forum_posts;
 create policy "signed-in users post as themselves" on public.forum_posts for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists "premium members post as themselves" on public.forum_posts;
+drop policy if exists "signed-in users post as themselves" on public.forum_posts;
+create policy "premium members post as themselves" on public.forum_posts for insert to authenticated with check (user_id = auth.uid() and public.converge_is_premium(auth.uid()));
 drop policy if exists "authors delete their posts" on public.forum_posts;
 create policy "authors delete their posts" on public.forum_posts for delete to authenticated using (user_id = auth.uid());
 
@@ -67,6 +97,9 @@ language plpgsql security definer set search_path = public as $$
 begin
   new.user_id := auth.uid();
   new.body := btrim(new.body);
+  if not public.converge_is_premium(new.user_id) then
+    raise exception 'Posting is a Premium feature.' using errcode = 'P0001';
+  end if;
   if public.converge_is_profane(new.body) or public.converge_is_profane(new.display_name) then
     raise exception 'Post blocked: please keep the language civil.' using errcode = 'P0001';
   end if;

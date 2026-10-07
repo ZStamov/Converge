@@ -6,10 +6,11 @@
   var CFG = {
     remote: 'https://raw.githubusercontent.com/ZStamov/converge/data/market.json',
     bundled: 'data/market.json',
+    pulse: 'https://raw.githubusercontent.com/ZStamov/converge/pulse/pulse.json',
     repo: 'https://github.com/ZStamov/converge'
   };
   var KEY = 'converge.v1';
-  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null, auth: null };
+  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null, auth: null, demoTier: 'free' };
 
   // ------------------------------------------------------------------ utils
   var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -281,7 +282,7 @@
   // ------------------------------------------------------------------ screens
   function scrCommand() {
     var hs = holdings(), sel = S.sel && T(S.sel) ? S.sel : firstTicker(), x = T(sel);
-    var h = '';
+    var h = pulseCard();
     if (S.signal) h += '<div class="banner">' + ic('bolt', 14) + 'News, opinion and commentary hidden. Filings and quant updates only.</div>';
     // portfolio
     if (hs.length) {
@@ -663,7 +664,8 @@
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">News &amp; data sources</h2>' + Object.keys(ss).map(function (k) { var x = ss[k], ok = x.ok > 0; return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>' + esc(k) + '</span><span class="mono ' + (ok ? 'up' : 'down') + '">' + (ok ? 'Live · ' + x.items + ' items' : 'Unavailable') + '</span></div>'; }).join('') +
       '<p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.5">Finviz, StockAnalysis and X open as links from each ticker. Their terms or paid APIs don’t allow pulling their data into the app.</p></section>';
     if (isNative && plugin('LocalNotifications')) h += '<button class="rowtoggle" data-act="notify" aria-pressed="' + S.notify + '"><span><span class="t1">Divergence alerts</span><span class="t2">Notify me when a stock I hold or watch diverges</span></span><span class="sw"></span></button>';
-    if (forumReady()) h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Discussion account</h2>' + (S.auth ? '<p style="margin:0 0 10px;font-size:13px">Signed in as <b>' + esc(S.auth.name || S.auth.user.email) + '</b></p><button class="btn sm" data-act="forum-signout">Sign out</button>' : '<button class="btn sm pri" data-act="forum-auth">Sign in or create an account</button>') + '</section>';
+    if (accountsReady()) h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Account &amp; plan</h2>' + (S.auth ? '<p style="margin:0 0 4px;font-size:13px">Signed in as <b>' + esc(S.auth.name || S.auth.user.email) + '</b></p><p style="margin:0 0 10px;font-size:13px">Plan: <b class="' + (isPremium() ? 'up' : '') + '">' + planName() + '</b>' + (isPremium() && S.auth.premium_until ? ' · until ' + esc(new Date(S.auth.premium_until).toLocaleDateString()) : '') + '</p><div class="btnrow">' + (isPremium() ? '' : '<button class="btn sm pri" data-act="subscribe">Upgrade to Premium</button>') + '<button class="btn sm" data-act="tier-refresh">Refresh plan</button><button class="btn sm" data-act="forum-signout">Sign out</button></div>' : '<p class="muted" style="margin:0 0 10px;font-size:13px">Free accounts can read the discussions. Premium adds strategy scanners and posting.</p><button class="btn sm pri" data-act="forum-auth">Sign in or create an account</button>') + '</section>';
+    else h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Plan preview</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (window.__CONVERGE_ARTIFACT__ ? 'This page has no account system, so sign-in, subscriptions and posting live in the Converge app and website.' : 'Accounts aren’t connected yet (see the README’s Supabase steps).') + ' Switch below to see what each plan unlocks.</p></section><button class="rowtoggle" data-act="demo-tier" aria-pressed="' + (S.demoTier === 'premium') + '"><span><span class="t1">Preview Premium</span><span class="t2">Currently showing the ' + planName() + ' plan</span></span><span class="sw"></span></button>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Muted sources</h2>' + (S.muted.length ? S.muted.map(function (m) { return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0"><span>' + esc(m) + '</span><button class="btn sm" data-act="mute" data-name="' + esc(m) + '">Unmute</button></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">None. Mute a source from its profile.</p>') + '</section>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Lots, theses and your watchlist are stored only on this device.</p><button class="btn sm dng" data-act="reset">' + (UI.confirmReset ? 'Tap again to erase everything' : 'Erase all my data') + '</button></section>';
     h += '<p class="foot">Converge · Covers ' + D.universe.length + ' tickers · <a href="' + CFG.repo + '" target="_blank" rel="noopener noreferrer">Source code</a><br>Information only, not investment advice.</p>';
@@ -1068,18 +1070,20 @@
   function forumCard(t) {
     if (!forumReady()) {
       var msg = window.__CONVERGE_ARTIFACT__ ? 'The discussion is available in the Converge app and on the Converge website, where you can sign in.' : 'The discussion board isn’t connected yet. The owner needs to add the Supabase settings described in the README.';
-      return '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Discussion · ' + esc(t) + '</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + msg + '</p></section>';
+      return '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Discussion · ' + esc(t) + '</h2>' + (isPremium() ? '' : '<button class="upsell" data-act="subscribe" data-why="forum" style="margin-bottom:8px">' + ic('bolt', 16) + '<span>Want to comment? Posting is for Premium members. <b>Subscribe to Premium</b></span></button>') + '<p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + msg + '</p></section>';
     }
     if (FORUM.posts[t] === undefined && !FORUM.loading[t]) setTimeout(function () { loadPosts(t); }, 0);
     return '<section class="card" id="forumbox" data-t="' + esc(t) + '">' + forumInner(t) + '</section>';
   }
   function forumInner(t) {
     var h = '<div class="sechead"><h2 class="eyebrow">Discussion · ' + esc(t) + '</h2><button class="lnk" data-act="forum-refresh" data-t="' + esc(t) + '" style="color:var(--muted)">Refresh</button></div>';
-    if (S.auth) {
+    if (S.auth && !isPremium()) {
+      h += '<button class="upsell" data-act="subscribe" data-why="forum">' + ic('bolt', 16) + '<span>Want to join the conversation? Commenting is for Premium members. <b>Subscribe to Premium</b></span></button>';
+    } else if (!S.auth) {
+      h += '<button class="upsell" data-act="subscribe" data-why="forum">' + ic('bolt', 16) + '<span>Want to comment? Posting is for Premium members. <b>Subscribe to Premium</b></span></button>' + (accountsReady() ? '<button class="btn sm" data-act="forum-auth" style="width:100%;margin-top:8px">Already Premium? Sign in</button>' : '');
+    } else {
       h += '<div class="field"><label for="forum-text">Post as <b>' + esc(S.auth.name || 'you') + '</b></label><textarea class="in" id="forum-text" rows="3" maxlength="1000" placeholder="Share your take on ' + esc(t) + '. Keep it civil.">' + esc(FORUM.draft) + '</textarea></div>' +
         '<div class="btnrow" style="margin-top:8px"><button class="btn sm" data-act="forum-signout">Sign out</button><button class="btn sm pri" data-act="forum-post" data-t="' + esc(t) + '"' + (FORUM.busy ? ' disabled' : '') + '>' + (FORUM.busy ? 'Posting…' : 'Post') + '</button></div>';
-    } else {
-      h += '<button class="btn sm pri" data-act="forum-auth" style="width:100%">Sign in to comment</button>';
     }
     if (FORUM.error[t]) h += '<p class="note" style="margin:10px 0 0">' + esc(FORUM.error[t]) + '</p>';
     var posts = FORUM.posts[t];
@@ -1124,7 +1128,7 @@
       p.then(function (res) {
         FORUM.busy = false; f.password = '';
         if (res === 'confirm') { FORUM.mode = 'signin'; FORUM.authMsg = 'Check your email to confirm your account, then sign in.'; render(); return; }
-        UI.sheet = null; toast('Signed in as ' + (S.auth.name || email)); render();
+        UI.sheet = null; toast('Signed in as ' + (S.auth.name || email)); render(); fetchTier();
       }).catch(function (e) { FORUM.busy = false; FORUM.authMsg = /invalid login/i.test(e.message) ? 'Wrong email or password.' : e.message; render(); });
     },
     'forum-signout': function () { var tok = S.auth; S.auth = null; save(); if (tok) sb('/auth/v1/logout', { method: 'POST', auth: false }).catch(function () { }); toast('Signed out'); render(); },
@@ -1134,10 +1138,11 @@
       if (isProfane(body)) { FORUM.error[t] = 'Your post contains language that isn’t allowed here. Please rephrase it.'; return refreshForum(t); }
       FORUM.busy = true; FORUM.error[t] = null; refreshForum(t);
       ensureSession().then(function (sess) {
+        if (sess && !isPremium()) { FORUM.busy = false; UI.sheet = { kind: 'subscribe', why: 'forum' }; render(); return; }
         if (!sess) { FORUM.busy = false; FORUM.error[t] = 'Your session expired. Please sign in again.'; render(); return; }
         return sb('/rest/v1/forum_posts', { method: 'POST', auth: true, prefer: 'return=representation', body: { ticker: t, body: body, display_name: sess.name || 'Investor' } })
           .then(function (rows) { FORUM.draft = ''; FORUM.busy = false; FORUM.posts[t] = (rows || []).concat(FORUM.posts[t] || []); refreshForum(t); toast('Posted'); });
-      }).catch(function (e) { FORUM.busy = false; FORUM.error[t] = /civil|blocked|language/i.test(e.message) ? 'Your post contains language that isn’t allowed here. Please rephrase it.' : e.message; refreshForum(t); });
+      }).catch(function (e) { FORUM.busy = false; if (/premium/i.test(e.message)) { if (S.auth) S.auth.tier = 'free'; save(); UI.sheet = { kind: 'subscribe', why: 'forum' }; render(); return; } FORUM.error[t] = /civil|blocked|language/i.test(e.message) ? 'Your post contains language that isn’t allowed here. Please rephrase it.' : e.message; refreshForum(t); });
     },
     'forum-del': function (el) {
       var t = el.dataset.t, id = el.dataset.id;
@@ -1198,22 +1203,142 @@
       note: 'Your playbook: ~70%+ win rate over multi-year periods, low beta.' }
   ];
   function presetPreds() {
-    var st = scanState(), on = st.presets || {}, preds = [];
+    var st = scanState(), on = isPremium() ? (st.presets || {}) : {}, preds = [];
     PRESETS.forEach(function (p) { if (!on[p.id]) return; p.crit.forEach(function (c) { if (c[1] && !(c[2] && !SC.fundamentals)) preds.push(c[1]); }); });
     return preds;
   }
   function presetsCard() {
-    var st = scanState(), on = st.presets || {}, open = UI.presetOpen;
-    return '<section class="card" style="padding:12px"><h2 class="eyebrow" style="margin:2px 2px 8px">Strategy scanners</h2>' + PRESETS.map(function (p) {
+    var st = scanState(), prem = isPremium(), on = prem ? (st.presets || {}) : {}, open = UI.presetOpen;
+    return '<section class="card" style="padding:12px"><div class="sechead" style="margin:2px 2px 8px"><h2 class="eyebrow">Strategy scanners</h2><span class="badge-prem">' + (prem ? 'PREMIUM' : 'PREMIUM · LOCKED') + '</span></div>' + (prem ? '' : '<button class="upsell" data-act="subscribe" data-why="preset">' + ic('bolt', 16) + '<span>Subscribe to Premium to switch on the 5 strategy scanners. You can still read each one’s criteria.</span></button>') + PRESETS.map(function (p) {
       var active = !!on[p.id];
       var rows = active || open === p.id ? '<div class="pdet">' + p.crit.map(function (c) {
         var avail = !!c[1], fundOff = c[2] && !SC.fundamentals;
         return '<div class="pcrit"><span class="' + (!avail || fundOff ? 'dim' : 'up') + '">' + (!avail || fundOff ? '○' : '●') + '</span><span>' + esc(c[0]) + (!avail ? ' <em class="dim">· not in free data, skipped</em>' : fundOff ? ' <em class="dim">· needs SEC data, skipped</em>' : '') + '</span></div>';
       }).join('') + '<p class="prule"><b>Rules:</b> ' + esc(p.rules) + '</p><p class="prule muted">' + esc(p.note) + '</p></div>' : '';
-      return '<div class="preset' + (active ? ' on' : '') + '"><button class="rowtoggle" data-act="preset" data-id="' + p.id + '" aria-pressed="' + active + '" style="border:0;background:none;padding:6px 2px;min-height:48px"><span><span class="t1">' + esc(p.name) + '</span><span class="t2">' + esc(p.horizon) + '</span></span><span class="sw"></span></button>' +
+      return '<div class="preset' + (active ? ' on' : '') + '"><button class="rowtoggle" data-act="preset" data-id="' + p.id + '" aria-pressed="' + active + '" style="border:0;background:none;padding:6px 2px;min-height:48px"><span><span class="t1">' + esc(p.name) + '</span><span class="t2">' + esc(p.horizon) + '</span></span><span class="sw' + (prem ? '' : ' locked') + '"></span></button>' +
         '<button class="lnk pmore" data-act="preset-info" data-id="' + p.id + '">' + (active || open === p.id ? 'Criteria' : 'Criteria ▾') + '</button>' + rows + '</div>';
     }).join('') + '</section>';
   }
+
+  // ------------------------------------------------------------------ market pulse (today's mood from 5-minute bars, refreshed every 5 minutes)
+  var PULSE = { d: null, src: null, at: 0, loading: false };
+  var PULSE_IDX = ['SPY', 'QQQ', 'DIA', 'IWM', '^VIX'];
+  var PULSE_SEC = { XLK: 'Technology', XLF: 'Financials', XLV: 'Health Care', XLY: 'Consumer Discretionary', XLP: 'Consumer Staples', XLE: 'Energy', XLI: 'Industrials', XLU: 'Utilities', XLB: 'Materials', XLRE: 'Real Estate', XLC: 'Communication Services' };
+  function validPulse(p) { return p && p.kind === 'pulse' && p.index && p.index.SPY && p.index.SPY.c && p.index.SPY.c.length; }
+  function pulseLive() {
+    // phones: straight from Yahoo (native HTTP has no CORS limits)
+    function one(sym) {
+      return fetchJson('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(sym) + '?range=1d&interval=5m&includePrePost=false', 9000).then(function (j) {
+        var r = j && j.chart && j.chart.result && j.chart.result[0], o = parseYahoo(j); if (!r || !o) throw new Error('empty');
+        o.prevClose = r.meta && (r.meta.chartPreviousClose != null ? r.meta.chartPreviousClose : r.meta.previousClose);
+        o.price = r.meta && r.meta.regularMarketPrice != null ? r.meta.regularMarketPrice : o.c[o.c.length - 1];
+        o.time = (r.meta && r.meta.regularMarketTime) || o.t[o.t.length - 1];
+        return o;
+      });
+    }
+    var out = { kind: 'pulse', generatedAt: new Date().toISOString(), source: 'Yahoo Finance (5-minute bars, live)', index: {}, sectors: {} };
+    var jobs = PULSE_IDX.map(function (s) { return one(s).then(function (o) { out.index[s] = o; }).catch(function () { }); })
+      .concat(Object.keys(PULSE_SEC).map(function (s) { return one(s).then(function (o) { out.sectors[s] = { name: PULSE_SEC[s], prevClose: o.prevClose, price: o.price, c: o.c }; }).catch(function () { }); }));
+    return Promise.all(jobs).then(function () { if (!validPulse(out)) throw new Error('no SPY'); return out; });
+  }
+  function loadPulse() {
+    if (PULSE.loading) return;
+    PULSE.loading = true;
+    var snap = window.__CONVERGE_PULSE__;
+    var p = isNative ? pulseLive().then(function (d) { return { d: d, src: 'live' }; })
+        : fetchJson(CFG.pulse + '?t=' + Math.floor(Date.now() / 60000)).then(function (d) { if (!validPulse(d)) throw new Error('bad'); return { d: d, src: 'feed' }; });
+    p.catch(function () { if (validPulse(snap)) return { d: snap, src: 'snapshot' }; throw new Error('none'); })
+      .then(function (r) { if (!PULSE.d || Date.parse(r.d.generatedAt) >= Date.parse(PULSE.d.generatedAt)) { PULSE.d = r.d; PULSE.src = r.src; } PULSE.at = Date.now(); })
+      .catch(function () { })
+      .then(function () { PULSE.loading = false; refreshPulse(); });
+  }
+  function refreshPulse() { var box = document.getElementById('pulsebox'); if (box) box.outerHTML = pulseCard(); else if (D && NAV.tab === 'command' && !NAV.stack.length) render(); }
+  function chg(o) { return o && num(o.price) && num(o.prevClose) && o.prevClose ? (o.price / o.prevClose - 1) * 100 : null; }
+  function vwap(o) { var pv = 0, v = 0; for (var i = 0; i < o.c.length; i++) { var tp = (o.h[i] + o.l[i] + o.c[i]) / 3; pv += tp * (o.v[i] || 0); v += o.v[i] || 0; } return v ? pv / v : null; }
+  function computePulse(P) {
+    if (!validPulse(P)) return null;
+    var spy = P.index.SPY, parts = [];
+    function add(key, label, w, score, detail) { if (num(score)) parts.push({ key: key, label: label, w: w, s: clamp(score, 0, 100), detail: detail }); }
+    var c = chg(spy); add('chg', 'S&P 500 vs. yesterday’s close', 30, num(c) ? 50 + c * 25 : null, num(c) ? pct(c, 2) : '—');
+    var vs = []; ['SPY', 'QQQ'].forEach(function (s) { var o = P.index[s]; if (o && o.c && o.c.length) { var vw = vwap(o); if (vw) vs.push({ s: s, d: (o.c[o.c.length - 1] / vw - 1) * 100 }); } });
+    if (vs.length) { var avg = vs.reduce(function (a, b) { return a + b.d; }, 0) / vs.length; add('vwap', 'Price vs. VWAP (SPY, QQQ)', 20, 50 + avg * 50, vs.map(function (x) { return x.s + ' ' + pct(x.d, 2); }).join(' · ')); }
+    if (spy.c.length >= 2) { var k = Math.max(0, spy.c.length - 7), m = (spy.c[spy.c.length - 1] / spy.c[k] - 1) * 100; add('mom', 'Last 30 minutes', 20, 50 + m * 100, pct(m, 2)); }
+    var up = 0, tot = 0; ['SPY', 'QQQ', 'DIA', 'IWM'].forEach(function (s) { var x = chg(P.index[s]); if (num(x)) { tot++; if (x > 0) up++; } });
+    Object.keys(P.sectors || {}).forEach(function (s) { var x = chg(P.sectors[s]); if (num(x)) { tot++; if (x > 0) up++; } });
+    if (tot) add('breadth', 'Breadth (indexes + 11 sectors up)', 20, up / tot * 100, up + ' of ' + tot + ' up');
+    var vx = chg(P.index['^VIX']); add('vix', 'Volatility (VIX)', 10, num(vx) ? 50 - vx * 5 : null, num(vx) ? 'VIX ' + (P.index['^VIX'].price || 0).toFixed(2) + ' (' + pct(vx, 1) + ')' : '—');
+    var W = parts.reduce(function (a, p) { return a + p.w; }, 0); if (!W) return null;
+    var score = Math.round(parts.reduce(function (a, p) { return a + p.s * p.w; }, 0) / W);
+    var secs = Object.keys(P.sectors || {}).map(function (s) { return { s: s, name: P.sectors[s].name, ch: chg(P.sectors[s]) }; }).filter(function (x) { return num(x.ch); }).sort(function (a, b) { return b.ch - a.ch; });
+    var last = spy.time || spy.t[spy.t.length - 1], live = Date.now() / 1000 - last < 20 * 60;
+    return { score: score, mood: score >= 60 ? 'Bullish' : score <= 40 ? 'Bearish' : 'Neutral', parts: parts, spy: spy, spyChg: c, secs: secs, last: last, live: live };
+  }
+  function pulseSpark(o) {
+    var w = 330, h = 56, v = o.c, base = num(o.prevClose) ? o.prevClose : v[0];
+    var lo = Math.min.apply(null, v.concat([base])), hi = Math.max.apply(null, v.concat([base])), rg = hi - lo || 1;
+    var n = Math.max(v.length - 1, 77); // a full session is 78 five-minute bars
+    var y = function (x) { return (h - 4 - (x - lo) / rg * (h - 8)).toFixed(1); };
+    var d = v.map(function (x, i) { return (i ? 'L' : 'M') + (i / n * w).toFixed(1) + ' ' + y(x); }).join(' ');
+    var col = v[v.length - 1] >= base ? 'var(--bull)' : 'var(--bear)';
+    return '<svg class="chart" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" role="img" aria-label="S&amp;P 500 (SPY) today, 5-minute chart" style="height:' + h + 'px"><line x1="0" x2="' + w + '" y1="' + y(base) + '" y2="' + y(base) + '" stroke="var(--muted)" stroke-dasharray="3 4" stroke-width="1" vector-effect="non-scaling-stroke"></line><path d="' + d + '" stroke="' + col + '" stroke-width="2" fill="none" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path></svg>';
+  }
+  function pulseCard() {
+    var R = PULSE.d && computePulse(PULSE.d);
+    if (!R) return '<section class="card pulse-card" id="pulsebox"><h2 class="eyebrow">Market sentiment today</h2><p class="muted" style="margin:6px 0 0;font-size:13px">' + (PULSE.loading || !PULSE.at ? 'Loading the 5-minute market data…' : 'Market data isn’t available right now. Retrying every 5 minutes.') + '</p></section>';
+    var tone = R.mood === 'Bullish' ? 'bull' : R.mood === 'Bearish' ? 'bear' : 'neu';
+    var when = new Date(R.last * 1000).toLocaleString('en-US', { weekday: R.live ? undefined : 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+    var open = UI.pulseOpen;
+    var h = '<section class="card pulse-card ' + tone + '" id="pulsebox"><button class="pulse-head" data-act="pulse-open" aria-expanded="' + !!open + '">' +
+      '<span><span class="eyebrow">Market sentiment today</span><span class="pulse-mood">' + R.mood + ' <span class="mono">' + R.score + '</span><span class="muted" style="font-size:12px;font-weight:400">/100</span></span></span>' +
+      '<span style="text-align:right"><span class="mono" style="display:block;font-size:13px">S&amp;P 500 <span class="' + cls(R.spyChg) + '">' + arrowPct(R.spyChg) + '</span></span><span class="muted" style="font-size:11px">' + (R.live ? '<i class="live-dot"></i>Live · ' : 'Market closed · ') + esc(when) + ' ET</span></span></button>' +
+      '<div class="pulse-meter" aria-hidden="true"><i style="left:' + R.score + '%"></i></div>' +
+      '<div style="margin-top:8px">' + pulseSpark(R.spy) + '</div>';
+    if (open) {
+      h += '<div class="pulse-parts">' + R.parts.map(function (p) { return '<div class="pp"><span>' + esc(p.label) + '<br><span class="muted mono" style="font-size:11px">' + esc(p.detail) + '</span></span><span class="mono ' + (p.s >= 60 ? 'up' : p.s <= 40 ? 'down' : 'neu') + '">' + Math.round(p.s) + '</span></div>'; }).join('') + '</div>';
+      if (R.secs.length) h += '<div class="pulse-secs">' + R.secs.map(function (s) { return '<span class="' + cls(s.ch) + '" title="' + esc(s.name) + '">' + esc(s.s) + ' ' + pct(s.ch, 1) + '</span>'; }).join('') + '</div>';
+      h += '<p class="foot" style="text-align:left;margin:8px 0 0">Score: 30% S&amp;P 500 change, 20% price vs. VWAP, 20% last-30-minute momentum, 20% breadth, 10% VIX. 60+ is bullish, 40 or less bearish. Source: ' + esc(PULSE.d.source || 'Yahoo Finance') + (PULSE.src === 'snapshot' ? ' (copy built into this page)' : '') + '.</p>';
+    }
+    h += '<p class="foot" style="text-align:left;margin:6px 0 0">Updated ' + esc(ago(PULSE.d.generatedAt)) + ' · refreshes every 5 min' + (open ? '' : ' · tap for details') + '</p></section>';
+    return h;
+  }
+
+  // ------------------------------------------------------------------ membership tiers (free / premium)
+  function accountsReady() { return forumReady(); }
+  function isPremium() {
+    if (!accountsReady()) return S.demoTier === 'premium'; // no account system in this copy: labeled preview switch in Settings
+    var a = S.auth; if (!a || a.tier !== 'premium') return false;
+    return !a.premium_until || Date.parse(a.premium_until) > Date.now();
+  }
+  function fetchTier() {
+    if (!accountsReady() || !S.auth) return Promise.resolve(null);
+    return ensureSession().then(function (sess) {
+      if (!sess) return null;
+      return sb('/rest/v1/profiles?select=tier,premium_until&id=eq.' + encodeURIComponent(sess.user.id), { auth: true }).then(function (rows) {
+        var r = rows && rows[0]; if (!S.auth) return null;
+        S.auth.tier = (r && r.tier) || 'free'; S.auth.premium_until = (r && r.premium_until) || null; save(); render(); return S.auth.tier;
+      });
+    }).catch(function () { return null; });
+  }
+  function planName() { return isPremium() ? 'Premium' : 'Free'; }
+  function subscribeSheet() {
+    var price = FCONF.premiumPrice, url = safeUrl(FCONF.premiumUrl), why = UI.sheet.why;
+    var h = '<h2 class="disp" style="margin:0 0 4px;font-size:22px">Converge Premium</h2><p class="muted" style="margin:0 0 12px;font-size:13px">' + (why === 'forum' ? 'Commenting in the stock discussions is a Premium feature.' : why === 'preset' ? 'Strategy scanners are a Premium feature.' : 'Unlock the tools active traders use most.') + '</p>' +
+      '<div class="scroll" style="padding-top:0"><div class="plan-cmp"><div><b>Free</b><ul><li>Command Center, Signal Feed, Battleground, Vault</li><li>Market sentiment, candles, alerts, briefing</li><li>Full scanner with filters and signals</li><li>Read the stock discussions</li></ul></div>' +
+      '<div class="prem"><b>Premium</b>' + (price ? '<span class="mono" style="float:right">' + esc(price) + '</span>' : '') + '<ul><li>Everything in Free</li><li>5 strategy scanners: scalping, short swing, medium swing, position/trend, multi-year value</li><li>Post in the discussion under every stock</li></ul></div></div></div>';
+    if (accountsReady() && !S.auth) return h + '<p class="muted" style="font-size:13px;margin:12px 0 0">Create a free account or sign in first. Premium is added to your account.</p><button class="btn pri" data-act="forum-auth" style="margin-top:10px">Sign in or create an account</button>';
+    if (url && accountsReady()) {
+      var full = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'client_reference_id=' + encodeURIComponent(S.auth.user.id) + '&prefilled_email=' + encodeURIComponent(S.auth.user.email || '');
+      return h + '<a class="btn pri" href="' + esc(full) + '" target="_blank" rel="noopener" style="margin-top:12px;text-decoration:none">Subscribe' + (price ? ' · ' + esc(price) : '') + '</a><button class="btn sm" data-act="tier-refresh" style="margin-top:8px;border:0;color:var(--accent)">I’ve subscribed: refresh my plan</button>';
+    }
+    return h + '<p class="note" style="margin:12px 0 0">Online checkout isn’t open yet. ' + (accountsReady() ? 'Ask the Converge team to upgrade your account, then tap Refresh.' : 'This copy of Converge has no account system, so you can preview Premium in Settings.') + '</p>' +
+      (accountsReady() ? '<button class="btn sm" data-act="tier-refresh" style="margin-top:8px">Refresh my plan</button>' : '<button class="btn sm pri" data-act="settings" style="margin-top:8px">Open Settings</button>');
+  }
+  var TA = {
+    'pulse-open': function () { UI.pulseOpen = !UI.pulseOpen; refreshPulse(); },
+    subscribe: function (el) { UI.sheet = { kind: 'subscribe', why: el && el.dataset.why }; render(); },
+    'tier-refresh': function () { fetchTier().then(function (t) { toast(t ? 'Your plan: ' + planName() : 'Couldn’t check your plan. Try again.'); if (isPremium() && UI.sheet && UI.sheet.kind === 'subscribe') { UI.sheet = null; render(); } }); },
+    'demo-tier': function () { S.demoTier = S.demoTier === 'premium' ? 'free' : 'premium'; save(); toast('Previewing the ' + planName() + ' plan'); render(); }
+  };
 
   // ---- sheets (picker, pin)
   function sheetHtml() {
@@ -1242,6 +1367,7 @@
     }
     if (sh.kind === 'scanrow') body = SC ? scanRowSheet(sh.t) : '';
     if (sh.kind === 'auth') body = authSheet();
+    if (sh.kind === 'subscribe') body = subscribeSheet();
     return '<div class="sheet" data-act="sheet-bg"><div class="panel" role="dialog" aria-modal="true" data-stop="1"><div class="grab"></div>' + body + '</div></div>';
   }
 
@@ -1394,7 +1520,7 @@
     cmode: function (el) { UI.cmode = el.dataset.m; render(); },
     czoom: function (el) { var Ns = [30, 60, 120, 240], i = Ns.indexOf(UI.cN || 60); i = el.dataset.z === 'in' ? Math.max(0, i - 1) : Math.min(Ns.length - 1, i + 1); UI.cN = Ns[i]; UI.cSel = null; refreshCandleBox(); },
     cpan: function (el) { var n = UI.cN || 60; UI.cSel = null; if (el.dataset.p === 'end') UI.cOff = 0; else UI.cOff = Math.max(0, (UI.cOff || 0) + (el.dataset.p === 'back' ? Math.round(n / 2) : -Math.round(n / 2))); refreshCandleBox(); },
-    preset: function (el) { var st = scanState(); st.presets = st.presets || {}; st.presets[el.dataset.id] = !st.presets[el.dataset.id]; if (st.presets[el.dataset.id]) st.view = 'strategy'; UI.scanLimit = 100; save(); render(); },
+    preset: function (el) { if (!isPremium()) { UI.sheet = { kind: 'subscribe', why: 'preset' }; return render(); } var st = scanState(); st.presets = st.presets || {}; st.presets[el.dataset.id] = !st.presets[el.dataset.id]; if (st.presets[el.dataset.id]) st.view = 'strategy'; UI.scanLimit = 100; save(); render(); },
     'preset-info': function (el) { UI.presetOpen = UI.presetOpen === el.dataset.id ? null : el.dataset.id; render(); },
     'scan-refresh': function () { SC = null; SCS.error = null; loadScanner(true); },
     'scan-toggle': function () { var st = scanState(); st.open = !st.open; save(); render(); },
@@ -1418,6 +1544,7 @@
     'brief-play': function () { if (UI.speaking) stopSpeech(); else playBriefing(); }
   };
   Object.keys(FA).forEach(function (k) { A[k] = FA[k]; });
+  Object.keys(TA).forEach(function (k) { A[k] = TA[k]; });
   function finishDraft(withThesis) {
     var d = UI.draft, thesis = null;
     if (withThesis) {
@@ -1560,10 +1687,14 @@
     var LN0 = plugin('LocalNotifications');
     if (LN0) LN0.addListener('localNotificationActionPerformed', function (ev) { var t = ev && ev.notification && ev.notification.extra && ev.notification.extra.t; if (t && D) { NAV.stack = [{ name: 'alert', t: t }]; render(); } });
   }
-  window.__convergeTest = { isProfane: isProfane };
+  window.__convergeTest = { isProfane: isProfane, computePulse: computePulse, isPremium: isPremium };
   if (window.__CONVERGE_ARTIFACT__) document.documentElement.classList.add('in-artifact');
 
   render();
   loadData();
   setInterval(function () { if (document.visibilityState === 'visible') loadData(); }, 15 * 60000);
+  loadPulse();
+  setInterval(function () { if (document.visibilityState === 'visible') loadPulse(); }, 5 * 60000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && Date.now() - PULSE.at > 5 * 60000) loadPulse(); });
+  fetchTier();
 })();

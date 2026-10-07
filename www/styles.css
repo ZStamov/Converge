@@ -310,3 +310,37 @@ select.in:disabled { opacity: .45; }
 .pcrit em { font-style: normal; }
 .prule { margin: 6px 0 0; font-size: 12px; line-height: 1.45; }
 .lnk { background: none; border: 0; color: var(--accent); font-weight: 600; cursor: pointer; font-size: 13px; }
+
+/* market pulse banner */
+.pulse-card { border-left: 3px solid var(--neutral-2); }
+.pulse-card.bull { border-left-color: var(--bull); }
+.pulse-card.bear { border-left-color: var(--bear); }
+.pulse-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; width: 100%; background: none; border: 0; padding: 0; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.pulse-head .eyebrow { display: block; }
+.pulse-mood { display: block; font-size: 22px; font-weight: 700; margin-top: 2px; }
+.pulse-card.bull .pulse-mood { color: var(--bull); }
+.pulse-card.bear .pulse-mood { color: var(--bear); }
+.pulse-card.neu .pulse-mood { color: var(--neutral-2); }
+.pulse-mood .mono { font-size: 18px; margin-left: 4px; }
+.pulse-meter { position: relative; height: 6px; border-radius: 999px; margin-top: 10px; background: linear-gradient(90deg, var(--bear) 0 40%, var(--neutral-2) 40% 60%, var(--bull) 60% 100%); opacity: .9; }
+.pulse-meter i { position: absolute; top: -4px; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px; background: var(--fg); box-shadow: 0 0 0 2px var(--bg); }
+.live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--bull); margin-right: 5px; vertical-align: 1px; animation: livedot 2s infinite; }
+@keyframes livedot { 50% { opacity: .3; } }
+.pulse-parts { margin-top: 10px; border-top: 1px solid var(--line); }
+.pulse-parts .pp { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.pulse-secs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.pulse-secs span { font-family: var(--mono, ui-monospace, monospace); font-size: 11px; padding: 3px 7px; border-radius: 999px; background: var(--surface2, var(--line)); }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+/* premium tiers */
+.badge-prem { font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); }
+.upsell { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; padding: 10px 12px; margin: 0 0 8px; border-radius: 12px; background: var(--accent-soft2); border: 1px solid var(--accent-line); color: var(--fg); font-size: 13px; line-height: 1.45; cursor: pointer; }
+.upsell svg { color: var(--accent); flex: none; margin-top: 2px; }
+.upsell b { color: var(--accent); }
+.sw.locked { opacity: .45; }
+.plan-cmp { display: grid; gap: 10px; }
+.plan-cmp > div { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; }
+.plan-cmp .prem { border-color: var(--accent-line); background: var(--accent-soft2); }
+.plan-cmp .prem b { color: var(--accent); }
+.plan-cmp ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.5; }
+a.btn { display: flex; align-items: center; justify-content: center; }

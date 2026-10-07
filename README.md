@@ -6,6 +6,7 @@ An investing command center that keeps your portfolio, your reasons for owning e
 
 | Area | What you get |
 | --- | --- |
+| **Market sentiment banner** | The first card when the app opens: today's market mood (Bullish / Neutral / Bearish, 0–100) built from 5-minute bars of SPY, QQQ, DIA, IWM, the VIX and the 11 sector ETFs, with a 5-minute SPY chart. Refreshes every 5 minutes. |
 | **Command Center** | Portfolio value and chart, watchlist, a split card showing the position next to your thesis, divergence alerts, and a filtered stream of filings, quant changes and news for the selected stock. |
 | **Signal Mode** | One switch at the top that hides news, opinion and commentary, leaving SEC filings and quant updates. |
 | **Signal Feed** | De-duplicated stories (repeat wire copy is merged and counted), tone tags, a prediction-accuracy badge on every source, and a *Top performers only* filter. |
@@ -57,22 +58,53 @@ The 24 tickers in `config/universe.json`. Add or remove symbols there; the next 
 
 Build results (with log tails) are written to the `ci-status` branch.
 
+## Market sentiment (5-minute)
+
+`.github/workflows/pulse.yml` runs every 5 minutes during US market hours and writes `pulse.json` to the `pulse` branch. The web app reads it from `https://raw.githubusercontent.com/ZStamov/converge/pulse/pulse.json`; the Android and iOS apps pull the 5-minute bars straight from Yahoo Finance. Every copy re-checks every 5 minutes while open.
+
+Score (0–100): 30% S&P 500 change vs. yesterday's close, 20% price vs. VWAP (SPY and QQQ), 20% last-30-minute momentum, 20% breadth (how many of the 4 index ETFs and 11 sector ETFs are up), 10% VIX change (falling VIX is bullish). 60 or more is Bullish (green), 40 or less Bearish (orange), in between Neutral (yellow). GitHub's scheduler can run a few minutes late at busy times.
+
+## Free and Premium plans
+
+| | Free | Premium |
+| --- | --- | --- |
+| Command Center, Signal Feed, Battleground, Vault, alerts, briefing, candles, market sentiment | ✓ | ✓ |
+| Scanner filters, signals, views and saved screens | ✓ | ✓ |
+| Read the stock discussions | ✓ | ✓ |
+| 5 strategy scanner toggles | | ✓ |
+| Post in the discussion under each stock | | ✓ |
+
+Everyone who signs up starts on Free. Tapping a strategy toggle or trying to comment as a Free (or signed-out) user opens the *Converge Premium* screen. The rule is enforced on the server too: the database rejects posts from non-premium accounts.
+
+**Upgrade or downgrade someone** (Supabase → SQL Editor):
+
+```sql
+update public.profiles set tier = 'premium', premium_until = null   -- or a date, e.g. now() + interval '1 month'
+where id = (select id from auth.users where email = 'someone@example.com');
+```
+
+**Online checkout (optional):** create a payment link (for example a Stripe Payment Link), then add the repository Variables `PREMIUM_CHECKOUT_URL` and `PREMIUM_PRICE` (the label shown, e.g. `$9.99/month`) and re-run the app workflows. The app appends `client_reference_id=<user id>` and `prefilled_email=` to the link so a payment webhook can flip that user's `tier` to `premium`. Without a checkout URL the Premium screen says checkout isn't open yet.
+
+**Test accounts:** `supabase/schema.sql` creates the tables; a separate, private `demo-users.sql` (not in this repository) creates one Free and one Premium login. Keep those passwords out of the repo.
+
+Copies without an account system (the one-file page, or before Supabase is set up) have a labeled *Preview Premium* switch in Settings so you can see what each plan unlocks.
+
 ## Discussion board (per stock)
 
-Signed-in users can comment under each ticker. Posts with foul language are blocked twice: in the app, and on the server by a database trigger (it also catches leetspeak, spaced-out letters and stretched spellings, and limits posting to 5 per minute). Word list: [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) (CC-BY-4.0).
+Premium members can comment under each ticker. Posts with foul language are blocked twice: in the app, and on the server by a database trigger (it also catches leetspeak, spaced-out letters and stretched spellings, and limits posting to 5 per minute). Word list: [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) (CC-BY-4.0).
 
 One-time setup (free):
 1. Create a project at [supabase.com](https://supabase.com).
 2. In **SQL Editor**, paste the contents of `supabase/schema.sql` and press **Run**.
 3. In **Authentication → URL Configuration**, set the Site URL to `https://zstamov.github.io/Converge/`. (Optional: turn off "Confirm email" under Authentication → Providers → Email for instant sign-up.)
 4. In **Project Settings → API**, copy the Project URL and the `anon` public key.
-5. In GitHub: **Settings → Secrets and variables → Actions → Variables**, add `SUPABASE_URL` and `SUPABASE_ANON_KEY`, then re-run the Web app, Android app and iOS app workflows.
+5. In GitHub: **Settings → Secrets and variables → Actions → Variables**, add `SUPABASE_URL` and `SUPABASE_ANON_KEY` (and optionally `PREMIUM_CHECKOUT_URL`, `PREMIUM_PRICE`), then re-run the Web app, Android app and iOS app workflows.
 
 ## Candlestick charts
 
 Each ticker page has candles at 1m, 2m, 5m, 1h, 2h, 4h, 5h, 1D, 2D and 1W. The Android and iOS apps load them live from Yahoo Finance; the web app uses the hourly snapshot (`candles.json` on the `data` branch).
 
-## Strategy scanners
+## Strategy scanners (Premium)
 
 Five toggles in the Scanner (scalping, short-term swing, medium-term swing, position/trend, multi-year value) apply the criteria from the strategy playbook. Criteria that need data free sources don't provide (float, VWAP) are listed and skipped; fundamental criteria need the `SEC_USER_AGENT` secret.
 

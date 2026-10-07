@@ -18,6 +18,8 @@ const scanPath = path.join(path.dirname(dataPath), 'scanner.json');
 const scan = fs.existsSync(scanPath) ? fs.readFileSync(scanPath, 'utf8') : 'null';
 const candPath = path.join(path.dirname(dataPath), 'candles.json');
 const candles = fs.existsSync(candPath) ? fs.readFileSync(candPath, 'utf8') : 'null';
+const pulsePath = process.env.PULSE_JSON || path.join(path.dirname(dataPath), 'pulse.json');
+const pulse = fs.existsSync(pulsePath) ? fs.readFileSync(pulsePath, 'utf8') : 'null';
 const profanity = fs.existsSync(path.join(www, 'profanity.js')) ? read('profanity.js') : '';
 // briefing clips (pages can't fetch audio from other sites): embed the referenced ones, re-encoded small
 const audioDir = path.join(path.dirname(dataPath), 'audio');
@@ -44,7 +46,7 @@ const html = `<title>Converge</title>
 <style>${fonts}</style>
 <style>${css}</style>
 <div id="app"><div class="app"><div class="loading">Loading market data…</div></div></div>
-<script>window.__CONVERGE_ARTIFACT__=true;window.__CONVERGE_SNAPSHOT__=${safe(data)};window.__CONVERGE_SCANNER__=${safe(scan)};window.__CONVERGE_CANDLES__=${safe(candles)};window.__CONVERGE_AUDIO__=${safe(audio)};</script>
+<script>window.__CONVERGE_ARTIFACT__=true;window.__CONVERGE_SNAPSHOT__=${safe(data)};window.__CONVERGE_SCANNER__=${safe(scan)};window.__CONVERGE_CANDLES__=${safe(candles)};window.__CONVERGE_AUDIO__=${safe(audio)};window.__CONVERGE_PULSE__=${safe(pulse)};</script>
 <script>${safe(profanity)}</script>
 <script>${safe(js)}</script>
 `;

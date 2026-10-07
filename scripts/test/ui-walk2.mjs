@@ -22,11 +22,13 @@ const page = await browser.newPage({ viewport: { width: 390, height: 844 }, devi
 const errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
 await page.route('https://raw.githubusercontent.com/**', (r) => r.abort());
+await page.addInitScript(() => localStorage.setItem('converge.v1', JSON.stringify({ demoTier: 'premium' })));
 await page.route('https://fake.supabase.co/**', async (route) => {
   const req = route.request(), u = new URL(req.url()), body = req.postData() ? JSON.parse(req.postData()) : null;
   const json = (status, data) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
   if (u.pathname === '/auth/v1/token') return json(200, { access_token: 'tok', refresh_token: 'ref', expires_in: 3600, user: { id: 'u-me', email: body.email, user_metadata: { display_name: 'Zhivo' } } });
   if (u.pathname === '/auth/v1/signup') return json(200, { id: 'u-me' });
+  if (u.pathname === '/rest/v1/profiles') return json(200, [{ tier: 'premium', premium_until: null }]);
   if (u.pathname === '/rest/v1/forum_posts' && req.method() === 'GET') return json(200, posts.filter((p) => p.ticker === 'AAPL'));
   if (u.pathname === '/rest/v1/forum_posts' && req.method() === 'POST') {
     if (/heck/i.test(body.body)) return json(400, { message: 'Post blocked: please keep the language civil.' }); // server-side block path
