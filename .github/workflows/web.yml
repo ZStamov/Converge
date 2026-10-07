@@ -68,7 +68,8 @@ jobs:
 
       - name: Report status
         if: always() && github.event_name != 'workflow_run'
-        run: bash scripts/ci-report.sh web "${{ job.status }} (pages: ${{ steps.pages.outputs.on }})" build.log
+        run: |
+          bash scripts/ci-report.sh web "${{ job.status }} (pages=${{ steps.pages.outputs.on }})" build.log
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
