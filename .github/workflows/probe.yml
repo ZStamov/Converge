@@ -1,0 +1,28 @@
+name: Source probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/source-probe.mjs', '.github/workflows/probe.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe sources
+        run: node scripts/source-probe.mjs 2>&1 | tee probe.log
+      - name: Report
+        if: always()
+        run: |
+          bash scripts/ci-report.sh probe "${{ job.status }}" probe.log
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
