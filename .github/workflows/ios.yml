@@ -1,0 +1,75 @@
+name: iOS app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['www/**', 'assets/**', 'scripts/prepare-web.mjs', 'capacitor.config.json', 'package.json', '.github/workflows/ios.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build Xcode project and simulator app
+        run: |
+          set -o pipefail
+          {
+            xcodebuild -version
+            npm install --no-audit --no-fund
+            mkdir -p data-out
+            curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/data/market.json" -o data-out/market.json || echo "No data branch yet."
+            node scripts/prepare-web.mjs
+            npx cap add ios
+            npx capacitor-assets generate --ios --iconBackgroundColor '#0B0E13' --splashBackgroundColor '#0B0E13' --splashBackgroundColorDark '#0B0E13'
+            npx cap sync ios
+            xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+              -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+              -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+            (cd build/Build/Products/Debug-iphonesimulator && zip -qr "$GITHUB_WORKSPACE/Converge-ios-simulator.zip" App.app)
+            zip -qr Converge-ios-xcode-project.zip ios capacitor.config.json package.json -x 'ios/App/build/*'
+          } 2>&1 | tee build.log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Converge-ios
+          path: |
+            Converge-ios-simulator.zip
+            Converge-ios-xcode-project.zip
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-latest
+          name: Converge for iOS (latest build)
+          make_latest: false
+          files: |
+            Converge-ios-simulator.zip
+            Converge-ios-xcode-project.zip
+          body: |
+            **Converge-ios-xcode-project.zip**: open `ios/App/App.xcodeproj` in Xcode on a Mac, choose your iPhone, set your Apple ID under Signing & Capabilities, and press Run.
+            **Converge-ios-simulator.zip**: drag `App.app` onto a running iOS Simulator.
+            Built from ${{ github.sha }}.
+
+      - name: Report status
+        if: always()
+        run: bash scripts/ci-report.sh ios "${{ job.status }}" build.log
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

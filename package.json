@@ -1,0 +1,32 @@
+{
+  "name": "converge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Converge: an investing command center for web, Android and iOS.",
+  "scripts": {
+    "data": "node scripts/fetch-data.mjs data-out",
+    "prepare:web": "node scripts/prepare-web.mjs",
+    "build:single": "node scripts/build-single.mjs",
+    "serve": "npx --yes http-server www -p 8080 -c-1",
+    "test:pipeline": "node scripts/test/mock-run.mjs"
+  },
+  "dependencies": {
+    "@capacitor-community/text-to-speech": "^8.0.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/local-notifications": "^8.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "@fontsource/space-grotesk": "^5.2.10",
+    "sharp": "^0.34.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

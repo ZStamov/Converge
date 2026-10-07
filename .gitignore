@@ -1,0 +1,15 @@
+node_modules/
+data-out/
+dist/
+android/
+ios/
+build/
+www/fonts/
+www/icons/
+www/data/
+www/converge-single.html
+assets/*.png
+tmp-*/
+tmp-*.png
+*.log
+.DS_Store

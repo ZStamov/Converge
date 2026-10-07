@@ -1,0 +1,22 @@
+{
+  "appId": "com.zstamov.converge",
+  "appName": "Converge",
+  "webDir": "www",
+  "backgroundColor": "#0B0E13",
+  "android": {
+    "backgroundColor": "#0B0E13"
+  },
+  "ios": {
+    "backgroundColor": "#0B0E13",
+    "contentInset": "never"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "backgroundColor": "#0B0E13"
+    },
+    "SystemBars": {
+      "style": "DARK",
+      "insetsHandling": "css"
+    }
+  }
+}

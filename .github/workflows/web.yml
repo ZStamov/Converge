@@ -1,0 +1,76 @@
+name: Web app
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Refresh market data']
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths: ['www/**', 'assets/**', 'scripts/prepare-web.mjs', 'scripts/build-single.mjs', '.github/workflows/web.yml']
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build web app
+        run: |
+          set -o pipefail
+          {
+            npm install --no-audit --no-fund
+            mkdir -p data-out
+            curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/data/market.json" -o data-out/market.json || echo "No data branch yet."
+            node scripts/prepare-web.mjs
+            node scripts/build-single.mjs data-out/market.json
+            cp dist/converge.html www/converge-single.html
+          } 2>&1 | tee build.log
+
+      - name: Check whether GitHub Pages is turned on
+        id: pages
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1; then echo "on=true" >> "$GITHUB_OUTPUT"; else echo "on=false" >> "$GITHUB_OUTPUT"; echo "GitHub Pages is off. Turn it on in Settings > Pages > Source: GitHub Actions." | tee -a build.log; fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.on == 'true'
+        with:
+          path: www
+
+      - uses: actions/deploy-pages@v4
+        if: steps.pages.outputs.on == 'true'
+
+      - name: Publish single-file web app
+        if: github.event_name != 'workflow_run'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: web-latest
+          name: Converge web app (single file)
+          make_latest: false
+          files: dist/converge.html
+          body: One-file version of the Converge web app with a data snapshot built in. Open it in any browser.
+
+      - name: Report status
+        if: always()
+        run: bash scripts/ci-report.sh web "${{ job.status }} (pages: ${{ steps.pages.outputs.on }})" build.log
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

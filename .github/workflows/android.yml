@@ -1,0 +1,92 @@
+name: Android app
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Refresh market data']
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths: ['www/**', 'assets/**', 'scripts/prepare-web.mjs', 'capacitor.config.json', 'package.json', '.github/workflows/android.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # after a data refresh, only rebuild if no release exists yet (first run)
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip if this is a data refresh and the APK already exists
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ] && gh release view android-latest >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+        if: steps.gate.outputs.skip != 'true'
+
+      - name: Build APK
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          set -o pipefail
+          {
+            npm install --no-audit --no-fund
+            mkdir -p data-out
+            curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/data/market.json" -o data-out/market.json || echo "No data branch yet; the app will load live data on first launch."
+            node scripts/prepare-web.mjs
+            npx cap add android
+            npx capacitor-assets generate --android --iconBackgroundColor '#0B0E13' --iconBackgroundColorDark '#0B0E13' --splashBackgroundColor '#0B0E13' --splashBackgroundColorDark '#0B0E13'
+            npx cap sync android
+            cd android && ./gradlew assembleDebug --no-daemon --stacktrace && cd ..
+            cp android/app/build/outputs/apk/debug/app-debug.apk Converge-android.apk
+          } 2>&1 | tee build.log
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          name: Converge-android
+          path: Converge-android.apk
+
+      - name: Publish release
+        if: steps.gate.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Converge for Android (latest build)
+          make_latest: true
+          files: Converge-android.apk
+          body: |
+            Install on an Android phone: open this page on the phone, tap **Converge-android.apk**, then allow "Install unknown apps" for your browser when asked.
+            Built from ${{ github.sha }}. Market data refreshes live inside the app.
+
+      - name: Report status
+        if: always() && steps.gate.outputs.skip != 'true'
+        run: bash scripts/ci-report.sh android "${{ job.status }}" build.log
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

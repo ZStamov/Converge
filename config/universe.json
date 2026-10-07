@@ -1,0 +1,7 @@
+{
+  "benchmark": "SPY",
+  "tickers": ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AVGO", "AMD", "NFLX", "ORCL", "CRM", "JPM", "V", "MA", "PYPL", "COST", "WMT", "DIS", "KO", "PEP", "XOM", "UNH", "LLY"],
+  "accuracyHorizonDays": 5,
+  "minCallsForRating": 10,
+  "newsWindowDays": 14
+}
