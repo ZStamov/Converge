@@ -1,9 +1,17 @@
 job: data
 status: success
-time: 2026-10-07T02:15:39Z
-commit: 02ecf8a171df96bf21b086c8db9574e149bf08c0
-run: https://github.com/ZStamov/Converge/actions/runs/37561056742
+time: 2026-10-07T02:21:41Z
+commit: f5ead78b3682d0e020a34b0d78c370701c80101b
+run: https://github.com/ZStamov/Converge/actions/runs/37561540782
 ----
+sec-probe node, app UA https://data.sec.gov/submissions/CIK0000320193.json -> 403 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns="http://www.w3.org/1999/xh
+sec-probe node, app UA https://www.sec.gov/files/company_tickers.json -> 403 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"> <html xmlns="http://www.w3.org/1999/xh
+sec-probe node, plain UA https://data.sec.gov/submissions/CIK0000320193.json -> 200 
+sec-probe node, plain UA https://www.sec.gov/files/company_tickers.json -> 200 
+sec-probe node, UA + host + accept https://data.sec.gov/submissions/CIK0000320193.json -> 200 
+sec-probe node, UA + host + accept https://www.sec.gov/files/company_tickers.json -> 200 
+sec-probe curl [Converge Research admin@converge-app.dev] -> 200
+sec-probe curl [Mozilla/5.0 (compatible; Converge/1.0; +https://github.com/ZStamov/Converge)] -> 403
 prices SPY 251 Yahoo Finance
 prices AAPL 251 Yahoo Finance
 prices MSFT 251 Yahoo Finance
@@ -31,9 +39,9 @@ prices UNH 251 Yahoo Finance
 prices LLY 251 Yahoo Finance
 ticker AAPL news 104 filings 0 fund -
 ticker MSFT news 104 filings 0 fund -
-ticker NVDA news 101 filings 0 fund -
+ticker NVDA news 102 filings 0 fund -
 ticker AMZN news 106 filings 0 fund -
-ticker GOOGL news 99 filings 0 fund -
+ticker GOOGL news 100 filings 0 fund -
 ticker META news 100 filings 0 fund -
 ticker TSLA news 105 filings 0 fund -
 ticker AVGO news 100 filings 0 fund -
@@ -43,14 +51,14 @@ ticker ORCL news 101 filings 0 fund -
 ticker CRM news 103 filings 0 fund -
 ticker JPM news 110 filings 0 fund -
 ticker V news 53 filings 0 fund -
-ticker MA news 62 filings 0 fund -
-ticker PYPL news 81 filings 0 fund -
+ticker MA news 61 filings 0 fund -
+ticker PYPL news 80 filings 0 fund -
 ticker COST news 89 filings 0 fund -
 ticker WMT news 101 filings 0 fund -
-ticker DIS news 105 filings 0 fund -
+ticker DIS news 106 filings 0 fund -
 ticker KO news 57 filings 0 fund -
 ticker PEP news 104 filings 0 fund -
 ticker XOM news 108 filings 0 fund -
 ticker UNH news 104 filings 0 fund -
 ticker LLY news 103 filings 0 fund -
-done: 24 tickers, 1332 stories, 0 alerts, 52 sources (8 rated), 48 errors
+done: 24 tickers, 1331 stories, 0 alerts, 52 sources (8 rated), 48 errors
