@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['scripts/fetch-data.mjs', 'scripts/lib/**', 'config/**', '.github/workflows/data.yml']
+    paths: ['scripts/fetch-data.mjs', 'scripts/sec-probe.mjs', 'scripts/lib/**', 'config/**', '.github/workflows/data.yml']
 
 permissions:
   contents: write
@@ -38,7 +38,11 @@ jobs:
       - name: Fetch sources and compute signals
         run: |
           set -o pipefail
-          node scripts/fetch-data.mjs data-out 2>&1 | tee data.log
+          node scripts/sec-probe.mjs 2>&1 | tee data.log
+          for ua in "Converge Research admin@converge-app.dev" "Mozilla/5.0 (compatible; Converge/1.0; +https://github.com/${GITHUB_REPOSITORY})"; do
+            echo "sec-probe curl [$ua] -> $(curl -s -o /dev/null -w '%{http_code}' -A "$ua" https://data.sec.gov/submissions/CIK0000320193.json)" | tee -a data.log
+          done
+          node scripts/fetch-data.mjs data-out 2>&1 | tee -a data.log
 
       - name: Publish to the data branch
         run: |
