@@ -81,9 +81,22 @@ drop trigger if exists converge_new_user on auth.users;
 create trigger converge_new_user after insert on auth.users for each row execute function public.converge_new_user();
 insert into public.profiles (id) select id from auth.users on conflict (id) do nothing;
 
+-- master switch: while premium_required is false (testing), every signed-in member counts as premium.
+-- Turn the paywall on with: update public.converge_settings set premium_required = true;
+create table if not exists public.converge_settings (
+  id int primary key default 1 check (id = 1),
+  premium_required boolean not null default false
+);
+insert into public.converge_settings (id) values (1) on conflict (id) do nothing;
+alter table public.converge_settings enable row level security;
+drop policy if exists "anyone can read settings" on public.converge_settings;
+create policy "anyone can read settings" on public.converge_settings for select using (true);
+
 create or replace function public.converge_is_premium(uid uuid) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.profiles p where p.id = uid and p.tier = 'premium' and (p.premium_until is null or p.premium_until > now()));
+  select uid is not null and (
+    not coalesce((select premium_required from public.converge_settings where id = 1), false)
+    or exists (select 1 from public.profiles p where p.id = uid and p.tier = 'premium' and (p.premium_until is null or p.premium_until > now())));
 $$;
 
 alter table public.forum_posts enable row level security;

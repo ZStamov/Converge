@@ -13,6 +13,7 @@ const dataPath = process.argv[2] || path.join(www, 'data', 'market.json');
 let fonts = read('fonts/fonts.css').replace(/url\('([^']+)'\)/g, (_, f) => `url(data:font/woff2;base64,${fs.readFileSync(path.join(www, 'fonts', f)).toString('base64')})`);
 const css = read('styles.css');
 const js = read('app.js');
+const sigjs = read('signals.js');
 const data = fs.existsSync(dataPath) ? fs.readFileSync(dataPath, 'utf8') : 'null';
 const scanPath = path.join(path.dirname(dataPath), 'scanner.json');
 const scan = fs.existsSync(scanPath) ? fs.readFileSync(scanPath, 'utf8') : 'null';
@@ -48,6 +49,7 @@ const html = `<title>Converge</title>
 <div id="app"><div class="app"><div class="loading">Loading market data…</div></div></div>
 <script>window.__CONVERGE_ARTIFACT__=true;window.__CONVERGE_SNAPSHOT__=${safe(data)};window.__CONVERGE_SCANNER__=${safe(scan)};window.__CONVERGE_CANDLES__=${safe(candles)};window.__CONVERGE_AUDIO__=${safe(audio)};window.__CONVERGE_PULSE__=${safe(pulse)};</script>
 <script>${safe(profanity)}</script>
+<script>${safe(sigjs)}</script>
 <script>${safe(js)}</script>
 `;
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });

@@ -66,6 +66,8 @@ Score (0–100): 30% S&P 500 change vs. yesterday's close, 20% price vs. VWAP (S
 
 ## Free and Premium plans
 
+**Testing mode is on:** while the `PREMIUM_REQUIRED` variable isn't `true`, every user gets every Premium feature, and the database lets any signed-in member post (`public.converge_settings.premium_required = false`). To switch the paywall on: set the GitHub Variable `PREMIUM_REQUIRED` to `true`, re-run the app workflows, and run `update public.converge_settings set premium_required = true;` in Supabase.
+
 | | Free | Premium |
 | --- | --- | --- |
 | Command Center, Signal Feed, Battleground, Vault, alerts, briefing, candles, market sentiment | ✓ | ✓ |
@@ -100,9 +102,33 @@ One-time setup (free):
 4. In **Project Settings → API**, copy the Project URL and the `anon` public key.
 5. In GitHub: **Settings → Secrets and variables → Actions → Variables**, add `SUPABASE_URL` and `SUPABASE_ANON_KEY` (and optionally `PREMIUM_CHECKOUT_URL`, `PREMIUM_PRICE`), then re-run the Web app, Android app and iOS app workflows.
 
-## Candlestick charts
+## Candlestick charts, signals and backtest
 
 Each ticker page has candles at 1m, 2m, 5m, 1h, 2h, 4h, 5h, 1D, 2D and 1W. The Android and iOS apps load them live from Yahoo Finance; the web app uses the hourly snapshot (`candles.json` on the `data` branch).
+
+- **Full screen:** tap *⤢ Full screen*; turn the phone sideways for a wide chart. Close with ✕ (or Back / Esc).
+- **Zoom:** pinch with two fingers (trackpad pinch or the mouse wheel in full screen on a computer), or use − / +. Drag to scroll back in time; tap a candle for its prices and any signal on it.
+- **Buy and sell signals** (`www/signals.js`, from the Master Trader Manual lessons 6–20) are marked on every interval: ▲ buy below the candle, ▼ sell above it, yellow ▼ for an ATR trailing-stop exit. Turn them off with *Signals on/off*.
+
+| Lesson | Signal | Rule as coded |
+| --- | --- | --- |
+| 6 | Breakout | Close above the prior 20-bar high on volume > 1.5× the 20-bar average |
+| 7 | MA pullback | Price and EMA20 above SMA50; the bar dips to EMA20 and closes green above it |
+| 8 | VWAP hold | Intraday only: after 3 bars above session VWAP, price tags VWAP and closes green above it |
+| 9 | RSI bullish divergence | Lower swing low with a higher RSI(14) low under 40 |
+| 10 | Bull flag | Pole ≥ 3× ATR within 6 bars, 3–10 bar flag holding the top half, close above the flag |
+| 11 | Golden cross | SMA50 crosses above SMA200 |
+| 12 | POC reclaim | Close back above the prior 50 bars' volume-profile point of control on above-average volume |
+| 13 | Opening-range breakout | 1–5 minute bars: first close above the first 30 minutes' high on above-average volume |
+| 14 | Climax top | After RSI > 70 or 8% above SMA50: range > 2× ATR, volume > 2.5×, close in the lower half |
+| 15 | Support breakdown | Close below the prior 20-bar low on volume > 1.5× average |
+| 16 | RSI bearish divergence | Higher swing high with a lower RSI(14) high above 60 |
+| 17 | Death cross | SMA50 crosses below SMA200 |
+| 18 | Failed breakout | Within 3 bars of a 20-bar breakout, a close back below the old high |
+| 19 | VWAP distribution | Intraday only: after 3 bars above VWAP, a red close below it on 1.2× volume |
+| 20 | ATR trailing stop | Exit 3× ATR(14) below the highest close since entry |
+
+**Backtest** (bottom of each ticker page, for the interval selected on the chart): long only; buy at the next candle's open after any buy signal, sell at the next open after any sell signal or when the trailing stop is hit; 0.05% per side for costs. It reports strategy vs. buy-and-hold return, trades, win rate, average trade, profit factor, max drawdown, average hold, an equity curve, the open trade, the last 5 trades, and for each signal how often price moved its way 10 candles later. Samples are small (the snapshot holds about 1 day of 1-minute bars, 5 days of 5-minute bars, 3 months of hourly bars, 2 years of daily bars and 5 years of weekly bars), so treat results as a sanity check, not proof.
 
 ## Strategy scanners (Premium)
 

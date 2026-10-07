@@ -7,7 +7,7 @@ import path from 'node:path';
 const www = path.resolve('www');
 const out = path.resolve(process.argv[2] || 'tmp-shots5');
 fs.mkdirSync(out, { recursive: true });
-fs.writeFileSync(path.join(www, 'config.js'), 'window.CONVERGE_CONFIG = {"supabaseUrl":"https://fake.supabase.co","supabaseKey":"anon-key","premiumUrl":"","premiumPrice":""};\n');
+fs.writeFileSync(path.join(www, 'config.js'), 'window.CONVERGE_CONFIG = {"supabaseUrl":"https://fake.supabase.co","supabaseKey":"anon-key","premiumUrl":"","premiumPrice":"","premiumRequired":true};\n');
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const srv = http.createServer((req, res) => {
   let p = path.join(www, decodeURIComponent(req.url.split('?')[0])); if (p.endsWith('/')) p += 'index.html';

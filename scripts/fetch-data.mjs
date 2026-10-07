@@ -62,7 +62,7 @@ async function chartOHLC(t, range, interval) {
   });
   return out;
 }
-const CANDLE_SETS = { m1: ['1d', '1m'], m5: ['5d', '5m'], h1: ['3mo', '60m'], d1: ['1y', '1d'], w1: ['5y', '1wk'] };
+const CANDLE_SETS = { m1: ['1d', '1m'], m5: ['5d', '5m'], h1: ['3mo', '60m'], d1: ['2y', '1d'], w1: ['5y', '1wk'] };
 const candles = {};
 async function extraSeries(t) {
   const out = {}, cs = {};

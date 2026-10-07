@@ -430,6 +430,7 @@
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">More on ' + sel + '</h2><div class="lnkrow">' + extLinks(sel) + '</div></section>';
     var watching = S.watchlist.indexOf(sel) >= 0;
     h += '<div class="btnrow"><button class="btn" data-act="watch" data-t="' + sel + '">' + (watching ? 'Watching ✓' : 'Watch') + '</button><button class="btn pri" data-act="add" data-t="' + sel + '">Add a lot</button></div>';
+    h += '<section class="card" id="btbox" data-t="' + esc(sel) + '">' + backtestInner(sel) + '</section>';
     h += dataFoot();
     return head + '<main class="main" id="main">' + h + '</main>';
   }
@@ -664,8 +665,9 @@
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">News &amp; data sources</h2>' + Object.keys(ss).map(function (k) { var x = ss[k], ok = x.ok > 0; return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>' + esc(k) + '</span><span class="mono ' + (ok ? 'up' : 'down') + '">' + (ok ? 'Live · ' + x.items + ' items' : 'Unavailable') + '</span></div>'; }).join('') +
       '<p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.5">Finviz, StockAnalysis and X open as links from each ticker. Their terms or paid APIs don’t allow pulling their data into the app.</p></section>';
     if (isNative && plugin('LocalNotifications')) h += '<button class="rowtoggle" data-act="notify" aria-pressed="' + S.notify + '"><span><span class="t1">Divergence alerts</span><span class="t2">Notify me when a stock I hold or watch diverges</span></span><span class="sw"></span></button>';
+    if (!premiumRequired()) h += '<p class="note" style="margin:0">Testing mode: every account has all Premium features (strategy scanners and posting). The Premium paywall turns on when the owner sets PREMIUM_REQUIRED to true.</p>';
     if (accountsReady()) h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Account &amp; plan</h2>' + (S.auth ? '<p style="margin:0 0 4px;font-size:13px">Signed in as <b>' + esc(S.auth.name || S.auth.user.email) + '</b></p><p style="margin:0 0 10px;font-size:13px">Plan: <b class="' + (isPremium() ? 'up' : '') + '">' + planName() + '</b>' + (isPremium() && S.auth.premium_until ? ' · until ' + esc(new Date(S.auth.premium_until).toLocaleDateString()) : '') + '</p><div class="btnrow">' + (isPremium() ? '' : '<button class="btn sm pri" data-act="subscribe">Upgrade to Premium</button>') + '<button class="btn sm" data-act="tier-refresh">Refresh plan</button><button class="btn sm" data-act="forum-signout">Sign out</button></div>' : '<p class="muted" style="margin:0 0 10px;font-size:13px">Free accounts can read the discussions. Premium adds strategy scanners and posting.</p><button class="btn sm pri" data-act="forum-auth">Sign in or create an account</button>') + '</section>';
-    else h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Plan preview</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (window.__CONVERGE_ARTIFACT__ ? 'This page has no account system, so sign-in, subscriptions and posting live in the Converge app and website.' : 'Accounts aren’t connected yet (see the README’s Supabase steps).') + ' Switch below to see what each plan unlocks.</p></section><button class="rowtoggle" data-act="demo-tier" aria-pressed="' + (S.demoTier === 'premium') + '"><span><span class="t1">Preview Premium</span><span class="t2">Currently showing the ' + planName() + ' plan</span></span><span class="sw"></span></button>';
+    else if (premiumRequired()) h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Plan preview</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (window.__CONVERGE_ARTIFACT__ ? 'This page has no account system, so sign-in, subscriptions and posting live in the Converge app and website.' : 'Accounts aren’t connected yet (see the README’s Supabase steps).') + ' Switch below to see what each plan unlocks.</p></section><button class="rowtoggle" data-act="demo-tier" aria-pressed="' + (S.demoTier === 'premium') + '"><span><span class="t1">Preview Premium</span><span class="t2">Currently showing the ' + planName() + ' plan</span></span><span class="sw"></span></button>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Muted sources</h2>' + (S.muted.length ? S.muted.map(function (m) { return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0"><span>' + esc(m) + '</span><button class="btn sm" data-act="mute" data-name="' + esc(m) + '">Unmute</button></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">None. Mute a source from its profile.</p>') + '</section>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Lots, theses and your watchlist are stored only on this device.</p><button class="btn sm dng" data-act="reset">' + (UI.confirmReset ? 'Tap again to erase everything' : 'Erase all my data') + '</button></section>';
     h += '<p class="foot">Converge · Covers ' + D.universe.length + ' tickers · <a href="' + CFG.repo + '" target="_blank" rel="noopener noreferrer">Source code</a><br>Information only, not investment advice.</p>';
@@ -892,7 +894,7 @@
   var CD = null, CDS = { loading: false, error: null };
   var CINTERVALS = ['1m', '2m', '5m', '1h', '2h', '4h', '5h', '1D', '2D', '1W'];
   // native apps fetch live candles straight from Yahoo; web uses the hourly snapshot
-  var LIVE_Q = { '1m': ['1d', '1m'], '2m': ['5d', '2m'], '5m': ['5d', '5m'], '1h': ['1mo', '60m'], '2h': ['3mo', '60m'], '4h': ['3mo', '60m'], '5h': ['3mo', '60m'], '1D': ['1y', '1d'], '2D': ['2y', '1d'], '1W': ['5y', '1wk'] };
+  var LIVE_Q = { '1m': ['1d', '1m'], '2m': ['5d', '2m'], '5m': ['5d', '5m'], '1h': ['3mo', '60m'], '2h': ['3mo', '60m'], '4h': ['3mo', '60m'], '5h': ['3mo', '60m'], '1D': ['2y', '1d'], '2D': ['5y', '1d'], '1W': ['5y', '1wk'] };
   var liveCache = {};
   function loadCandles() {
     if (CD || CDS.loading) return;
@@ -953,16 +955,33 @@
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
   function fmtP(x) { return x >= 1000 ? x.toFixed(1) : x >= 10 ? x.toFixed(2) : x.toFixed(3); }
+  var SIGC = {};
+  function signalsFor(t, iv, s, live) {
+    var SG = window.ConvergeSignals; if (!SG || !s || s.t.length < 30) return null;
+    var key = t + '|' + iv + '|' + s.t.length + '|' + s.t[s.t.length - 1] + '|' + s.c[s.c.length - 1] + '|' + (live ? 1 : 0);
+    if (SIGC[key]) return SIGC[key];
+    var d = SG.detect(s, iv), bt = SG.backtest(s, iv, { detected: d }), marks = {};
+    d.sigs.forEach(function (g) { (marks[g.i] = marks[g.i] || []).push(g); });
+    bt.trades.forEach(function (tr) { if (tr.exitWhy === 'atr') (marks[tr.out] = marks[tr.out] || []).push({ i: tr.out, id: 'atr', side: 'sell' }); });
+    SIGC = {}; SIGC[key] = { d: d, bt: bt, marks: marks }; // keep one chart's worth
+    return SIGC[key];
+  }
+  function chartDims() {
+    if (!UI.cfull) return { W: 330, PH: 176, VH: 34 };
+    var w = Math.max(300, Math.min(window.innerWidth, 1600) - 24), hAll = Math.max(140, window.innerHeight - (window.innerHeight < 500 ? 212 : 250));
+    return { W: w, PH: Math.round(hAll * 0.84), VH: Math.round(hAll * 0.16) - 8 };
+  }
   function candleSvg(t) {
     var iv = UI.civ || '1D', r = candleSeries(t, iv), s = r.s;
     if (!s || s.t.length < 2) return '<div class="muted" style="padding:28px 0;text-align:center;font-size:13px">' + (CDS.loading || (!CD && !CDS.error) ? 'Loading candles…' : 'No ' + iv + ' candles for ' + esc(t) + ' yet.') + '</div>';
-    var N = UI.cN || 60, len = s.t.length; N = Math.min(N, len);
+    var N = UI.cN || (UI.cfull ? 120 : 60), len = s.t.length; N = clamp(N, Math.min(15, len), len);
     var off = clamp(UI.cOff || 0, 0, Math.max(0, len - N)); UI.cOff = off;
     var a = len - N - off, b = len - off; // [a, b)
     var hi = -Infinity, lo = Infinity, vmax = 0;
     for (var i = a; i < b; i++) { hi = Math.max(hi, s.h[i]); lo = Math.min(lo, s.l[i]); vmax = Math.max(vmax, s.v[i]); }
-    var pad = (hi - lo) * 0.06 || hi * 0.01; hi += pad; lo -= pad;
-    var W = 330, PH = 176, VH = 34, GAP = 8, H = PH + GAP + VH, step = W / N, bw = Math.max(1, step * 0.66);
+    var pad = (hi - lo) * 0.1 || hi * 0.01; hi += pad; lo -= pad;
+    var dim = chartDims(), W = dim.W, PH = dim.PH, VH = dim.VH, GAP = 8, H = PH + GAP + VH, step = W / N, bw = Math.max(1, step * 0.66);
+    var SGN = UI.csig === false ? null : signalsFor(t, iv, s, r.live);
     var y = function (p) { return (hi - p) / (hi - lo) * PH; };
     var body = '';
     for (var g = 1; g < 4; g++) body += '<line x1="0" x2="' + W + '" y1="' + (PH * g / 4).toFixed(1) + '" y2="' + (PH * g / 4).toFixed(1) + '" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
@@ -973,38 +992,113 @@
       body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + top.toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + hgt.toFixed(2) + '" fill="' + col + '"' + (up ? '' : '') + '></rect>';
       if (vmax) { var vh = s.v[k] / vmax * VH; body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + (H - vh).toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + vh.toFixed(2) + '" fill="' + col + '" fill-opacity="0.35"></rect>'; }
     }
+    if (SGN) for (var m = a; m < b; m++) {
+      var mk = SGN.marks[m]; if (!mk) continue;
+      var mx = (m - a) * step + step / 2, tw = Math.max(3.5, Math.min(6, step * 0.45)), nb = 0, ns = 0;
+      mk.forEach(function (g) {
+        if (g.side === 'buy') { var yb = y(s.l[m]) + 4 + nb++ * 9; body += '<path d="M' + mx.toFixed(1) + ' ' + yb.toFixed(1) + 'l' + tw + ' 7h' + (-2 * tw) + 'z" fill="var(--bull)" stroke="var(--bg)" stroke-width=".8"></path>'; }
+        else { var ys = y(s.h[m]) - 4 - ns++ * 9; body += '<path d="M' + mx.toFixed(1) + ' ' + ys.toFixed(1) + 'l' + tw + ' -7h' + (-2 * tw) + 'z" fill="' + (g.id === 'atr' ? 'var(--accent)' : 'var(--bear)') + '" stroke="var(--bg)" stroke-width=".8"></path>'; }
+      });
+    }
     var last = s.c[b - 1], ly = y(last);
     body += '<line x1="0" x2="' + W + '" y1="' + ly.toFixed(2) + '" y2="' + ly.toFixed(2) + '" stroke="var(--accent)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
     var sel = UI.cSel != null && UI.cSel >= a && UI.cSel < b ? UI.cSel : b - 1;
     if (UI.cSel != null && UI.cSel >= a && UI.cSel < b) { var sx = (sel - a) * step + step / 2; body += '<line x1="' + sx.toFixed(2) + '" x2="' + sx.toFixed(2) + '" y1="0" y2="' + H + '" stroke="var(--fg2)" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"></line>'; }
     var chg = s.c[sel] - s.o[sel];
+    var selSig = SGN && SGN.marks[sel] ? '<div class="sigline">' + SGN.marks[sel].map(function (g) { var R = window.ConvergeSignals.BY_ID[g.id]; return '<span class="' + (g.side === 'buy' ? 'up' : g.id === 'atr' ? 'neu' : 'down') + '">' + (g.side === 'buy' ? '▲ BUY · ' : '▼ SELL · ') + esc(R.name) + ' (L' + R.lesson + ')</span>'; }).join('') + '</div>' : '';
     var readout = '<div class="ohlc mono"><span>' + esc(candleLabel(s.t[sel], iv)) + '</span><span>O ' + fmtP(s.o[sel]) + '</span><span>H ' + fmtP(s.h[sel]) + '</span><span>L ' + fmtP(s.l[sel]) + '</span><span class="' + (chg >= 0 ? 'up' : 'down') + '">C ' + fmtP(s.c[sel]) + '</span><span>Vol ' + bigNum(s.v[sel]) + '</span></div>';
-    return readout + '<div class="cwrap" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart">' + body + '</svg>' +
+    return readout + selSig + '<div class="cwrap' + (UI.cfull ? ' full' : '') + '" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart">' + body + '</svg>' +
       '<span class="cax top mono">' + fmtP(hi - pad) + '</span><span class="cax bot mono">' + fmtP(lo + pad) + '</span><span class="cax last mono" style="top:' + Math.max(0, Math.min(PH - 16, ly - 8)).toFixed(0) + 'px">' + fmtP(last) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:4px" class="muted mono"><span>' + esc(candleLabel(s.t[a], iv)) + '</span><span>' + (r.live ? 'Live' : 'Snapshot ' + (CD ? ago(CD.generatedAt) : '')) + '</span><span>' + esc(candleLabel(s.t[b - 1], iv)) + '</span></div>';
+      '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:4px" class="muted mono"><span>' + esc(candleLabel(s.t[a], iv)) + '</span><span>' + (r.live ? 'Live' : 'Snapshot ' + (CD ? ago(CD.generatedAt) : '')) + '</span><span>' + esc(candleLabel(s.t[b - 1], iv)) + '</span></div>' +
+      (SGN ? '<div class="siglegend"><span class="up">▲ Buy</span><span class="down">▼ Sell</span><span class="neu">▼ ATR stop</span><span class="muted">Tap a candle for the rule · pinch to zoom</span></div>' : '');
+  }
+  function civRow(iv) { return '<div class="civ">' + CINTERVALS.map(function (x) { return '<button data-act="civ" data-iv="' + x + '" aria-pressed="' + (iv === x) + '">' + x + '</button>'; }).join('') + '</div>'; }
+  function ctools() {
+    return '<div class="ctools"><button class="btn sm" data-act="czoom" data-z="out" aria-label="Zoom out">−</button><button class="btn sm" data-act="czoom" data-z="in" aria-label="Zoom in">+</button><button class="btn sm" data-act="cpan" data-p="back" aria-label="Earlier">◀</button><button class="btn sm" data-act="cpan" data-p="fwd" aria-label="Later">▶</button><button class="btn sm" data-act="cpan" data-p="end">Latest</button>' +
+      '<button class="btn sm" data-act="csig" aria-pressed="' + (UI.csig !== false) + '">Signals ' + (UI.csig === false ? 'off' : 'on') + '</button>' +
+      (UI.cfull ? '' : '<button class="btn sm" data-act="cfull" aria-label="Full screen">⤢ Full screen</button>') + '</div>';
   }
   function candleCard(t) {
     if (!CD && !CDS.loading && !CDS.error) setTimeout(loadCandles, 0);
     var iv = UI.civ || '1D';
-    return '<div class="civ">' + CINTERVALS.map(function (x) { return '<button data-act="civ" data-iv="' + x + '" aria-pressed="' + (iv === x) + '">' + x + '</button>'; }).join('') + '</div>' +
-      '<div id="candlebox" data-t="' + esc(t) + '">' + candleSvg(t) + '</div>' +
-      '<div class="ctools"><button class="btn sm" data-act="czoom" data-z="out" aria-label="Show more candles">−</button><button class="btn sm" data-act="czoom" data-z="in" aria-label="Show fewer candles">+</button><button class="btn sm" data-act="cpan" data-p="back" aria-label="Earlier">◀</button><button class="btn sm" data-act="cpan" data-p="fwd" aria-label="Later">▶</button><button class="btn sm" data-act="cpan" data-p="end">Latest</button></div>';
+    if (UI.cfull) return civRow(iv) + '<p class="muted" style="font-size:13px;text-align:center;padding:24px 0">Chart is open in full screen.</p>';
+    return civRow(iv) + '<div id="candlebox" data-t="' + esc(t) + '">' + candleSvg(t) + '</div>' + ctools();
   }
-  function refreshCandleBox() { var box = document.getElementById('candlebox'); if (box) { box.innerHTML = candleSvg(box.dataset.t); bindCandles(); } }
+  function fullChartHtml() {
+    var t = S.sel && T(S.sel) ? S.sel : firstTicker(), iv = UI.civ || '1D', bt = btFor(t);
+    return '<div class="cfull" role="dialog" aria-modal="true" aria-label="' + esc(t) + ' chart, full screen"><div class="cfull-h"><div><b class="disp" style="font-size:18px">' + esc(t) + '</b> <span class="muted mono" style="font-size:12px">' + esc(iv) + '</span>' +
+      (bt ? ' <span class="mono ' + cls(bt.total) + '" style="font-size:12px;margin-left:6px">Backtest ' + pct(bt.total * 100, 1) + ' · ' + bt.n + ' trades</span>' : '') + '</div><button class="iconbtn" data-act="cfull-close" aria-label="Close full screen">' + ic('x', 22) + '</button></div>' +
+      civRow(iv) + '<div id="candlebox" data-t="' + esc(t) + '">' + candleSvg(t) + '</div>' + ctools() + '</div>';
+  }
+  function refreshCandleBox() {
+    var box = document.getElementById('candlebox'); if (box) { box.innerHTML = candleSvg(box.dataset.t); bindCandles(); }
+    var bb = document.getElementById('btbox'); if (bb) bb.innerHTML = backtestInner(bb.dataset.t);
+  }
+  function btFor(t) { var iv = UI.civ || '1D', r = candleSeries(t, iv); var g = r.s && signalsFor(t, iv, r.s, r.live); return g ? g.bt : null; }
+  function backtestInner(t) {
+    var SG = window.ConvergeSignals, iv = UI.civ || '1D', r = candleSeries(t, iv), s = r.s;
+    var head = '<div class="sechead"><h2 class="eyebrow">Signal backtest · ' + esc(t) + ' · <span style="text-transform:none">' + esc(iv) + '</span></h2></div>';
+    if (!SG || !s || s.t.length < 30) return head + '<p class="muted" style="margin:0;font-size:13px">' + (CDS.loading || !CD ? 'Loading candles…' : 'Not enough ' + esc(iv) + ' candles to test.') + '</p>';
+    var g = signalsFor(t, iv, s, r.live), bt = g.bt, intra = !!SG.INTRADAY[iv];
+    var stat = function (label, val, c) { return '<div class="bts"><span class="muted">' + label + '</span><b class="mono ' + (c || '') + '">' + val + '</b></div>'; };
+    var h = head + '<p class="muted" style="margin:-4px 0 10px;font-size:12px">' + bt.bars + ' candles · ' + esc(candleLabel(s.t[0], iv)) + ' to ' + esc(candleLabel(s.t[s.t.length - 1], iv)) + (r.live ? ' · live' : '') + '</p>' +
+      '<div class="btgrid">' + stat('Strategy return', pct(bt.total * 100, 1), cls(bt.total)) + stat('Buy &amp; hold', pct(bt.hold * 100, 1), cls(bt.hold)) +
+      stat('Trades', bt.n + (bt.open ? ' + 1 open' : '')) + stat('Win rate', bt.winRate == null ? '—' : Math.round(bt.winRate * 100) + '%') +
+      stat('Avg trade', bt.avg == null ? '—' : pct(bt.avg * 100, 2), cls(bt.avg)) + stat('Profit factor', bt.pf == null ? '—' : bt.pf === Infinity ? '∞' : bt.pf.toFixed(2)) +
+      stat('Max drawdown', pct(bt.mdd * 100, 1), bt.mdd < 0 ? 'down' : '') + stat('Avg hold', bt.avgBars == null ? '—' : bt.avgBars.toFixed(1) + ' bars') + '</div>';
+    if (bt.curve.length > 2) h += '<div style="margin-top:10px">' + lineChart(bt.curve, { h: 70, label: 'Strategy equity curve', color: bt.total >= 0 ? 'var(--bull)' : 'var(--bear)' }) + '</div>';
+    if (bt.open) { var R0 = SG.BY_ID[bt.open.why]; h += '<p class="note" style="margin:10px 0 0">Open trade: bought ' + esc(candleLabel(s.t[bt.open.in], iv)) + ' at ' + fmtP(bt.open.entry) + ' on a ' + esc(R0.name) + ' signal · ' + pct(bt.open.ret * 100, 2) + (bt.open.stop ? ' · trailing stop ' + fmtP(bt.open.stop) : '') + '</p>'; }
+    // per-rule table
+    h += '<h3 class="eyebrow" style="margin:14px 0 6px">By signal · ' + bt.fwd + '-bar follow-through</h3><div class="bttbl"><div class="btr bth"><span>Signal</span><span>Count</span><span>Right</span><span>Avg move</span></div>' + SG.RULES.map(function (R) {
+      var p = bt.per[R.id], na = (R.intraday && !intra) || (R.orb && !(intra && SG.INTRADAY[iv] <= 5));
+      var right = p && p.done ? Math.round(p.hits / p.done * 100) + '%' : '—', mv = p && p.done ? pct(p.sum / p.done * 100, 2) : '—';
+      if (R.id === 'atr') { right = '—'; mv = '—'; }
+      return '<button class="btr" data-act="sig-info" data-id="' + R.id + '"><span><i class="' + (R.side === 'buy' ? 'up' : R.id === 'atr' ? 'neu' : 'down') + '">' + (R.side === 'buy' ? '▲' : '▼') + '</i> ' + esc(R.name) + ' <em class="muted">L' + R.lesson + '</em></span><span class="mono">' + (na ? '<em class="muted">n/a</em>' : p ? p.n : 0) + '</span><span class="mono">' + right + '</span><span class="mono ' + (p && p.done ? cls(p.sum) : '') + '">' + mv + '</span></button>' +
+        (UI.sigInfo === R.id ? '<p class="prule" style="margin:0 0 6px">' + esc(R.rule) + (na ? ' Not used on ' + esc(iv) + ' candles.' : '') + '</p>' : '');
+    }).join('') + '</div>';
+    if (bt.trades.length) h += '<h3 class="eyebrow" style="margin:14px 0 6px">Last trades</h3>' + bt.trades.slice(-5).reverse().map(function (tr) {
+      return '<div class="bttr"><span>' + esc(candleLabel(s.t[tr.in], iv)) + ' <span class="up">▲ ' + esc(SG.BY_ID[tr.why].name) + '</span><br><span class="muted">→ ' + esc(candleLabel(s.t[tr.out], iv)) + ' <span class="' + (tr.exitWhy === 'atr' ? 'neu' : 'down') + '">▼ ' + esc(SG.BY_ID[tr.exitWhy].name) + '</span></span></span><b class="mono ' + cls(tr.ret) + '">' + pct(tr.ret * 100, 2) + '</b></div>';
+    }).join('');
+    h += '<div style="margin-top:10px">' + civRow(iv) + '</div>';
+    h += '<p class="foot" style="text-align:left;margin:8px 0 0">Long only, on the ' + esc(iv) + ' candles shown above. Buys at the next candle’s open after any buy signal; sells at the next open after any sell signal, or when the 3× ATR trailing stop is hit. Includes 0.05% per side for costs and slippage' + (intra ? '; intraday trades can be held overnight' : '') + '. “Right” = price moved the signal’s way ' + bt.fwd + ' candles later. Rules from the Master Trader Manual, lessons 6–20. Past results don’t predict future returns; small samples are noisy. Not investment advice.</p>';
+    return h;
+  }
   function bindCandles() {
     var box = document.getElementById('candlebox'); if (!box || box.dataset.bound) return;
     box.dataset.bound = '1';
-    var x0 = null, off0 = 0, moved = false;
-    function geo() { var el = document.getElementById('cwrap'); if (!el) return null; var rc = el.getBoundingClientRect(); return { a: +el.dataset.a, n: +el.dataset.n, left: rc.left, width: rc.width, top: rc.top, bottom: rc.bottom }; }
-    box.addEventListener('pointerdown', function (e) { var g = geo(); if (!g || e.clientY < g.top || e.clientY > g.bottom) return; x0 = e.clientX; off0 = UI.cOff || 0; moved = false; try { box.setPointerCapture(e.pointerId); } catch (er) { } });
+    var x0 = null, off0 = 0, moved = false, pts = {}, pinch = null, pinched = false;
+    function geo() { var el = document.getElementById('cwrap'); if (!el) return null; var rc = el.getBoundingClientRect(); return { a: +el.dataset.a, n: +el.dataset.n, len: +el.dataset.len, left: rc.left, width: rc.width, top: rc.top, bottom: rc.bottom }; }
+    function zoomTo(g, newN, frac) {
+      var len = g.len, n = clamp(Math.round(newN), Math.min(15, len), Math.min(len, 600));
+      var center = g.a + frac * g.n, na = clamp(Math.round(center - frac * n), 0, len - n);
+      if (n === (UI.cN || g.n) && len - n - na === UI.cOff) return;
+      UI.cN = n; UI.cOff = len - n - na; UI.cSel = null; box.innerHTML = candleSvg(box.dataset.t);
+    }
+    function ids() { return Object.keys(pts); }
+    box.addEventListener('pointerdown', function (e) {
+      var g = geo(); if (!g || e.clientY < g.top - 30 || e.clientY > g.bottom + 30) return;
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY }; try { box.setPointerCapture(e.pointerId); } catch (er) { }
+      var k = ids();
+      if (k.length === 2) { var p1 = pts[k[0]], p2 = pts[k[1]]; pinch = { d0: Math.max(10, Math.hypot(p1.x - p2.x, p1.y - p2.y)), g: g, n0: g.n, frac: clamp(((p1.x + p2.x) / 2 - g.left) / g.width, 0, 1) }; pinched = true; x0 = null; return; }
+      if (k.length === 1) { pinched = false; x0 = e.clientX; off0 = UI.cOff || 0; moved = false; }
+    });
     box.addEventListener('pointermove', function (e) {
+      if (pts[e.pointerId]) pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (pinch) { var k = ids(); if (k.length < 2) return; var p1 = pts[k[0]], p2 = pts[k[1]], d = Math.max(10, Math.hypot(p1.x - p2.x, p1.y - p2.y)); var g0 = pinch.g; zoomTo({ a: g0.a, n: pinch.n0, len: g0.len }, pinch.n0 * pinch.d0 / d, pinch.frac); e.preventDefault(); return; }
       if (x0 == null) return; var g = geo(); if (!g) return;
       var dx = e.clientX - x0, per = g.width / g.n;
       if (Math.abs(dx) > 6) moved = true;
       if (moved) { var no = Math.max(0, off0 + Math.round(dx / per)); if (no !== UI.cOff) { UI.cOff = no; UI.cSel = null; box.innerHTML = candleSvg(box.dataset.t); } }
     });
-    box.addEventListener('pointerup', function (e) { if (x0 != null && !moved) { var g = geo(); if (g) { UI.cSel = g.a + clamp(Math.floor((e.clientX - g.left) / g.width * g.n), 0, g.n - 1); box.innerHTML = candleSvg(box.dataset.t); } } x0 = null; });
-    box.addEventListener('pointercancel', function () { x0 = null; });
+    function up(e) { delete pts[e.pointerId]; if (ids().length < 2) pinch = null; if (!ids().length) x0 = null; }
+    box.addEventListener('pointerup', function (e) { if (x0 != null && !moved && !pinched) { var g = geo(); if (g && e.clientY >= g.top && e.clientY <= g.bottom) { UI.cSel = g.a + clamp(Math.floor((e.clientX - g.left) / g.width * g.n), 0, g.n - 1); box.innerHTML = candleSvg(box.dataset.t); } } x0 = null; up(e); });
+    box.addEventListener('pointercancel', function (e) { x0 = null; up(e); });
+    box.addEventListener('wheel', function (e) {
+      if (!UI.cfull && !e.ctrlKey) return; // page scroll stays normal; trackpad pinch (ctrl+wheel) or full screen zooms
+      var g = geo(); if (!g) return; e.preventDefault();
+      zoomTo(g, g.n * Math.pow(1.0018, e.deltaY), clamp((e.clientX - g.left) / g.width, 0, 1));
+    }, { passive: false });
+    box.addEventListener('gesturestart', function (e) { e.preventDefault(); });
   }
   // ------------------------------------------------------------------ forum (Supabase backend, signed-in users only)
   var FCONF = window.CONVERGE_CONFIG || {};
@@ -1304,7 +1398,9 @@
 
   // ------------------------------------------------------------------ membership tiers (free / premium)
   function accountsReady() { return forumReady(); }
+  function premiumRequired() { return FCONF.premiumRequired === true || FCONF.premiumRequired === 'true'; }
   function isPremium() {
+    if (!premiumRequired()) return true; // testing: every account gets every feature (set PREMIUM_REQUIRED=true to switch the paywall on)
     if (!accountsReady()) return S.demoTier === 'premium'; // no account system in this copy: labeled preview switch in Settings
     var a = S.auth; if (!a || a.tier !== 'premium') return false;
     return !a.premium_until || Date.parse(a.premium_until) > Date.now();
@@ -1400,7 +1496,8 @@
         default: body = scrCommand();
       }
       var showNav = !NAV.stack.length || ['lot', 'alert', 'source', 'wthesis'].indexOf(c.name) >= 0;
-      html = body + (showNav ? navBar() : '') + sheetHtml() + (UI.toast ? '<div class="toast" role="status">' + esc(UI.toast) + '</div>' : '');
+      if (UI.cfull && c.name !== 'battle') UI.cfull = false;
+      html = body + (showNav ? navBar() : '') + (UI.cfull ? fullChartHtml() : '') + sheetHtml() + (UI.toast ? '<div class="toast" role="status">' + esc(UI.toast) + '</div>' : '');
     }
     root.innerHTML = '<div class="app">' + html + '</div>';
     var key = JSON.stringify(current());
@@ -1413,6 +1510,7 @@
   }
   function go(scr) { NAV.stack.push(scr); render(); }
   function back() {
+    if (UI.cfull) { UI.cfull = false; render(); return true; }
     if (UI.sheet) { UI.sheet = null; render(); return true; }
     if (UI.reflect) { UI.reflect = null; render(); return true; }
     if (NAV.stack.length) { var top = NAV.stack.pop(); if (top.name === 'briefing') stopSpeech(); render(); return true; }
@@ -1518,7 +1616,11 @@
     },
     civ: function (el) { UI.civ = el.dataset.iv; UI.cOff = 0; UI.cSel = null; render(); },
     cmode: function (el) { UI.cmode = el.dataset.m; render(); },
-    czoom: function (el) { var Ns = [30, 60, 120, 240], i = Ns.indexOf(UI.cN || 60); i = el.dataset.z === 'in' ? Math.max(0, i - 1) : Math.min(Ns.length - 1, i + 1); UI.cN = Ns[i]; UI.cSel = null; refreshCandleBox(); },
+    czoom: function (el) { var n = UI.cN || (UI.cfull ? 120 : 60); UI.cN = Math.max(15, Math.min(600, Math.round(el.dataset.z === 'in' ? n / 1.5 : n * 1.5))); UI.cSel = null; refreshCandleBox(); },
+    csig: function () { UI.csig = UI.csig === false; render(); },
+    cfull: function () { UI.cfull = true; UI.cSel = null; render(); },
+    'cfull-close': function () { UI.cfull = false; render(); },
+    'sig-info': function (el) { UI.sigInfo = UI.sigInfo === el.dataset.id ? null : el.dataset.id; var bb = document.getElementById('btbox'); if (bb) bb.innerHTML = backtestInner(bb.dataset.t); },
     cpan: function (el) { var n = UI.cN || 60; UI.cSel = null; if (el.dataset.p === 'end') UI.cOff = 0; else UI.cOff = Math.max(0, (UI.cOff || 0) + (el.dataset.p === 'back' ? Math.round(n / 2) : -Math.round(n / 2))); refreshCandleBox(); },
     preset: function (el) { if (!isPremium()) { UI.sheet = { kind: 'subscribe', why: 'preset' }; return render(); } var st = scanState(); st.presets = st.presets || {}; st.presets[el.dataset.id] = !st.presets[el.dataset.id]; if (st.presets[el.dataset.id]) st.view = 'strategy'; UI.scanLimit = 100; save(); render(); },
     'preset-info': function (el) { UI.presetOpen = UI.presetOpen === el.dataset.id ? null : el.dataset.id; render(); },
@@ -1693,6 +1795,7 @@
   render();
   loadData();
   setInterval(function () { if (document.visibilityState === 'visible') loadData(); }, 15 * 60000);
+  var rsT; window.addEventListener('resize', function () { if (!UI.cfull) return; clearTimeout(rsT); rsT = setTimeout(refreshCandleBox, 120); });
   loadPulse();
   setInterval(function () { if (document.visibilityState === 'visible') loadPulse(); }, 5 * 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && Date.now() - PULSE.at > 5 * 60000) loadPulse(); });
