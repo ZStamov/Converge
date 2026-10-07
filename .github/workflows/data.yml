@@ -2,12 +2,11 @@ name: Refresh market data
 
 on:
   schedule:
-    - cron: '7,37 13-21 * * 1-5'   # every 30 min, US market hours (UTC)
-    - cron: '23 1 * * *'           # once overnight, every day
+    - cron: '17 * * * *'   # every hour
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['scripts/fetch-data.mjs', 'scripts/sec-probe.mjs', 'scripts/lib/**', 'config/**', '.github/workflows/data.yml']
+    paths: ['scripts/fetch-data.mjs', 'scripts/fetch-scanner.mjs', 'scripts/tts.py', 'scripts/lib/**', 'config/**', '.github/workflows/data.yml']
 
 permissions:
   contents: write
@@ -19,7 +18,9 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
+    env:
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
     steps:
       - uses: actions/checkout@v4
 
@@ -27,31 +28,59 @@ jobs:
         with:
           node-version: 22
 
-      - name: Restore history from the data branch
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Restore state from the data and audio branches
         run: |
-          mkdir -p data-out
+          mkdir -p data-out audio-out
           if git ls-remote --exit-code --heads origin data >/dev/null; then
             git fetch -q --depth=1 origin data
-            git show origin/data:history.json > data-out/history.json 2>/dev/null || true
+            for f in history.json prices-cache.json; do git show "origin/data:$f" > "data-out/$f" 2>/dev/null || rm -f "data-out/$f"; done
           fi
+          if git ls-remote --exit-code --heads origin audio >/dev/null; then
+            git fetch -q --depth=1 origin audio
+            git archive origin/audio | tar -x -C audio-out
+          fi
+          ls data-out audio-out | head -5
 
-      - name: Fetch sources and compute signals
+      - name: News, prices, sentiment and signals
         run: |
           set -o pipefail
-          node scripts/sec-probe.mjs 2>&1 | tee data.log
-          node scripts/fetch-data.mjs data-out 2>&1 | tee -a data.log
-        env:
-          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          node scripts/fetch-data.mjs data-out 2>&1 | tee data.log
 
-      - name: Publish to the data branch
+      - name: Scanner (S&P 500)
+        continue-on-error: true
         run: |
-          cd data-out
-          git init -q -b data
-          git config user.name "converge-bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add market.json history.json
-          git commit -qm "Market data $(date -u +%FT%TZ)"
-          git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+          set -o pipefail
+          node scripts/fetch-scanner.mjs data-out 2>&1 | tail -n 40 | tee -a data.log
+
+      - name: Cache neural voice
+        uses: actions/cache@v4
+        with:
+          path: ~/.piper
+          key: piper-en_US-lessac-medium-v1
+
+      - name: Briefing audio (neural voice)
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          mkdir -p ~/.piper
+          V=https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium
+          [ -f ~/.piper/en_US-lessac-medium.onnx ] || curl -fsSL "$V/en_US-lessac-medium.onnx" -o ~/.piper/en_US-lessac-medium.onnx
+          [ -f ~/.piper/en_US-lessac-medium.onnx.json ] || curl -fsSL "$V/en_US-lessac-medium.onnx.json" -o ~/.piper/en_US-lessac-medium.onnx.json
+          pip install -q piper-tts
+          python scripts/tts.py data-out audio-out ~/.piper/en_US-lessac-medium.onnx "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/audio/" 2>&1 | tail -n 20 | tee -a data.log
+
+      - name: Publish audio, then data
+        run: |
+          push_dir () {
+            (cd "$1" && git init -q -b "$2" && git config user.name "converge-bot" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" \
+              && git add -A && git commit -qm "$2 $(date -u +%FT%TZ)" && git push -qf "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$2")
+          }
+          if ls audio-out/*.mp3 >/dev/null 2>&1; then push_dir audio-out audio; fi
+          push_dir data-out data
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -41,4 +41,6 @@ await sharp(splash).png().toFile(path.join(root, 'assets', 'splash-dark.png'));
 const src = path.join(root, 'data-out', 'market.json');
 mk(path.join(www, 'data'));
 if (fs.existsSync(src)) fs.copyFileSync(src, path.join(www, 'data', 'market.json'));
+const scan = path.join(root, 'data-out', 'scanner.json');
+if (fs.existsSync(scan)) fs.copyFileSync(scan, path.join(www, 'data', 'scanner.json'));
 console.log('web assets ready');

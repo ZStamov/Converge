@@ -9,7 +9,7 @@
     repo: 'https://github.com/ZStamov/converge'
   };
   var KEY = 'converge.v1';
-  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false };
+  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null };
 
   // ------------------------------------------------------------------ utils
   var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -50,7 +50,8 @@
     trophy: '<path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"></path><path d="M17 6h3v2a3 3 0 0 1-3 3"></path><path d="M7 6H4v2a3 3 0 0 0 3 3"></path>',
     div: '<path d="M3 17l6-6 4 4 8-8"></path><path d="M3 7l6 6"></path>', pinI: '<path d="M12 17v5"></path><path d="M9 3h6l-1 7 4 3H6l4-3-1-7z"></path>',
     link: '<path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"></path>',
-    refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path>'
+    refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path>',
+    filter: '<path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5z"></path>'
   };
   function ic(name, size, extra) { return '<svg width="' + (size || 20) + '" height="' + (size || 20) + '" viewBox="0 0 ' + (name === 'logo' ? 28 : 24) + ' ' + (name === 'logo' ? 28 : 24) + '" fill="none" stroke="currentColor" stroke-width="' + (name === 'logo' ? 2.2 : 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"' + (extra || '') + '>' + P[name] + '</svg>'; }
 
@@ -230,7 +231,7 @@
   }
   function navBar() {
     var unseen = (D && D.alerts || []).some(function (a) { return myTickers().indexOf(a.t) >= 0 && S.seenAlerts.indexOf(alertKey(a)) < 0; });
-    var tabs = [['command', 'cmd', 'Command'], ['feed', 'bolt', 'Signal Feed'], ['battle', 'scale', 'Battleground'], ['vault', 'vault', 'Vault']];
+    var tabs = [['command', 'cmd', 'Command'], ['feed', 'bolt', 'Signal Feed'], ['battle', 'scale', 'Battleground'], ['scan', 'filter', 'Scanner'], ['vault', 'vault', 'Vault']];
     return '<nav class="nav" aria-label="Primary">' + tabs.map(function (t) {
       var cur = NAV.tab === t[0] && !NAV.stack.length;
       return '<button data-act="tab" data-tab="' + t[0] + '"' + (NAV.tab === t[0] ? ' aria-current="page"' : '') + '><span class="' + (t[0] === 'command' && unseen ? 'dot' : '') + '" style="display:flex">' + ic(t[1], 22) + '</span>' + t[2] + '</button>';
@@ -368,6 +369,12 @@
     h += '<section class="card drv"><h2 class="eyebrow" style="margin-bottom:10px">What drives the score</h2><div style="display:flex;flex-direction:column;gap:12px">' + s.drivers.map(function (d) {
       return '<div><div class="r"><span>' + esc(d.label) + (d.key === 'quant' && Object.keys(x.grades).length < 5 ? ' (' + Object.keys(x.grades).length + ' of 5 available)' : '') + '</span><span class="mono ' + (d.bull >= 50 ? 'up' : 'down') + '" style="white-space:nowrap">' + d.bull + '% bull · w ' + d.w + '%</span></div><div class="track"><i style="width:' + d.bull + '%"></i></div></div>';
     }).join('') + '</div></section>';
+    if (x.crowd && x.crowd.n) {
+      var cw = x.crowd;
+      h += '<a class="card" href="' + esc(cw.url) + '" target="_blank" rel="noopener noreferrer" style="display:block;text-decoration:none;color:var(--fg);padding:14px"><span class="sechead" style="display:flex;margin-bottom:6px"><span class="eyebrow">Retail crowd · Stocktwits</span><span class="muted" style="font-size:11px">Open ↗</span></span>' +
+        (cw.bullPct != null ? '<span style="display:block;font-size:14px"><b class="' + (cw.bullPct >= 50 ? 'up' : 'down') + '">' + cw.bullPct + '% bullish</b> of ' + cw.tagged + ' tagged posts</span>' : '<span style="display:block;font-size:14px">Few posts carry a bull/bear tag right now</span>') +
+        '<span class="muted" style="display:block;font-size:12px;margin-top:4px">' + (cw.perHour != null ? cw.perHour + ' posts per hour' : '') + (cw.watchers ? ' · ' + bigNum(cw.watchers) + ' watching' : '') + '</span></a>';
+    }
     // grades
     var order = ['value', 'growth', 'profit', 'momentum', 'trend'];
     h += '<section><div class="sechead"><h2 class="eyebrow">Quant grades</h2><span class="mono muted" style="font-size:12px">Score ' + (x.quant.score == null ? '—' : x.quant.score) + '/100' + (Object.keys(x.grades).length < 5 ? ' · ' + Object.keys(x.grades).length + ' of 5 grades' : '') + '</span></div><div class="grades">' + order.map(function (k) {
@@ -376,6 +383,7 @@
     // filings + headlines
     var st = streamFor([sel], { limit: 10 });
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">Latest on ' + sel + '</h2><div class="list">' + (st.length ? st.map(itemRow).join('') : '<p class="muted" style="font-size:13px;margin:0">No recent items.</p>') + '</div></section>';
+    h += '<section><h2 class="eyebrow" style="margin-bottom:8px">More on ' + sel + '</h2><div class="lnkrow">' + extLinks(sel) + '</div></section>';
     var watching = S.watchlist.indexOf(sel) >= 0;
     h += '<div class="btnrow"><button class="btn" data-act="watch" data-t="' + sel + '">' + (watching ? 'Watching ✓' : 'Watch') + '</button><button class="btn pri" data-act="add" data-t="' + sel + '">Add a lot</button></div>';
     h += dataFoot();
@@ -443,11 +451,11 @@
   function scrAdd() {
     var d = UI.draft, x = d.t ? T(d.t) : null, h = '';
     if (d.step === 1) {
-      h += '<div><h1 class="disp" style="margin:0;font-size:26px;font-weight:700">Add a lot</h1><p class="muted" style="margin:4px 0 0;font-size:13px">Record a purchase. Next, Converge asks for your thesis.</p></div>';
+      h += '<div><h1 class="disp" style="margin:0;font-size:26px;font-weight:700">Add a lot</h1><p class="muted" style="margin:4px 0 0;font-size:13px">Record a purchase. You can write a thesis for it later from Command or the Vault.</p></div>';
       h += '<div class="field"><span class="lab">Ticker</span><button class="in" data-act="pick" data-mode="draft" style="text-align:left;display:flex;align-items:center;justify-content:space-between">' + (d.t ? '<span><span class="mono">' + d.t + '</span> <span class="muted">' + esc(x ? x.name : '') + '</span></span>' : '<span class="muted">Choose a ticker</span>') + ic('chev', 16) + '</button></div>';
       h += '<div class="grid2"><div class="field"><label for="f-shares">Shares</label><input class="in mono" id="f-shares" data-f="shares" inputmode="decimal" placeholder="e.g. 25" value="' + esc(d.shares) + '"></div><div class="field"><label for="f-price">Price paid</label><input class="in mono" id="f-price" data-f="price" inputmode="decimal" value="' + esc(d.price) + '"></div></div>';
       h += '<div class="field"><label for="f-date">Purchase date</label><input class="in" id="f-date" data-f="date" type="date" max="' + today() + '" value="' + esc(d.date) + '"></div>';
-      h += '<div class="btnrow" style="margin-top:auto"><button class="btn" data-act="back">Cancel</button><button class="btn pri" data-act="draft-next" style="flex:2">Continue</button></div>';
+      h += '<div class="btnrow" style="margin-top:auto"><button class="btn" data-act="back">Cancel</button><button class="btn pri" data-act="draft-next" style="flex:2">Save lot</button></div>';
       return subBar('New lot', { close: true }) + '<main class="main" id="main">' + h + '</main>';
     }
     var head = d.mode === 'watch' ? 'WATCHLIST · ' + d.t : d.t + (d.lotId ? ' · EXISTING LOT' : ' · ' + (d.shares || '') + ' SH @ ' + money(+d.price));
@@ -579,7 +587,7 @@
       h += '<div class="swipebtns"><button class="round no" data-act="brief-skip" aria-label="Skip this item"' + (card ? '' : ' disabled') + '>' + ic('x', 24) + '</button><button class="round yes" data-act="brief-add" aria-label="Add to briefing"' + (card ? '' : ' disabled') + '>' + ic('check', 26) + '</button></div>';
     }
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">In your briefing</h2><div class="list" style="gap:6px">' + (B.queue.length ? B.queue.map(function (q, i) { return '<div class="qrow' + (UI.speakIdx === i ? ' now' : '') + '"><span class="mono" style="color:var(--accent);width:44px">' + esc(q.t) + '</span><span class="x">' + esc(q.title) + '</span><span class="mono muted">' + fmtSec(q.sec) + '</span></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">Swipe right on the items you want to hear.</p>') + '</div></section>';
-    h += '<div class="player" style="margin-top:auto"><button class="pb" data-act="brief-play" aria-label="' + (UI.speaking ? 'Stop briefing' : 'Play briefing') + '"' + (B.queue.length ? '' : ' disabled') + '>' + ic(UI.speaking ? 'pause' : 'play', 18) + '</button><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">' + (UI.speaking ? 'Playing ' + (UI.speakIdx + 1) + ' of ' + B.queue.length : 'Today’s briefing · ' + fmtSec(total)) + '</div><div style="font-size:12px">' + (ttsAvailable() ? 'Read aloud on this device' : 'Audio is not available in this browser') + '</div></div></div>';
+    h += '<div class="player" style="margin-top:auto"><button class="pb" data-act="brief-play" aria-label="' + (UI.speaking ? 'Stop briefing' : 'Play briefing') + '"' + (B.queue.length ? '' : ' disabled') + '>' + ic(UI.speaking ? 'pause' : 'play', 18) + '</button><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">' + (UI.speaking ? 'Playing ' + (UI.speakIdx + 1) + ' of ' + B.queue.length : 'Today’s briefing · ' + fmtSec(total)) + '</div><div style="font-size:12px">' + (naturalVoice() ? 'Natural voice' : ttsAvailable() ? 'Your device’s best available voice' : 'Audio is not available in this browser') + '</div></div></div>';
     return subBar('Executive Flash Briefing') + '<main class="main" id="main">' + h + '</main>';
   }
 
@@ -606,13 +614,228 @@
   // ---- settings
   function scrSettings() {
     var h = '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Market data</h2><p style="margin:0;font-size:13px;line-height:1.5">Updated ' + esc(new Date(D.generatedAt).toLocaleString()) + ' (' + ago(D.generatedAt) + ').<br>Loaded from: ' + (DS.source === 'live' ? 'the live feed' : DS.source === 'snapshot' ? 'the snapshot built into this page' : 'the copy bundled with the app') + '.</p>' +
-      '<p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.5">Sources: ' + esc((D.method && D.method.sources || []).join(' · ')) + '. Refreshed automatically about every 30 minutes on market days.</p>' +
+      '<p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.5">Sources: ' + esc((D.method && D.method.sources || []).join(' · ')) + '. Refreshed automatically every hour.</p>' +
       '<button class="btn sm" data-act="refresh" style="margin-top:10px">' + ic('refresh', 16) + 'Refresh now</button></section>';
+    var ss = (D.method && D.method.sourceStatus) || {};
+    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">News &amp; data sources</h2>' + Object.keys(ss).map(function (k) { var x = ss[k], ok = x.ok > 0; return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>' + esc(k) + '</span><span class="mono ' + (ok ? 'up' : 'down') + '">' + (ok ? 'Live · ' + x.items + ' items' : 'Unavailable') + '</span></div>'; }).join('') +
+      '<p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.5">Finviz, StockAnalysis and X open as links from each ticker. Their terms or paid APIs don’t allow pulling their data into the app.</p></section>';
     if (isNative && plugin('LocalNotifications')) h += '<button class="rowtoggle" data-act="notify" aria-pressed="' + S.notify + '"><span><span class="t1">Divergence alerts</span><span class="t2">Notify me when a stock I hold or watch diverges</span></span><span class="sw"></span></button>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Muted sources</h2>' + (S.muted.length ? S.muted.map(function (m) { return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0"><span>' + esc(m) + '</span><button class="btn sm" data-act="mute" data-name="' + esc(m) + '">Unmute</button></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">None. Mute a source from its profile.</p>') + '</section>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Lots, theses and your watchlist are stored only on this device.</p><button class="btn sm dng" data-act="reset">' + (UI.confirmReset ? 'Tap again to erase everything' : 'Erase all my data') + '</button></section>';
     h += '<p class="foot">Converge · Covers ' + D.universe.length + ' tickers · <a href="' + CFG.repo + '" target="_blank" rel="noopener noreferrer">Source code</a><br>Information only, not investment advice.</p>';
     return subBar('Settings') + '<main class="main" id="main">' + h + '</main>';
+  }
+
+  // ------------------------------------------------------------------ scanner (Finviz-style screener)
+  var SC = null, SCS = { loading: false, error: null, source: null };
+  function loadScanner(force) {
+    if (SCS.loading || (SC && !force)) return;
+    SCS.loading = true; render();
+    var snap = window.__CONVERGE_SCANNER__;
+    fetchJson(CFG.remote.replace('market.json', 'scanner.json') + '?t=' + Math.floor(Date.now() / 60000), 12000)
+      .then(function (d) { if (!d || d.kind !== 'scanner') throw new Error('bad'); return { d: d, src: 'live' }; })
+      .catch(function () {
+        if (snap && snap.kind === 'scanner') return { d: snap, src: 'snapshot' };
+        return fetchJson(CFG.bundled.replace('market.json', 'scanner.json')).then(function (d) { if (!d || d.kind !== 'scanner') throw new Error('bad'); return { d: d, src: 'bundled' }; });
+      })
+      .then(function (r) { SC = r.d; SCS.source = r.src; SCS.error = null; SCS.loading = false; buildFilterDefs(); render(); })
+      .catch(function () { SCS.loading = false; SCS.error = 'Scanner data is not available yet. It is rebuilt every hour; try again shortly.'; render(); });
+  }
+  function scanState() {
+    if (!S.scan) S.scan = { f: {}, signal: 'none', view: 'overview', sort: { k: 'mc', dir: -1 }, saved: [], group: 'Descriptive', open: true };
+    return S.scan;
+  }
+  function nz(x) { return x != null && isFinite(x); }
+  function gt(k, v) { return function (r) { return nz(r[k]) && r[k] > v; }; }
+  function lt(k, v) { return function (r) { return nz(r[k]) && r[k] < v; }; }
+  function between(k, a, b) { return function (r) { return nz(r[k]) && r[k] >= a && r[k] <= b; }; }
+  function kfmt(v) { return v >= 1e6 ? (v / 1e6) + 'M' : v >= 1e3 ? (v / 1e3) + 'K' : String(v); }
+  function overs(k, vals, f, pre) { return vals.map(function (v) { return [(pre || 'Over ') + (f ? f(v) : v), gt(k, v)]; }); }
+  function unders(k, vals, f) { return vals.map(function (v) { return ['Under ' + (f ? f(v) : v), lt(k, v)]; }); }
+  var pctf = function (v) { return v + '%'; };
+  function perfOpts(k, name, today) {
+    var steps = today ? [1, 2, 3, 5, 10, 15] : [5, 10, 20, 30, 50, 100];
+    var o = [[name + ' Up', gt(k, 0)], [name + ' Down', lt(k, 0)]];
+    steps.forEach(function (s) { o.push([name + ' +' + s + '%', gt(k, s)]); });
+    steps.forEach(function (s) { o.push([name + ' -' + s + '%', lt(k, -s)]); });
+    return o;
+  }
+  function smaOpts(k, name, crossK, rel) {
+    var o = [['Price below ' + name, lt(k, 0)], ['Price above ' + name, gt(k, 0)]];
+    [10, 20, 30, 40, 50].forEach(function (s) { o.push(['Price ' + s + '% below ' + name, lt(k, -s)]); });
+    [10, 20, 30, 40, 50].forEach(function (s) { o.push(['Price ' + s + '% above ' + name, gt(k, s)]); });
+    o.push(['Price crossed ' + name, function (r) { return r[crossK] !== 0 && r[crossK] != null; }]);
+    o.push(['Price crossed ' + name + ' above', function (r) { return r[crossK] === 1; }]);
+    o.push(['Price crossed ' + name + ' below', function (r) { return r[crossK] === -1; }]);
+    rel.forEach(function (x) {
+      o.push([x[0] + ' above ' + x[1], function (r) { return r[x[2]] === x[3]; }]);
+      o.push([x[0] + ' below ' + x[1], function (r) { return r[x[2]] === -x[3]; }]);
+      if (x[4]) { o.push([x[0] + ' crossed ' + x[1] + ' above', function (r) { return r[x[4]] === x[3]; }]); o.push([x[0] + ' crossed ' + x[1] + ' below', function (r) { return r[x[4]] === -x[3]; }]); }
+    });
+    return o;
+  }
+  function hiloOpts(hk, lk, name) {
+    var o = [['New High', function (r) { return nz(r[hk]) && r[hk] >= -0.01; }], ['New Low', function (r) { return nz(r[lk]) && r[lk] <= 0.01; }]];
+    [5, 10, 15, 20, 30, 40, 50].forEach(function (s) { o.push([s + '% or more below High', lt(hk, -s)]); });
+    [3, 5, 10].forEach(function (s) { o.push(['0-' + s + '% below High', between(hk, -s, 0)]); });
+    [3, 5, 10].forEach(function (s) { o.push(['0-' + s + '% above Low', between(lk, 0, s)]); });
+    [5, 10, 15, 20, 30, 40, 50, 100].forEach(function (s) { o.push([s + '% or more above Low', gt(lk, s)]); });
+    return o;
+  }
+  var FDEFS = [], FIDX = {};
+  function uniq(k) { var s = {}; SC.rows.forEach(function (r) { if (r[k]) s[r[k]] = 1; }); return Object.keys(s).sort(); }
+  function buildFilterDefs() {
+    var mcap = function (a, b) { return function (r) { return nz(r.mc) && r.mc >= a && (b == null || r.mc < b); }; };
+    var B = 1e9, M = 1e6;
+    FDEFS = [
+      // Descriptive
+      { g: 'Descriptive', id: 'ex', label: 'Exchange', o: ['AMEX', 'NASDAQ', 'NYSE'].map(function (x) { return [x, function (r) { return r.ex === x; }]; }) },
+      { g: 'Descriptive', id: 'idx', label: 'Index', o: [['S&P 500', function (r) { return (r.idx || []).indexOf('S&P 500') >= 0; }], ['DJIA', function (r) { return (r.idx || []).indexOf('DJIA') >= 0; }]] },
+      { g: 'Descriptive', id: 'sec', label: 'Sector', o: uniq('sec').map(function (x) { return [x, function (r) { return r.sec === x; }]; }) },
+      { g: 'Descriptive', id: 'ind', label: 'Industry', o: uniq('ind').map(function (x) { return [x, function (r) { return r.ind === x; }]; }) },
+      { g: 'Descriptive', id: 'ctry', label: 'Country', o: uniq('ctry').map(function (x) { return [x, function (r) { return r.ctry === x; }]; }) },
+      { g: 'Descriptive', id: 'mc', label: 'Market Cap.', o: [['Mega ($200bln and more)', mcap(200 * B)], ['Large ($10bln to $200bln)', mcap(10 * B, 200 * B)], ['Mid ($2bln to $10bln)', mcap(2 * B, 10 * B)], ['Small ($300mln to $2bln)', mcap(300 * M, 2 * B)], ['Micro ($50mln to $300mln)', mcap(50 * M, 300 * M)], ['+Large (over $10bln)', mcap(10 * B)], ['+Mid (over $2bln)', mcap(2 * B)], ['+Small (over $300mln)', mcap(300 * M)], ['-Large (under $200bln)', mcap(0, 200 * B)], ['-Mid (under $10bln)', mcap(0, 10 * B)], ['-Small (under $2bln)', mcap(0, 2 * B)]] },
+      { g: 'Descriptive', id: 'dy', label: 'Dividend Yield', fund: true, o: [['None (0%)', function (r) { return !r.dy; }], ['Positive (>0%)', gt('dy', 0)], ['High (>5%)', gt('dy', 5)], ['Very High (>10%)', gt('dy', 10)]].concat(overs('dy', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], pctf)) },
+      { g: 'Descriptive', id: 'av', label: 'Average Volume', o: unders('av', [5e4, 1e5, 5e5, 7.5e5, 1e6], kfmt).concat(overs('av', [5e4, 1e5, 2e5, 3e5, 4e5, 5e5, 7.5e5, 1e6, 2e6], kfmt)).concat([['100K to 500K', between('av', 1e5, 5e5)], ['100K to 1M', between('av', 1e5, 1e6)], ['500K to 1M', between('av', 5e5, 1e6)], ['500K to 10M', between('av', 5e5, 1e7)]]) },
+      { g: 'Descriptive', id: 'rv', label: 'Relative Volume', o: overs('rv', [10, 5, 3, 2, 1.5, 1, 0.75, 0.5, 0.25]).concat(unders('rv', [2, 1.5, 1, 0.75, 0.5, 0.25, 0.1])) },
+      { g: 'Descriptive', id: 'v', label: 'Current Volume', o: unders('v', [5e4, 1e5, 5e5, 7.5e5, 1e6], kfmt).concat(overs('v', [0, 5e4, 1e5, 2e5, 3e5, 4e5, 5e5, 7.5e5, 1e6, 2e6, 5e6, 1e7, 2e7], kfmt)) },
+      { g: 'Descriptive', id: 'p', label: 'Price $', o: unders('p', [1, 2, 3, 4, 5, 7, 10, 15, 20, 30, 40, 50], function (v) { return '$' + v; }).concat(overs('p', [1, 2, 3, 4, 5, 7, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100], function (v) { return '$' + v; })).concat([['$1 to $5', between('p', 1, 5)], ['$1 to $10', between('p', 1, 10)], ['$1 to $20', between('p', 1, 20)], ['$5 to $10', between('p', 5, 10)], ['$5 to $20', between('p', 5, 20)], ['$5 to $50', between('p', 5, 50)], ['$10 to $20', between('p', 10, 20)], ['$10 to $50', between('p', 10, 50)], ['$20 to $50', between('p', 20, 50)], ['$50 to $100', between('p', 50, 100)]]) },
+      // Fundamental
+      { g: 'Fundamental', id: 'pe', label: 'P/E', fund: true, o: [['Low (<15)', between('pe', 0.0001, 15)], ['Profitable (>0)', gt('pe', 0)], ['High (>50)', gt('pe', 50)]].concat(unders('pe', [5, 10, 15, 20, 25, 30, 35, 40, 45, 50])).concat(overs('pe', [5, 10, 15, 20, 25, 30, 35, 40, 45, 50])) },
+      { g: 'Fundamental', id: 'ps', label: 'Price/Sales', fund: true, o: [['Low (<1)', lt('ps', 1)], ['High (>10)', gt('ps', 10)]].concat(unders('ps', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])).concat(overs('ps', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])) },
+      { g: 'Fundamental', id: 'pb', label: 'Price/Book', fund: true, o: [['Low (<1)', lt('pb', 1)], ['High (>5)', gt('pb', 5)]].concat(unders('pb', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])).concat(overs('pb', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])) },
+      { g: 'Fundamental', id: 'epsg', label: 'EPS growth this year', fund: true, o: [['Negative (<0%)', lt('epsg', 0)], ['Positive (>0%)', gt('epsg', 0)], ['Positive Low (0-10%)', between('epsg', 0, 10)], ['High (>25%)', gt('epsg', 25)]].concat(unders('epsg', [5, 10, 15, 20, 25, 30], pctf)).concat(overs('epsg', [5, 10, 15, 20, 25, 30], pctf)) },
+      { g: 'Fundamental', id: 'sg', label: 'Sales growth (FY)', fund: true, o: [['Negative (<0%)', lt('sg', 0)], ['Positive (>0%)', gt('sg', 0)], ['Positive Low (0-10%)', between('sg', 0, 10)], ['High (>25%)', gt('sg', 25)]].concat(unders('sg', [5, 10, 15, 20, 25, 30], pctf)).concat(overs('sg', [5, 10, 15, 20, 25, 30], pctf)) },
+      { g: 'Fundamental', id: 'roa', label: 'Return on Assets', fund: true, o: [['Positive (>0%)', gt('roa', 0)], ['Negative (<0%)', lt('roa', 0)], ['Very Positive (>15%)', gt('roa', 15)], ['Very Negative (<-15%)', lt('roa', -15)]].concat(overs('roa', [5, 10, 15, 20, 25, 30, 35, 40, 45, 50], pctf)).concat(unders('roa', [-50, -45, -40, -35, -30, -25, -20, -15, -10, -5], pctf)) },
+      { g: 'Fundamental', id: 'roe', label: 'Return on Equity', fund: true, o: [['Positive (>0%)', gt('roe', 0)], ['Negative (<0%)', lt('roe', 0)], ['Very Positive (>30%)', gt('roe', 30)], ['Very Negative (<-15%)', lt('roe', -15)]].concat(overs('roe', [5, 10, 15, 20, 25, 30, 35, 40, 45, 50], pctf)).concat(unders('roe', [-50, -45, -40, -35, -30, -25, -20, -15, -10, -5], pctf)) },
+      { g: 'Fundamental', id: 'cr', label: 'Current Ratio', fund: true, o: [['High (>3)', gt('cr', 3)], ['Low (<1)', lt('cr', 1)]].concat(unders('cr', [1, 0.5])).concat(overs('cr', [0.5, 1, 1.5, 2, 3, 4, 5, 10])) },
+      { g: 'Fundamental', id: 'de', label: 'LT Debt/Equity', fund: true, o: [['High (>0.5)', gt('de', 0.5)], ['Low (<0.1)', lt('de', 0.1)]].concat(unders('de', [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1])).concat(overs('de', [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])) },
+      { g: 'Fundamental', id: 'gm', label: 'Gross Margin', fund: true, o: [['Positive (>0%)', gt('gm', 0)], ['Negative (<0%)', lt('gm', 0)], ['High (>50%)', gt('gm', 50)]].concat(overs('gm', [0, 10, 20, 30, 40, 50, 60, 70, 80, 90], pctf)).concat(unders('gm', [90, 80, 70, 60, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0], pctf)) },
+      { g: 'Fundamental', id: 'om', label: 'Operating Margin', fund: true, o: [['Positive (>0%)', gt('om', 0)], ['Negative (<0%)', lt('om', 0)], ['Very Negative (<-20%)', lt('om', -20)], ['High (>25%)', gt('om', 25)]].concat(overs('om', [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90], pctf)).concat(unders('om', [90, 80, 70, 60, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0], pctf)) },
+      { g: 'Fundamental', id: 'nm', label: 'Net Profit Margin', fund: true, o: [['Positive (>0%)', gt('nm', 0)], ['Negative (<0%)', lt('nm', 0)], ['Very Negative (<-20%)', lt('nm', -20)], ['High (>20%)', gt('nm', 20)]].concat(overs('nm', [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90], pctf)).concat(unders('nm', [90, 80, 70, 60, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5, 0], pctf)) },
+      { g: 'Fundamental', id: 'po', label: 'Payout Ratio', fund: true, o: [['None (0%)', function (r) { return !r.po; }], ['Positive (>0%)', gt('po', 0)], ['Low (<20%)', lt('po', 20)], ['High (>50%)', gt('po', 50)]].concat(overs('po', [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100], pctf)).concat(unders('po', [10, 20, 30, 40, 50, 60, 70, 80, 90, 100], pctf)) },
+      // Technical
+      { g: 'Technical', id: 'perf', label: 'Performance', o: perfOpts('ch', 'Today', true).concat(perfOpts('pw', 'Week')).concat(perfOpts('pm', 'Month')).concat(perfOpts('pq', 'Quarter')).concat(perfOpts('ph', 'Half')).concat(perfOpts('pytd', 'YTD')).concat(perfOpts('py', 'Year')) },
+      { g: 'Technical', id: 'perf2', label: 'Performance 2', o: perfOpts('ch', 'Today', true).concat(perfOpts('pw', 'Week')).concat(perfOpts('pm', 'Month')).concat(perfOpts('pq', 'Quarter')).concat(perfOpts('ph', 'Half')).concat(perfOpts('pytd', 'YTD')).concat(perfOpts('py', 'Year')) },
+      { g: 'Technical', id: 'vol', label: 'Volatility', o: [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15].map(function (v) { return ['Week - Over ' + v + '%', gt('vw', v)]; }).concat([2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15].map(function (v) { return ['Month - Over ' + v + '%', gt('vm', v)]; })) },
+      { g: 'Technical', id: 'rsi', label: 'RSI (14)', o: [['Overbought (90)', gt('rsi', 90)], ['Overbought (80)', gt('rsi', 80)], ['Overbought (70)', gt('rsi', 70)], ['Overbought (60)', gt('rsi', 60)], ['Oversold (40)', lt('rsi', 40)], ['Oversold (30)', lt('rsi', 30)], ['Oversold (20)', lt('rsi', 20)], ['Oversold (10)', lt('rsi', 10)], ['Not Overbought (<60)', lt('rsi', 60)], ['Not Overbought (<50)', lt('rsi', 50)], ['Not Oversold (>50)', gt('rsi', 50)], ['Not Oversold (>40)', gt('rsi', 40)]] },
+      { g: 'Technical', id: 'sma20', label: '20-Day Simple Moving Average', o: smaOpts('s20', 'SMA20', 'xp20', [['SMA20', 'SMA50', 's20v50', 1, 'x20v50'], ['SMA20', 'SMA200', 's20v200', 1, 'x20v200']]) },
+      { g: 'Technical', id: 'sma50', label: '50-Day Simple Moving Average', o: smaOpts('s50', 'SMA50', 'xp50', [['SMA50', 'SMA20', 's20v50', -1, 'x20v50'], ['SMA50', 'SMA200', 's50v200', 1, 'x50v200']]) },
+      { g: 'Technical', id: 'sma200', label: '200-Day Simple Moving Average', o: smaOpts('s200', 'SMA200', 'xp200', [['SMA200', 'SMA20', 's20v200', -1, 'x20v200'], ['SMA200', 'SMA50', 's50v200', -1, 'x50v200']]) },
+      { g: 'Technical', id: 'ch', label: 'Change', o: [['Up', gt('ch', 0)], ['Down', lt('ch', 0)]].concat([1, 2, 3, 4, 5, 10, 15, 20].map(function (v) { return ['Up ' + v + '%', gt('ch', v)]; })).concat([1, 2, 3, 4, 5, 10, 15, 20].map(function (v) { return ['Down ' + v + '%', lt('ch', -v)]; })) },
+      { g: 'Technical', id: 'hl20', label: '20-Day High/Low', o: hiloOpts('hi20', 'lo20', '20-Day') },
+      { g: 'Technical', id: 'hl50', label: '50-Day High/Low', o: hiloOpts('hi50', 'lo50', '50-Day') },
+      { g: 'Technical', id: 'hl52', label: '52-Week High/Low', o: hiloOpts('hi52', 'lo52', '52-Week') },
+      { g: 'Technical', id: 'beta', label: 'Beta', o: unders('beta', [0, 0.5, 1, 1.5, 2]).concat(overs('beta', [0, 0.5, 1, 1.5, 2, 2.5, 3, 4])).concat([['0 to 0.5', between('beta', 0, 0.5)], ['0 to 1', between('beta', 0, 1)], ['0.5 to 1', between('beta', 0.5, 1)], ['0.5 to 1.5', between('beta', 0.5, 1.5)], ['1 to 1.5', between('beta', 1, 1.5)], ['1 to 2', between('beta', 1, 2)]]) },
+      { g: 'Technical', id: 'atr', label: 'Average True Range', o: overs('atr', [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]).concat(unders('atr', [0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])) }
+    ];
+    FIDX = {}; FDEFS.forEach(function (f) { FIDX[f.id] = f; });
+  }
+  var SIGNALS = [
+    ['none', 'None (all stocks)', null, null],
+    ['gainers', 'Top Gainers', function (r) { return r.ch > 0; }, { k: 'ch', dir: -1 }],
+    ['losers', 'Top Losers', function (r) { return r.ch < 0; }, { k: 'ch', dir: 1 }],
+    ['newhigh', 'New High', function (r) { return nz(r.hi52) && r.hi52 >= -0.01; }, { k: 'ch', dir: -1 }],
+    ['newlow', 'New Low', function (r) { return nz(r.lo52) && r.lo52 <= 0.01; }, { k: 'ch', dir: 1 }],
+    ['volatile', 'Most Volatile', function (r) { return nz(r.vw); }, { k: 'vw', dir: -1 }],
+    ['active', 'Most Active', function (r) { return nz(r.v); }, { k: 'v', dir: -1 }],
+    ['unusual', 'Unusual Volume', function (r) { return r.rv > 1.5; }, { k: 'rv', dir: -1 }],
+    ['overbought', 'Overbought', function (r) { return r.rsi > 70; }, { k: 'rsi', dir: -1 }],
+    ['oversold', 'Oversold', function (r) { return r.rsi < 30; }, { k: 'rsi', dir: 1 }],
+    ['smaxup', 'Price crossed SMA50 above', function (r) { return r.xp50 === 1; }, { k: 'ch', dir: -1 }],
+    ['goldencross', 'Golden cross (SMA50 crossed SMA200 above)', function (r) { return r.x50v200 === 1; }, { k: 'mc', dir: -1 }],
+    ['deathcross', 'Death cross (SMA50 crossed SMA200 below)', function (r) { return r.x50v200 === -1; }, { k: 'mc', dir: -1 }]
+  ];
+  function sigDef(id) { for (var i = 0; i < SIGNALS.length; i++) if (SIGNALS[i][0] === id) return SIGNALS[i]; return SIGNALS[0]; }
+  function bigNum(x) { if (!nz(x)) return '—'; var a = Math.abs(x); return a >= 1e12 ? (x / 1e12).toFixed(2) + 'T' : a >= 1e9 ? (x / 1e9).toFixed(2) + 'B' : a >= 1e6 ? (x / 1e6).toFixed(2) + 'M' : a >= 1e3 ? (x / 1e3).toFixed(1) + 'K' : String(Math.round(x)); }
+  function fx(d) { return function (x) { return nz(x) ? x.toFixed(d) : '—'; }; }
+  function fpct(x) { return nz(x) ? x.toFixed(2) + '%' : '—'; }
+  var COLS = {
+    t: ['Ticker', null], n: ['Company', function (x) { return x || ''; }], sec: ['Sector', null], ind: ['Industry', null], ctry: ['Country', null],
+    mc: ['Market Cap', bigNum], pe: ['P/E', fx(1)], ps: ['P/S', fx(2)], pb: ['P/B', fx(2)], eps: ['EPS (FY)', fx(2)], epsg: ['EPS this Y', fpct], sg: ['Sales Y/Y', fpct],
+    dy: ['Dividend', fpct], roa: ['ROA', fpct], roe: ['ROE', fpct], cr: ['Curr R', fx(2)], de: ['LTDebt/Eq', fx(2)], gm: ['Gross M', fpct], om: ['Oper M', fpct], nm: ['Profit M', fpct], po: ['Payout', fpct],
+    pw: ['Perf Week', fpct], pm: ['Perf Month', fpct], pq: ['Perf Quart', fpct], ph: ['Perf Half', fpct], py: ['Perf Year', fpct], pytd: ['Perf YTD', fpct], vw: ['Volatility W', fpct], vm: ['Volatility M', fpct],
+    av: ['Avg Volume', bigNum], rv: ['Rel Volume', fx(2)], beta: ['Beta', fx(2)], atr: ['ATR', fx(2)], s20: ['SMA20', fpct], s50: ['SMA50', fpct], s200: ['SMA200', fpct], hi52: ['52W High', fpct], lo52: ['52W Low', fpct], rsi: ['RSI', fx(1)],
+    p: ['Price', fx(2)], ch: ['Change', fpct], v: ['Volume', bigNum]
+  };
+  var VIEWS = {
+    overview: ['Overview', ['t', 'n', 'sec', 'ind', 'ctry', 'mc', 'pe', 'p', 'ch', 'v']],
+    valuation: ['Valuation', ['t', 'mc', 'pe', 'ps', 'pb', 'eps', 'epsg', 'sg', 'p', 'ch', 'v']],
+    financial: ['Financial', ['t', 'mc', 'dy', 'roa', 'roe', 'cr', 'de', 'gm', 'om', 'nm', 'po', 'p', 'ch', 'v']],
+    performance: ['Performance', ['t', 'pw', 'pm', 'pq', 'ph', 'pytd', 'py', 'vw', 'vm', 'av', 'rv', 'p', 'ch', 'v']],
+    technical: ['Technical', ['t', 'beta', 'atr', 's20', 's50', 's200', 'hi52', 'lo52', 'rsi', 'p', 'ch', 'v']]
+  };
+  function scanResults() {
+    var st = scanState(), preds = [];
+    Object.keys(st.f).forEach(function (id) {
+      var def = FIDX[id]; if (!def) return;
+      if (def.fund && !SC.fundamentals) return;
+      for (var i = 0; i < def.o.length; i++) if (def.o[i][0] === st.f[id]) { preds.push(def.o[i][1]); break; }
+    });
+    var sig = sigDef(st.signal); if (sig[2]) preds.push(sig[2]);
+    var rows = SC.rows.filter(function (r) { for (var i = 0; i < preds.length; i++) if (!preds[i](r)) return false; return true; });
+    var k = st.sort.k, dir = st.sort.dir;
+    rows.sort(function (a, b) {
+      var x = a[k], y = b[k];
+      if (typeof x === 'string' || typeof y === 'string') return dir * String(x || '').localeCompare(String(y || ''));
+      if (!nz(x)) return 1; if (!nz(y)) return -1; return dir * (x - y);
+    });
+    return rows;
+  }
+  function scrScan() {
+    var st = scanState();
+    var head = topBar('Scanner', '<button class="iconbtn" data-act="scan-refresh" aria-label="Reload scanner data">' + ic('refresh', 20) + '</button>');
+    if (!SC) {
+      if (!SCS.loading && !SCS.error) setTimeout(function () { loadScanner(); }, 0);
+      return head + '<main class="main" id="main"><div class="loading">' + (SCS.error ? '<p style="margin:0">' + esc(SCS.error) + '</p><button class="btn sm pri" data-act="scan-refresh">Retry</button>' : '<span class="pulse" style="color:var(--accent)">' + ic('filter', 36) + '</span>Loading S&amp;P 500 scanner…') + '</div></main>';
+    }
+    var nActive = Object.keys(st.f).length;
+    var h = '<div class="scan-top"><label class="sr" for="scan-signal">Signal</label><select class="in" id="scan-signal" data-scan="signal">' + SIGNALS.map(function (s) { return '<option value="' + s[0] + '"' + (st.signal === s[0] ? ' selected' : '') + '>Signal: ' + esc(s[1]) + '</option>'; }).join('') + '</select>' +
+      '<button class="btn sm" data-act="scan-toggle" aria-expanded="' + !!st.open + '">Filters' + (nActive ? ' (' + nActive + ')' : '') + '</button></div>';
+    if (st.saved && st.saved.length) h += '<div class="chips">' + st.saved.map(function (s, i) { return '<button class="chip" data-act="scan-load" data-i="' + i + '">' + esc(s.name) + '</button>'; }).join('') + '</div>';
+    if (st.open) {
+      var groups = ['Descriptive', 'Fundamental', 'Technical', 'All'];
+      h += '<section class="card" style="padding:12px"><div class="seg" role="tablist" aria-label="Filter groups">' + groups.map(function (g) { var n = Object.keys(st.f).filter(function (id) { return FIDX[id] && FIDX[id].g === g; }).length; return '<button role="tab" data-act="scan-group" data-g="' + g + '" aria-pressed="' + (st.group === g) + '">' + ({ Descriptive: 'Descr.', Fundamental: 'Fund.', Technical: 'Tech.', All: 'All' })[g] + (n ? ' ' + n : '') + '</button>'; }).join('') + '</div>';
+      if ((st.group === 'Fundamental' || st.group === 'All') && !SC.fundamentals) h += '<p class="note" style="margin:10px 0 0">Fundamental filters need SEC data. Add the <b>SEC_USER_AGENT</b> secret in the GitHub repository and they switch on at the next hourly run.</p>';
+      h += '<div class="fgrid">' + FDEFS.filter(function (f) { return st.group === 'All' || f.g === st.group; }).map(function (f) {
+        var dis = f.fund && !SC.fundamentals, cur = st.f[f.id];
+        return '<div class="field"><label for="sf-' + f.id + '">' + esc(f.label) + '</label><select class="in sel' + (cur ? ' on' : '') + '" id="sf-' + f.id + '" data-scanf="' + f.id + '"' + (dis ? ' disabled' : '') + '><option value="">Any</option>' + f.o.map(function (o) { return '<option' + (cur === o[0] ? ' selected' : '') + '>' + esc(o[0]) + '</option>'; }).join('') + '</select></div>';
+      }).join('') + '</div>' +
+        '<div class="btnrow" style="margin-top:10px"><button class="btn sm" data-act="scan-reset">Reset</button><button class="btn sm" data-act="scan-save">Save screen</button></div>' +
+        '<p class="foot" style="text-align:left;margin:8px 0 0">Not available from free sources: analyst recommendation, short float, insider and institutional ownership, earnings date, target price, gap, change from open, chart patterns.</p></section>';
+    }
+    var rows = scanResults(), view = VIEWS[st.view] || VIEWS.overview, cols = view[1];
+    h += '<div class="seg" role="tablist" aria-label="Table view">' + Object.keys(VIEWS).map(function (v) { return '<button role="tab" data-act="scan-view" data-v="' + v + '" aria-pressed="' + (st.view === v) + '">' + VIEWS[v][0].slice(0, 5) + (VIEWS[v][0].length > 5 ? '.' : '') + '</button>'; }).join('') + '</div>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px" class="muted"><span><b style="color:var(--fg)">' + rows.length + '</b> of ' + SC.count + ' stocks · ' + esc(SC.universe) + '</span><span>' + ago(SC.generatedAt) + '</span></div>';
+    var shown = rows.slice(0, UI.scanLimit || 100);
+    h += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>No.</th>' + cols.map(function (k) { var on = st.sort.k === k; return '<th><button data-act="scan-sort" data-k="' + k + '" class="' + (on ? 'on' : '') + '">' + esc(COLS[k][0]) + (on ? (st.sort.dir < 0 ? ' ▼' : ' ▲') : '') + '</button></th>'; }).join('') + '</tr></thead><tbody>' +
+      shown.map(function (r, i) {
+        return '<tr data-act="scan-row" data-t="' + esc(r.t) + '"><td class="dim">' + (i + 1) + '</td>' + cols.map(function (k) {
+          var f = COLS[k][1], v = r[k], txt = f ? f(v) : esc(v == null ? '—' : v), c = '';
+          if (k === 'ch' || k === 'pw' || k === 'pm' || k === 'pq' || k === 'ph' || k === 'py' || k === 'pytd' || k === 'epsg' || k === 'sg') c = nz(v) ? (v > 0 ? 'up' : v < 0 ? 'down' : '') : '';
+          if (k === 't') return '<td class="tk">' + esc(r.t) + '</td>';
+          return '<td class="' + c + (k === 'n' || k === 'sec' || k === 'ind' ? ' txt' : '') + '">' + (f ? esc(txt) : txt) + '</td>';
+        }).join('') + '</tr>';
+      }).join('') + '</tbody></table></div>';
+    if (rows.length > shown.length) h += '<button class="btn sm" data-act="scan-more">Show ' + Math.min(100, rows.length - shown.length) + ' more</button>';
+    if (!rows.length) h += '<div class="empty"><h3>No matches</h3><p>Loosen a filter or pick another signal.</p></div>';
+    h += '<p class="foot">Sources: ' + esc((SC.sources || []).join(' · ')) + '. Prices refresh hourly; daily bars update after each session.</p>';
+    return head + '<main class="main" id="main">' + h + '</main>';
+  }
+  function scanRowSheet(t) {
+    var r = null; for (var i = 0; i < SC.rows.length; i++) if (SC.rows[i].t === t) { r = SC.rows[i]; break; }
+    if (!r) return '';
+    var kv = function (k) { var f = COLS[k][1]; return '<div><div class="k">' + esc(COLS[k][0]) + '</div><div class="v ' + (k === 'ch' ? cls(r.ch) : '') + '" style="font-size:14px">' + esc(f ? f(r[k]) : r[k]) + '</div></div>'; };
+    var covered = !!T(t);
+    return '<h2 class="disp" style="margin:0;font-size:22px">' + esc(t) + ' <span class="muted" style="font-size:14px;font-weight:400">' + esc(r.n || '') + '</span></h2><p class="muted" style="margin:2px 0 10px;font-size:12px">' + esc([r.sec, r.ind, r.ex].filter(Boolean).join(' · ')) + '</p>' +
+      '<div class="scroll"><div class="kv">' + ['p', 'ch', 'mc', 'pe', 'ps', 'dy', 'pm', 'pytd', 'py', 'rsi', 'beta', 'rv', 's50', 's200', 'hi52'].map(kv).join('') + '</div>' +
+      '<div class="lnkrow" style="margin-top:12px">' + extLinks(t) + '</div></div>' +
+      '<div class="btnrow" style="margin-top:12px">' + (covered ? '<button class="btn" data-act="battle" data-t="' + esc(t) + '">Open in Battleground</button>' : '<span class="muted" style="font-size:12px;align-self:center">News and sentiment cover ' + D.universe.length + ' tickers; add more in config/universe.json.</span>') + '</div>';
+  }
+  function extLinks(t) {
+    var u = encodeURIComponent(t), x = encodeURIComponent('$' + t);
+    var L = [['Finviz', 'https://finviz.com/quote.ashx?t=' + u], ['StockAnalysis', 'https://stockanalysis.com/stocks/' + u.toLowerCase().replace('.', '-') + '/'], ['Yahoo Finance', 'https://finance.yahoo.com/quote/' + u.replace('.', '-')], ['Stocktwits', 'https://stocktwits.com/symbol/' + u], ['X', 'https://x.com/search?q=' + x + '&f=live']];
+    return L.map(function (l) { return '<a class="chip" href="' + esc(l[1]) + '" target="_blank" rel="noopener noreferrer">' + esc(l[0]) + ' ↗</a>'; }).join('');
   }
 
   // ---- sheets (picker, pin)
@@ -640,6 +863,7 @@
           (sh.type === 'excerpt' ? '<div class="field" style="margin-top:8px"><label for="pin-src">Source <span class="opt">(e.g. Q3 call, CFO)</span></label><input class="in" id="pin-src"></div>' : '') + '<button class="btn pri" data-act="pin-save" style="margin-top:12px">Pin</button>';
       }
     }
+    if (sh.kind === 'scanrow') body = SC ? scanRowSheet(sh.t) : '';
     return '<div class="sheet" data-act="sheet-bg"><div class="panel" role="dialog" aria-modal="true" data-stop="1"><div class="grab"></div>' + body + '</div></div>';
   }
 
@@ -661,6 +885,7 @@
         case 'feed': body = scrFeed(); break;
         case 'battle': body = scrBattle(); break;
         case 'vault': body = scrVault(); break;
+        case 'scan': body = scrScan(); break;
         case 'add': body = scrAdd(); break;
         case 'lot': body = scrLot(c.id); break;
         case 'wthesis': body = scrWThesis(c.t); break;
@@ -713,7 +938,7 @@
     briefing: function () { UI.briefIdx = 0; go({ name: 'briefing' }); },
     lot: function (el) { UI.reflect = null; UI.confirmDel = null; go({ name: 'lot', id: el.dataset.id }); },
     wthesis: function (el) { go({ name: 'wthesis', t: el.dataset.t }); },
-    watch: function (el) { var t = el.dataset.t, i = S.watchlist.indexOf(t); if (i >= 0) { S.watchlist.splice(i, 1); save(); toast('Removed ' + t + ' from watchlist'); } else { S.watchlist.push(t); save(); UI.draft = newDraft(t, 'watch'); go({ name: 'add' }); } },
+    watch: function (el) { var t = el.dataset.t, i = S.watchlist.indexOf(t); if (i >= 0) { S.watchlist.splice(i, 1); save(); toast('Removed ' + t + ' from watchlist'); } else { S.watchlist.push(t); save(); toast('Watching ' + t); } },
     'wthesis-new': function (el) { UI.draft = newDraft(el.dataset.t, 'watch'); go({ name: 'add' }); },
     add: function (el) { UI.draft = newDraft(el.dataset.t || null, 'lot'); if (UI.draft.t) UI.draft.step = 1; go({ name: 'add' }); },
     'thesis-lot': function (el) {
@@ -729,7 +954,7 @@
       if (mode === 'watch') {
         var i = S.watchlist.indexOf(t);
         if (i >= 0) { S.watchlist.splice(i, 1); save(); render(); }
-        else { S.watchlist.push(t); save(); UI.sheet = null; UI.draft = newDraft(t, 'watch'); go({ name: 'add' }); }
+        else { S.watchlist.push(t); save(); render(); }
         return;
       }
       if (mode === 'draft') { UI.draft.t = t; UI.draft.price = String(T(t).price); }
@@ -744,7 +969,7 @@
       if (!d.t) return toast('Choose a ticker first');
       if (!sh || sh <= 0) return toast('Enter how many shares you bought');
       if (!pr || pr <= 0) return toast('Enter the price you paid');
-      d.step = 2; render();
+      finishDraft(false);
     },
     pinsheet: function (el) { UI.sheet = { kind: 'pin', type: el.dataset.type }; render(); },
     'pin-art': function (el) { var n = (D.news || []).filter(function (z) { return z.t === UI.draft.t; })[+el.dataset.i]; if (!n) return; UI.draft.pins.push({ type: 'article', text: n.title, url: n.url, meta: n.source + ' · ' + fmtDate(n.date) }); UI.sheet = null; render(); },
@@ -786,6 +1011,22 @@
       if (S.notify) { S.notify = false; save(); render(); return; }
       LN.requestPermissions().then(function (r) { S.notify = r && r.display === 'granted'; save(); render(); if (!S.notify) toast('Notifications are off in system settings'); });
     },
+    'scan-refresh': function () { SC = null; SCS.error = null; loadScanner(true); },
+    'scan-toggle': function () { var st = scanState(); st.open = !st.open; save(); render(); },
+    'scan-group': function (el) { scanState().group = el.dataset.g; save(); render(); },
+    'scan-view': function (el) { scanState().view = el.dataset.v; save(); render(); },
+    'scan-sort': function (el) { var st = scanState(), k = el.dataset.k; if (st.sort.k === k) st.sort.dir *= -1; else st.sort = { k: k, dir: ['t', 'n', 'sec', 'ind', 'ctry'].indexOf(k) >= 0 ? 1 : -1 }; save(); render(); },
+    'scan-row': function (el) { UI.sheet = { kind: 'scanrow', t: el.dataset.t }; render(); },
+    'scan-more': function () { UI.scanLimit = (UI.scanLimit || 100) + 100; render(); },
+    'scan-reset': function () { var st = scanState(); st.f = {}; st.signal = 'none'; save(); render(); },
+    'scan-save': function () {
+      var st = scanState(), parts = Object.keys(st.f).map(function (id) { return st.f[id]; });
+      if (st.signal !== 'none') parts.unshift(sigDef(st.signal)[1]);
+      if (!parts.length) return toast('Pick at least one filter or signal first');
+      var name = parts.join(' + '); if (name.length > 40) name = name.slice(0, 38) + '…';
+      st.saved = (st.saved || []).filter(function (x) { return x.name !== name; }); st.saved.unshift({ name: name, f: JSON.parse(JSON.stringify(st.f)), signal: st.signal }); st.saved = st.saved.slice(0, 12); save(); toast('Screen saved');
+    },
+    'scan-load': function (el) { var st = scanState(), sv = st.saved[+el.dataset.i]; if (!sv) return; st.f = JSON.parse(JSON.stringify(sv.f)); st.signal = sv.signal; save(); render(); },
     'brief-add': function () { swipeDecide(true); },
     'brief-skip': function () { swipeDecide(false); },
     'brief-reset': function () { S.brief = { day: today(), picked: [], skipped: [] }; save(); render(); },
@@ -809,7 +1050,7 @@
       if (S.watchlist.indexOf(d.t) < 0) S.watchlist.push(d.t);
       S.sel = d.t;
     }
-    save(); NAV.stack.pop(); UI.draft = null; toast(thesis ? 'Lot and thesis saved' : 'Lot saved. Add the thesis any time from the Vault.');
+    save(); NAV.stack.pop(); UI.draft = null; toast(thesis ? 'Thesis saved' : 'Lot saved');
   }
 
   // ------------------------------------------------------------------ briefing: swipe + speech
@@ -828,33 +1069,65 @@
     el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   }
   function ttsAvailable() { return !!plugin('TextToSpeech') || ('speechSynthesis' in window); }
+  function naturalVoice() { return !!(D && D.briefingAudio && D.briefingAudio.base && !window.__CONVERGE_ARTIFACT__); }
+  var SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//NwwAAAAAAAAAAAAEluZm8AAAAPAAAACAAAA/oAR0dHR0dHR0dHR0dHYmJiYmJiYmJiYmJifHx8fHx8fHx8fHx8fJaWlpaWlpaWlpaWlrGxsbGxsbGxsbGxsbHLy8vLy8vLy8vLy8vl5eXl5eXl5eXl5eXl////////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQC1AAAAAAAAAP6yysejgAAAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NCxKMAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NAxKQAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80LEowAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/80DEpAAAA0gAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsSjAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==';
+  function bestVoice() {
+    if (!('speechSynthesis' in window)) return null;
+    var vs = window.speechSynthesis.getVoices().filter(function (v) { return /^en[-_]?(US|GB|AU|CA|IE)?/i.test(v.lang); });
+    var pref = [/natural/i, /premium/i, /enhanced/i, /neural/i, /siri/i, /google us english/i, /\bava\b/i, /samantha/i, /\bzoe\b/i, /allison/i, /aria/i, /jenny/i, /daniel/i];
+    for (var i = 0; i < pref.length; i++) for (var j = 0; j < vs.length; j++) if (pref[i].test(vs[j].name)) return vs[j];
+    for (var k = 0; k < vs.length; k++) if (vs[k].lang === 'en-US' && vs[k].localService) return vs[k];
+    return vs[0] || null;
+  }
+  if ('speechSynthesis' in window) { try { window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = function () { }; } catch (e) { } }
   function speakOne(text) {
     var tts = plugin('TextToSpeech');
-    if (tts) return tts.speak({ text: text, lang: 'en-US', rate: 1.0 });
+    if (tts) return tts.speak({ text: text, lang: 'en-US', rate: 0.95, pitch: 1.0 });
     return new Promise(function (res) {
-      var u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 1.03;
+      var u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = 0.96; u.pitch = 1.0;
+      var v = bestVoice(); if (v) u.voice = v;
       u.onend = res; u.onerror = res; window.speechSynthesis.speak(u);
+    });
+  }
+  function fetchClip(name) {
+    var a = D.briefingAudio; if (!name || !a) return Promise.resolve(null);
+    return fetch(a.base + name).then(function (r) { if (!r.ok) throw new Error('clip'); return r.arrayBuffer(); })
+      .then(function (b) { return URL.createObjectURL(new Blob([b], { type: 'audio/mpeg' })); }).catch(function () { return null; });
+  }
+  function playClip(url) {
+    return new Promise(function (res) {
+      var el = UI.audioEl; if (!el) return res();
+      el.onended = res; el.onerror = res; el.src = url;
+      var p = el.play(); if (p && p.catch) p.catch(res);
     });
   }
   function stopSpeech() {
     UI.speaking = false; UI.speakIdx = -1;
+    if (UI.audioEl) { try { UI.audioEl.pause(); } catch (e) { } }
     var tts = plugin('TextToSpeech'); if (tts) tts.stop().catch(function () { });
     else if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   }
+  function spokenFor(b) { return b.say || (b.t + '. ' + b.title + '. ' + (b.why || '')); }
   function playBriefing() {
     var q = briefState().queue; if (!q.length) return;
-    if (!ttsAvailable()) return toast('Audio is not available in this browser');
+    var natural = naturalVoice();
+    if (!natural && !ttsAvailable()) return toast('Audio is not available in this browser');
+    if (natural) { if (!UI.audioEl) UI.audioEl = new Audio(); UI.audioEl.src = SILENT; var pp = UI.audioEl.play(); if (pp && pp.catch) pp.catch(function () { }); }
     UI.speaking = true; UI.speakIdx = -1; render();
     var run = UI.runId = uid();
-    var intro = 'Your Converge briefing for ' + new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + '. ' + q.length + ' items.';
-    var steps = [intro].concat(q.map(function (b) { return b.t.split('').join(' ') + '. ' + b.title + '. ' + b.why; }));
-    var i = 0;
-    (function next() {
-      if (!UI.speaking || UI.runId !== run) return;
-      if (i >= steps.length) { stopSpeech(); render(); return; }
-      UI.speakIdx = i - 1; render();
-      Promise.resolve(speakOne(steps[i++])).then(next, next);
-    })();
+    var bv = D.briefingVoice || {}, ba = D.briefingAudio || {};
+    var steps = [{ say: bv.intro || "Here's your Converge briefing.", audio: ba.intro }].concat(q.map(function (b) { return { say: spokenFor(b), audio: b.audio }; })).concat([{ say: bv.outro || "That's your briefing.", audio: ba.outro }]);
+    var clips = natural ? Promise.all(steps.map(function (st) { return fetchClip(st.audio); })) : Promise.resolve(steps.map(function () { return null; }));
+    clips.then(function (urls) {
+      var i = 0;
+      (function next() {
+        if (!UI.speaking || UI.runId !== run) return;
+        if (i >= steps.length) { stopSpeech(); render(); urls.forEach(function (u) { if (u) URL.revokeObjectURL(u); }); return; }
+        UI.speakIdx = i >= 1 && i <= q.length ? i - 1 : -1; render();
+        var k = i++;
+        Promise.resolve(urls[k] ? playClip(urls[k]) : speakOne(steps[k].say)).then(next, next);
+      })();
+    });
   }
 
   // ------------------------------------------------------------------ notifications (native)
@@ -882,6 +1155,11 @@
     if (el.dataset.f && UI.draft) UI.draft[el.dataset.f] = el.value;
     if (el.dataset.rf && UI.reflect) UI.reflect[el.dataset.rf] = el.value;
     if (el.dataset.pickq) { UI.pickQuery = el.value; render(); }
+  });
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (el.dataset && el.dataset.scanf) { var st = scanState(); if (el.value) st.f[el.dataset.scanf] = el.value; else delete st.f[el.dataset.scanf]; UI.scanLimit = 100; save(); render(); }
+    if (el.dataset && el.dataset.scan === 'signal') { var st2 = scanState(); st2.signal = el.value; var d = sigDef(el.value); if (d[3]) st2.sort = { k: d[3].k, dir: d[3].dir }; UI.scanLimit = 100; save(); render(); }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') back(); });
   if (isNative) {

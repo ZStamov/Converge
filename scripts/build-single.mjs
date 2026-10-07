@@ -12,6 +12,8 @@ let fonts = read('fonts/fonts.css').replace(/url\('([^']+)'\)/g, (_, f) => `url(
 const css = read('styles.css');
 const js = read('app.js');
 const data = fs.existsSync(dataPath) ? fs.readFileSync(dataPath, 'utf8') : 'null';
+const scanPath = path.join(path.dirname(dataPath), 'scanner.json');
+const scan = fs.existsSync(scanPath) ? fs.readFileSync(scanPath, 'utf8') : 'null';
 const safe = (s) => s.replace(/<\/(script)/gi, '<\\/$1').replace(/<!--/g, '<\\!--');
 
 const html = `<title>Converge</title>
@@ -19,7 +21,7 @@ const html = `<title>Converge</title>
 <style>${fonts}</style>
 <style>${css}</style>
 <div id="app"><div class="app"><div class="loading">Loading market data…</div></div></div>
-<script>window.__CONVERGE_ARTIFACT__=true;window.__CONVERGE_SNAPSHOT__=${safe(data)};</script>
+<script>window.__CONVERGE_ARTIFACT__=true;window.__CONVERGE_SNAPSHOT__=${safe(data)};window.__CONVERGE_SCANNER__=${safe(scan)};</script>
 <script>${safe(js)}</script>
 `;
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });

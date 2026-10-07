@@ -242,7 +242,7 @@ export function sourceWeight(src, stats) {
 }
 
 // ---------- sentiment & pillars ----------
-export function sentimentFor(t, items, stats, grades, comp, series, nowDay, windowDays) {
+export function sentimentFor(t, items, stats, grades, comp, series, nowDay, windowDays, crowd) {
   const since = isoDay(Date.parse(nowDay) - windowDays * DAY);
   const mid = isoDay(Date.parse(nowDay) - 7 * DAY);
   const mine = items.filter((x) => x.t === t && x.date.slice(0, 10) >= since);
@@ -256,8 +256,10 @@ export function sentimentFor(t, items, stats, grades, comp, series, nowDay, wind
   const r1m = retOver(c, end, 21) ?? 0;
   const trendBull = clamp(0.5 + r1m * 2.5, 0.05, 0.95);
   const quantBull = comp == null ? 0.5 : comp / 100;
-  const W = { news: 0.45, quant: 0.35, trend: 0.2 };
-  const bull = Math.round((W.news * all.share + W.quant * quantBull + W.trend * trendBull) * 100);
+  const hasCrowd = crowd && crowd.tagged >= 5;
+  const crowdBull = hasCrowd ? (crowd.bull + 1) / (crowd.tagged + 2) : null;
+  const W = hasCrowd ? { news: 0.35, quant: 0.30, crowd: 0.20, trend: 0.15 } : { news: 0.44, quant: 0.37, crowd: 0, trend: 0.19 };
+  const bull = Math.round((W.news * all.share + W.quant * quantBull + W.trend * trendBull + (hasCrowd ? W.crowd * crowdBull : 0)) * 100);
 
   const ranked = (sign) => mine.filter((x) => x.sent === sign)
     .map((x) => ({ x, k: sourceWeight(x.source, stats) * Math.abs(x.score) * (x.merged || 1) }))
@@ -274,9 +276,10 @@ export function sentimentFor(t, items, stats, grades, comp, series, nowDay, wind
     bull, bear: 100 - bull, n: mine.length,
     newsBull: Math.round(all.share * 100), newsBull7d: Math.round(recent.share * 100), newsBullPrev7d: Math.round(prior.share * 100),
     drivers: [
-      { key: 'news', label: 'News tone, weighted by source track record', bull: Math.round(all.share * 100), w: 45, n: mine.length },
-      { key: 'quant', label: 'Quant factor grades', bull: Math.round(quantBull * 100), w: 35 },
-      { key: 'trend', label: '1-month price trend', bull: Math.round(trendBull * 100), w: 20 }
+      { key: 'news', label: 'News tone, weighted by source track record', bull: Math.round(all.share * 100), w: Math.round(W.news * 100), n: mine.length },
+      { key: 'quant', label: 'Quant factor grades', bull: Math.round(quantBull * 100), w: Math.round(W.quant * 100) },
+      { key: 'trend', label: '1-month price trend', bull: Math.round(trendBull * 100), w: Math.round(W.trend * 100) },
+      ...(hasCrowd ? [{ key: 'crowd', label: `Retail crowd on Stocktwits (${crowd.tagged} tagged posts)`, bull: Math.round(crowdBull * 100), w: 20 }] : [])
     ],
     pillars: { bull: bullP.slice(0, 4), bear: bearP.slice(0, 4) }
   };

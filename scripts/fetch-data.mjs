@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as A from './lib/analyze.mjs';
+import * as N from './lib/narrate.mjs';
 
 const OUT = path.resolve(process.argv[2] || 'data-out');
 fs.mkdirSync(OUT, { recursive: true });
@@ -72,22 +73,59 @@ function relevant(t, title, name) {
     return re.test(title);
   });
 }
+// source health, reported in market.json and shown in the app's Settings
+const SRC = {};
+const srcHit = (k, n) => { const x = (SRC[k] ||= { ok: 0, fail: 0, items: 0 }); x.ok++; x.items += n; };
+const srcFail = (k) => { (SRC[k] ||= { ok: 0, fail: 0, items: 0 }).fail++; };
+
+function gnewsItems(xml, via, forceSource) {
+  const out = [];
+  for (const it of A.parseRss(xml)) {
+    let title = it.title, source = it.source;
+    if (source && title.endsWith(' - ' + source)) title = title.slice(0, -(source.length + 3));
+    else { const m = title.match(/^(.*) - ([^-]{2,60})$/); if (m) { title = m[1]; source ||= m[2]; } }
+    out.push({ title, source: forceSource || source || 'Google News', url: it.link, pub: it.pubDate, via });
+  }
+  return out;
+}
+// CNBC publishes section feeds (not per ticker); fetched once and matched by company name
+const CNBC_FEEDS = { 'Top News': 100003114, Markets: 20910258, Earnings: 15839135, Investing: 15839069, Technology: 19854910, Finance: 10000664 };
+let cnbcPool = null;
+async function cnbcItems() {
+  if (cnbcPool) return cnbcPool;
+  cnbcPool = [];
+  for (const [label, id] of Object.entries(CNBC_FEEDS)) {
+    try {
+      const xml = await get(`https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=${id}`);
+      const items = A.parseRss(xml).map((it) => ({ title: it.title, source: 'CNBC', url: it.link, pub: it.pubDate, via: 'CNBC RSS · ' + label }));
+      cnbcPool.push(...items); srcHit('CNBC RSS', items.length);
+    } catch (e) { srcFail('CNBC RSS'); errors.push(`cnbc ${label}: ${e.message}`); }
+    await sleep(200);
+  }
+  return cnbcPool;
+}
 async function newsFor(t, name) {
   const items = [];
-  const q = encodeURIComponent(`"${name.replace(/,? (Inc|Corp|Corporation|Co|Company|Ltd|Holdings|Platforms|Incorporated)\.?$/i, '')}" OR ${t} stock`);
-  try {
-    const xml = await get(`https://news.google.com/rss/search?q=${q}+when:30d&hl=en-US&gl=US&ceid=US:en`);
-    for (const it of A.parseRss(xml)) {
-      let title = it.title, source = it.source;
-      if (source && title.endsWith(' - ' + source)) title = title.slice(0, -(source.length + 3));
-      else { const m = title.match(/^(.*) - ([^-]{2,60})$/); if (m) { title = m[1]; source ||= m[2]; } }
-      items.push({ title, source: source || 'Google News', url: it.link, pub: it.pubDate, via: 'Google News' });
-    }
-  } catch (e) { errors.push(`news ${t} google: ${e.message}`); }
+  const short = name.replace(/,? (Inc|Corp|Corporation|Co|Company|Ltd|Holdings|Platforms|Incorporated)\.?$/i, '');
+  const q = encodeURIComponent(`"${short}" OR ${t} stock`);
+  const gq = [
+    ['Google News', `${q}+when:30d`, null],
+    ['Reuters', `${encodeURIComponent(`"${short}" site:reuters.com`)}+when:30d`, 'Reuters'],
+    ['CNBC', `${encodeURIComponent(`"${short}" site:cnbc.com`)}+when:30d`, 'CNBC']
+  ];
+  for (const [label, query, force] of gq) {
+    try {
+      const got = gnewsItems(await get(`https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`), label === 'Google News' ? 'Google News' : label + ' via Google News', force);
+      items.push(...got); srcHit(label === 'Google News' ? 'Google News' : label, got.length);
+    } catch (e) { srcFail(label); errors.push(`news ${t} ${label}: ${e.message}`); }
+    await sleep(250);
+  }
   try {
     const xml = await get(`https://feeds.finance.yahoo.com/rss/2.0/headline?s=${t}&region=US&lang=en-US`);
-    for (const it of A.parseRss(xml)) items.push({ title: it.title, source: A.sourceFromUrl(it.link), url: it.link, pub: it.pubDate, via: 'Yahoo Finance RSS' });
-  } catch (e) { errors.push(`news ${t} yahoo: ${e.message}`); }
+    const got = A.parseRss(xml).map((it) => ({ title: it.title, source: A.sourceFromUrl(it.link), url: it.link, pub: it.pubDate, via: 'Yahoo Finance RSS' }));
+    items.push(...got); srcHit('Yahoo Finance', got.length);
+  } catch (e) { srcFail('Yahoo Finance'); errors.push(`news ${t} yahoo: ${e.message}`); }
+  items.push(...(await cnbcItems()));
   return items
     .filter((x) => x.title && x.pub && !isNaN(Date.parse(x.pub)) && relevant(t, x.title, name))
     .map((x) => {
@@ -95,6 +133,26 @@ async function newsFor(t, name) {
       const s = A.scoreSentiment(x.title);
       return { id: A.hashStr(t + '|' + x.title.toLowerCase()), t, title: x.title, source: x.source, url: x.url, date, kind: A.classifyKind(x.title, x.source), sent: s.sent, score: s.score, via: x.via };
     });
+}
+
+// ---- Stocktwits crowd sentiment (public stream API) ----
+async function crowdFor(t) {
+  try {
+    const j = await get(`https://api.stocktwits.com/api/2/streams/symbol/${encodeURIComponent(t)}.json`, { type: 'json' });
+    const msgs = j?.messages || [];
+    let bull = 0, bear = 0;
+    for (const m of msgs) { const s = m?.entities?.sentiment?.basic; if (s === 'Bullish') bull++; else if (s === 'Bearish') bear++; }
+    const times = msgs.map((m) => Date.parse(m.created_at)).filter(isFinite).sort((a, b) => a - b);
+    const spanH = times.length > 1 ? (times.at(-1) - times[0]) / 3600000 : null;
+    srcHit('Stocktwits', msgs.length);
+    return {
+      bull, bear, tagged: bull + bear, n: msgs.length,
+      bullPct: bull + bear ? Math.round(bull / (bull + bear) * 100) : null,
+      perHour: spanH ? A.round(msgs.length / Math.max(spanH, 0.25), 1) : null,
+      watchers: j?.symbol?.watchlist_count ?? null,
+      url: `https://stocktwits.com/symbol/${t}`
+    };
+  } catch (e) { srcFail('Stocktwits'); errors.push(`stocktwits ${t}: ${e.message}`); return null; }
 }
 
 // ---- SEC ----
@@ -135,7 +193,7 @@ for (const t of cfg.tickers) {
     await sleep(150);
     if (ref) {
       cik = ref.cik; if (ref.title) names[t] ||= ref.title;
-      try { filings = A.filingsFromSubmissions(await sec(`https://data.sec.gov/submissions/CIK${cik}.json`), cik, A.isoDay(now - 30 * A.DAY)); } catch (e) { errors.push(`filings ${t}: ${e.message}`); }
+      try { filings = A.filingsFromSubmissions(await sec(`https://data.sec.gov/submissions/CIK${cik}.json`), cik, A.isoDay(now - 30 * A.DAY)); srcHit('SEC EDGAR', filings.length); } catch (e) { srcFail('SEC EDGAR'); errors.push(`filings ${t}: ${e.message}`); }
       await sleep(150);
       try { fund = A.fundamentalsFromFacts(await sec(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`)); } catch (e) { errors.push(`facts ${t}: ${e.message}`); }
       await sleep(150);
@@ -143,8 +201,9 @@ for (const t of cfg.tickers) {
   } catch (e) { errors.push(`cik ${t}: ${e.message}`); }
   const name = names[t] || t;
   const news = await newsFor(t, name); await sleep(300);
+  const crowd = await crowdFor(t); await sleep(400);
   allNews.push(...news);
-  meta[t] = { cik, fund, filings, name };
+  meta[t] = { cik, fund, filings, name, crowd };
   log('ticker', t, 'news', news.length, 'filings', filings.length, 'fund', fund ? fund.fy : '-');
 }
 
@@ -188,7 +247,7 @@ for (const t of cfg.tickers) {
   const sv = qs.map((p) => p.s).filter((x) => x != null);
   const quant = { score: comp, series: qs, high6m: sv.length > 4 && comp >= Math.max(...sv.slice(0, -1)), low6m: sv.length > 4 && comp <= Math.min(...sv.slice(0, -1)) };
   const chg5d = A.retOver(c, end, 5), chg1m = A.retOver(c, end, 21);
-  const sent = A.sentimentFor(t, clusters, stats, grades, comp, s, today, cfg.newsWindowDays);
+  const sent = A.sentimentFor(t, clusters, stats, grades, comp, s, today, cfg.newsWindowDays, m.crowd);
   const div = A.divergenceFor(t, m.name, chg5d == null ? null : chg5d * 100, quant, sent);
   if (div) alerts.push({ ...div, date: now.toISOString() });
 
@@ -203,7 +262,7 @@ for (const t of cfg.tickers) {
     changePct: A.round((c[end] / c[end - 1] - 1) * 100, 2), chg5d: A.round(chg5d * 100, 2), chg1m: A.round(chg1m * 100, 2),
     asOf: s.asOf, priceSource: s.src,
     hist: { d: s.d, c: s.c.map((x) => A.round(x, 2)) },
-    grades, quant, fundamentals: m.fund, sentiment: sent, filings: m.filings || [], cik: m.cik
+    grades, quant, fundamentals: m.fund, sentiment: sent, filings: m.filings || [], cik: m.cik, crowd: m.crowd || null
   };
 }
 hist.quantLog = hist.quantLog.filter((q) => q.date >= new Date(now - 30 * A.DAY).toISOString()).slice(-300);
@@ -216,20 +275,24 @@ for (const t of Object.keys(tickers)) {
   clusters.filter((c) => c.t === t && c.date >= recentCut && c.kind === 'news').sort((a, b) => b.merged - a.merged).slice(0, 3).forEach((c) => {
     const tone = c.sent > 0 ? 'positive' : c.sent < 0 ? 'negative' : 'neutral';
     const why = `${c.source}${c.merged > 1 ? ` and ${c.merged - 1} other report${c.merged > 2 ? 's' : ''}` : ''}. Headline tone: ${tone}.`;
-    briefing.push({ id: 'n' + c.id, t, type: 'NEWS', title: c.title, why, date: c.date, url: c.url, sec: A.speakSec(c.title + ' ' + why) });
+    briefing.push({ id: 'n' + c.id, t, type: 'NEWS', title: c.title, why, date: c.date, url: c.url, source: c.source, merged: c.merged, sent: c.sent });
   });
   T.filings.filter((f) => f.date >= A.isoDay(now - 7 * A.DAY)).slice(0, 2).forEach((f) => {
     const title = `Form ${f.form} filed: ${f.desc}`;
-    briefing.push({ id: 'f' + A.hashStr(t + f.url), t, type: 'SEC FILING', title, why: `Filed with the SEC on ${f.date}.`, date: f.date + 'T12:00:00Z', url: f.url, sec: A.speakSec(title) + 4 });
+    briefing.push({ id: 'f' + A.hashStr(t + f.url), t, type: 'SEC FILING', title, why: `Filed with the SEC on ${f.date}.`, date: f.date + 'T12:00:00Z', url: f.url, form: f.form, items: f.desc.includes(': ') ? f.desc.split(': ')[1] : '' });
   });
 }
 for (const q of hist.quantLog.filter((q) => q.date >= new Date(now - 7 * A.DAY).toISOString())) {
   const title = `${q.factor} grade ${q.from} → ${q.to}`;
-  briefing.push({ id: 'q' + A.hashStr(q.t + q.factor + q.date), t: q.t, type: 'QUANT', title, why: `Now ${q.v}.`, date: q.date, sec: 10 });
+  briefing.push({ id: 'q' + A.hashStr(q.t + q.factor + q.date), t: q.t, type: 'QUANT', title, why: `Now ${q.v}.`, date: q.date, factor: q.factor, from: q.from, to: q.to, v: q.v });
   quantChanges.push(q);
 }
-for (const a of alerts) briefing.push({ id: 'a' + a.t + a.type, t: a.t, type: 'DIVERGENCE', title: a.title, why: a.text, date: a.date, sec: A.speakSec(a.text) });
+for (const a of alerts) briefing.push({ id: 'a' + a.t + a.type, t: a.t, type: 'DIVERGENCE', title: a.title, why: a.text, date: a.date, text: a.text });
 briefing.sort((a, b) => b.date.localeCompare(a.date));
+// spoken script for each item (neural voice clips are rendered from this in CI)
+const tickerNames = Object.fromEntries(cfg.tickers.map((t) => [t, N.spokenName(t, cfg, names[t])]));
+const nctx = { name: (t) => tickerNames[t] || t, tickerNames };
+for (const b of briefing) { b.say = N.narrate(b, nctx); b.sec = A.speakSec(b.say); }
 
 // ---- source table (only what the app needs) ----
 const sources = {};
@@ -243,12 +306,14 @@ const market = {
   benchmark: bench ? { t: cfg.benchmark, price: A.round(bench.c.at(-1), 2), chg5d: A.round(A.retOver(bench.c, bench.c.length - 1, 5) * 100, 2), hist: { d: bench.d, c: bench.c.map((x) => A.round(x, 2)) } } : null,
   tickers,
   news: clusters.map(({ members, via, ...c }) => c),
-  alerts, quantChanges, briefing: briefing.slice(0, 120),
+  alerts, quantChanges, briefing: briefing.slice(0, 80), briefingVoice: { intro: N.INTRO, outro: N.OUTRO },
   sources, topPerformerCut: topCut,
   method: {
     accuracyHorizonDays: H, minCallsForRating: cfg.minCallsForRating,
-    sentimentWeights: { news: 45, quant: 35, trend: 20 },
-    sources: ['Yahoo Finance chart API (prices; Stooq fallback)', 'Google News RSS', 'Yahoo Finance RSS', 'SEC EDGAR submissions', 'SEC EDGAR XBRL company facts']
+    sentimentWeights: { news: 35, quant: 30, crowd: 20, trend: 15 },
+    sources: ['Reuters (via Google News)', 'CNBC (RSS and via Google News)', 'Yahoo Finance (prices, RSS)', 'Google News RSS', 'Stocktwits (crowd sentiment)', 'SEC EDGAR (filings, fundamentals)'],
+    sourceStatus: SRC,
+    linkedOnly: ['Finviz', 'StockAnalysis', 'X']
   },
   errors: errors.slice(0, 50)
 };

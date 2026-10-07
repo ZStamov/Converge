@@ -41,7 +41,9 @@ globalThis.fetch = async (url) => {
   const u = String(url);
   const ok = (body, json) => ({ ok: true, status: 200, json: async () => body, text: async () => (json ? JSON.stringify(body) : body) });
   if (u.includes('/v8/finance/chart/')) return ok(chart(decodeURIComponent(u.split('/chart/')[1].split('?')[0])), true);
-  if (u.includes('news.google.com')) return ok(gnews(decodeURIComponent(u).match(/OR (\w+) stock/)[1]));
+  if (u.includes('news.google.com')) { const d = decodeURIComponent(u); const m = d.match(/OR (\w+) stock/) || d.match(/"([A-Za-z]+)/); return ok(gnews(m ? m[1] : 'AAPL')); }
+  if (u.includes('search.cnbc.com')) return ok(gnews('Apple').replace(/ - [^<]+<\/title>/g, '</title>'));
+  if (u.includes('api.stocktwits.com')) return ok({ symbol: { watchlist_count: 123456 }, messages: Array.from({ length: 30 }, (_, i) => ({ created_at: new Date(Date.now() - i * 600000).toISOString(), entities: { sentiment: i % 3 ? { basic: 'Bullish' } : i % 2 ? { basic: 'Bearish' } : null } })) }, true);
   if (u.includes('feeds.finance.yahoo.com')) return ok(yrss(u.match(/s=(\w+)/)[1]));
   if (u.includes('company_tickers.json')) return ok(tickersJson, true);
   if (u.includes('/submissions/')) return ok(sub, true);
