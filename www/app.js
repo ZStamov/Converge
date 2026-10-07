@@ -1012,8 +1012,10 @@
     var key = t + '|' + iv + '|' + s.t.length + '|' + s.t[s.t.length - 1] + '|' + s.c[s.c.length - 1] + '|' + (live ? 1 : 0);
     if (SIGC[key]) return SIGC[key];
     var d = SG.detect(s, iv), bt = SG.backtest(s, iv, { detected: d }), marks = {};
-    d.sigs.forEach(function (g) { (marks[g.i] = marks[g.i] || []).push(g); });
-    bt.trades.forEach(function (tr) { if (tr.exitWhy === 'atr') (marks[tr.out] = marks[tr.out] || []).push({ i: tr.out, id: 'atr', side: 'sell' }); });
+    var put = function (i, id, side) { if (i >= 0) (marks[i] = marks[i] || []).push({ i: i, id: id, side: side }); };
+    // one BUY per trade (the candle whose signal opened it), then one SELL or STOP when it closes
+    bt.trades.forEach(function (tr) { put(tr.in - 1, tr.why, 'buy'); if (tr.exitWhy === 'atr') put(tr.out, 'atr', 'sell'); else put(tr.out - 1, tr.exitWhy, 'sell'); });
+    if (bt.open) put(bt.open.in - 1, bt.open.why, 'buy');
     SIGC = {}; SIGC[key] = { d: d, bt: bt, marks: marks }; // keep one chart's worth
     return SIGC[key];
   }
@@ -1023,6 +1025,16 @@
     var land = isLand(), w = land ? Math.round(window.innerWidth * 0.66) - 28 : Math.min(window.innerWidth, 1600) - 24;
     var hAll = land ? Math.max(150, window.innerHeight - (window.innerHeight < 500 ? 190 : 220)) : Math.max(240, Math.round(window.innerHeight * 0.52));
     return { W: Math.max(280, w), PH: Math.round(hAll * 0.84), VH: Math.round(hAll * 0.16) - 8, AX: 58 };
+  }
+  function timeTick(sec, iv, prev) {
+    var d = new Date(sec * 1000), p = prev != null ? new Date(prev * 1000) : null;
+    if (/m$|h$/.test(iv)) {
+      if (!p || d.toDateString() !== p.toDateString()) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(' AM', 'a').replace(' PM', 'p');
+    }
+    if (iv === '1W') return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }).replace(' ', " '");
+    if (!p || d.getFullYear() !== p.getFullYear()) return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
   function niceStep(range, n) { var raw = range / n, p = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), f = raw / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
   function emptyChartMsg(t, iv) {
@@ -1073,24 +1085,40 @@
         var mx = (m - a) * step + step / 2, hasB = null, hasS = null;
         mk.forEach(function (g) { if (g.side === 'buy') hasB = hasB || g; else if (!hasS || hasS.id === 'atr') hasS = g; });
         var lab = function (txt, xx, yy, fill, ink) { var w = txt.length * 5.6 + 6; nlab++; xx = clamp(xx, w / 2 + 1, PW - w / 2 - 1); return '<g class="slab"><rect x="' + (xx - w / 2).toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + LH + '" rx="2.5" fill="' + fill + '"></rect><text x="' + xx.toFixed(1) + '" y="' + (yy + 9).toFixed(1) + '" text-anchor="middle" fill="' + ink + '">' + txt + '</text></g>'; };
-        if (hasB) { var wB = 3 * 5.6 + 6; rowB = mx - wB / 2 < endB + 1 ? (rowB + 1) % 3 : 0; endB = mx + wB / 2; var yb = clamp(y(s.l[m]) + 4 + rowB * (LH + 2), 0, PH - LH); body += '<line x1="' + mx.toFixed(1) + '" x2="' + mx.toFixed(1) + '" y1="' + y(s.l[m]).toFixed(1) + '" y2="' + yb.toFixed(1) + '" stroke="var(--bull)" stroke-width="1" vector-effect="non-scaling-stroke"></line>' + lab('BUY', mx, yb, 'var(--bull)', 'var(--bull-ink)'); }
         if (hasS) { var txt = hasS.id === 'atr' ? 'STOP' : 'SELL', wS = 4 * 5.6 + 6; rowS = mx - wS / 2 < endS + 1 ? (rowS + 1) % 3 : 0; endS = mx + wS / 2; var ys = clamp(y(s.h[m]) - 4 - LH - rowS * (LH + 2), 0, PH - LH); body += '<line x1="' + mx.toFixed(1) + '" x2="' + mx.toFixed(1) + '" y1="' + y(s.h[m]).toFixed(1) + '" y2="' + (ys + LH).toFixed(1) + '" stroke="' + (hasS.id === 'atr' ? 'var(--accent)' : 'var(--bear)') + '" stroke-width="1" vector-effect="non-scaling-stroke"></line>' + lab(txt, mx, ys, hasS.id === 'atr' ? 'var(--accent)' : 'var(--bear)', hasS.id === 'atr' ? 'var(--accent-ink)' : 'var(--bear-ink)'); }
+        if (hasB) { var wB = 3 * 5.6 + 6; rowB = mx - wB / 2 < endB + 1 ? (rowB + 1) % 3 : 0; endB = mx + wB / 2; var yb = clamp(y(s.l[m]) + 4 + rowB * (LH + 2), 0, PH - LH); body += '<line x1="' + mx.toFixed(1) + '" x2="' + mx.toFixed(1) + '" y1="' + y(s.l[m]).toFixed(1) + '" y2="' + yb.toFixed(1) + '" stroke="var(--bull)" stroke-width="1" vector-effect="non-scaling-stroke"></line>' + lab('BUY', mx, yb, 'var(--bull)', 'var(--bull-ink)'); }
       }
     }
     var last = s.c[b - 1], ly = y(last);
     body += '<line x1="0" x2="' + PW + '" y1="' + ly.toFixed(2) + '" y2="' + ly.toFixed(2) + '" stroke="var(--accent)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>';
-    var sel = UI.cSel != null && UI.cSel >= a && UI.cSel < b ? UI.cSel : b - 1;
-    if (UI.cSel != null && UI.cSel >= a && UI.cSel < b) { var sx = (sel - a) * step + step / 2; body += '<line x1="' + sx.toFixed(2) + '" x2="' + sx.toFixed(2) + '" y1="0" y2="' + H + '" stroke="var(--fg2)" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"></line>'; }
+    // time axis along the bottom
+    var tax = '', want = Math.max(2, Math.floor(PW / (UI.cfull ? 90 : 66))), every = Math.max(1, Math.ceil(N / want)), prevT = null;
+    for (var q = a; q < b; q++) {
+      if (q % every) continue;
+      var tx = (q - a) * step + step / 2; if (tx < 16 || tx > PW - 16) continue;
+      body += '<line x1="' + tx.toFixed(1) + '" x2="' + tx.toFixed(1) + '" y1="0" y2="' + PH + '" stroke="var(--line)" stroke-width="1" stroke-opacity=".55" vector-effect="non-scaling-stroke"></line>';
+      tax += '<span class="tt mono" style="left:' + (tx / W * 100).toFixed(2) + '%">' + esc(timeTick(s.t[q], iv, prevT)) + '</span>'; prevT = s.t[q];
+    }
+    var marked = UI.cSel != null && UI.cSel >= a && UI.cSel < b, sel = marked ? UI.cSel : b - 1, markP = null, curPill = '', timePill = '';
+    if (marked) {
+      var sx = (sel - a) * step + step / 2;
+      body += '<line x1="' + sx.toFixed(2) + '" x2="' + sx.toFixed(2) + '" y1="0" y2="' + H + '" stroke="var(--fg)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"></line>';
+      markP = UI.cSelP != null && UI.cSelP >= lo && UI.cSelP <= hi ? UI.cSelP : s.c[sel];
+      var my = y(markP);
+      body += '<line x1="0" x2="' + PW + '" y1="' + my.toFixed(2) + '" y2="' + my.toFixed(2) + '" stroke="var(--fg)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"></line><circle cx="' + sx.toFixed(2) + '" cy="' + my.toFixed(2) + '" r="3" fill="var(--fg)"></circle>';
+      curPill = '<span class="cax cur mono" style="top:' + Math.max(0, Math.min(PH - 16, my - 8)).toFixed(0) + 'px;width:' + AX + 'px">' + fmtP(markP) + '</span>';
+      timePill = '<span class="tpill mono" style="left:' + clamp(sx / W * 100, 9, 100 * PW / W - 9).toFixed(2) + '%">' + esc(candleLabel(s.t[sel], iv)) + '</span>';
+    }
     var chg = s.c[sel] - s.o[sel];
     var selSig = SGN && SGN.marks[sel] ? '<div class="sigline">' + SGN.marks[sel].map(function (g) { var R = window.ConvergeSignals.BY_ID[g.id]; return '<span><b class="lbl ' + (g.side === 'buy' ? 'lbuy' : g.id === 'atr' ? 'lstop' : 'lsell') + '">' + (g.side === 'buy' ? 'BUY' : g.id === 'atr' ? 'STOP' : 'SELL') + '</b> ' + esc(R.name) + ' (L' + R.lesson + ')</span>'; }).join('') + '</div>' : '';
-    var readout = '<div class="ohlc mono"><span>' + esc(candleLabel(s.t[sel], iv)) + '</span><span>O ' + fmtP(s.o[sel]) + '</span><span>H ' + fmtP(s.h[sel]) + '</span><span>L ' + fmtP(s.l[sel]) + '</span><span class="' + (chg >= 0 ? 'up' : 'down') + '">C ' + fmtP(s.c[sel]) + '</span><span>Vol ' + bigNum(s.v[sel]) + '</span></div>';
+    var readout = '<div class="ohlc mono">' + (marked ? '<span class="selmark">' + esc(candleLabel(s.t[sel], iv)) + ' · ' + fmtP(markP) + '<button class="lnk" data-act="csel-clear" aria-label="Clear the marker">✕</button></span>' : '<span>' + esc(candleLabel(s.t[sel], iv)) + '</span>') + '<span>O ' + fmtP(s.o[sel]) + '</span><span>H ' + fmtP(s.h[sel]) + '</span><span>L ' + fmtP(s.l[sel]) + '</span><span class="' + (chg >= 0 ? 'up' : 'down') + '">C ' + fmtP(s.c[sel]) + '</span><span>Vol ' + bigNum(s.v[sel]) + '</span></div>';
     var srcLbl = r.live ? 'Live' : r.hist ? 'Daily history' + (DIR.through ? ' through ' + DIR.through : '') : 'Snapshot ' + (CD ? ago(CD.generatedAt) : '');
     var strip = '';
     if (SGN && !UI.cfull) { var bt = SGN.bt; strip = '<button class="btstrip" data-act="bt-jump"><span>Backtest · ' + esc(iv) + '</span><b class="mono ' + cls(bt.total) + '">' + pct(bt.total * 100, 1) + '</b><span class="muted">vs hold <span class="mono ' + cls(bt.hold) + '">' + pct(bt.hold * 100, 1) + '</span> · ' + bt.n + ' trades' + (bt.winRate != null ? ' · ' + Math.round(bt.winRate * 100) + '% win' : '') + '</span><span class="go">Results ↓</span></button>'; }
-    return readout + selSig + '<div class="cwrap' + (UI.cfull ? ' full' : '') + '" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '" data-pr="' + (PW / W).toFixed(4) + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart with ' + nlab + ' signal labels">' + body + '</svg>' +
-      axis + '<span class="cax last mono" style="top:' + Math.max(0, Math.min(PH - 16, ly - 8)).toFixed(0) + 'px;width:' + AX + 'px">' + fmtP(last) + '</span></div>' +
-      '<div style="display:flex;justify-content:space-between;font-size:10px;margin-top:4px;padding-right:' + AX + 'px" class="muted mono"><span>' + esc(candleLabel(s.t[a], iv)) + '</span><span>' + esc(srcLbl) + '</span><span>' + esc(candleLabel(s.t[b - 1], iv)) + '</span></div>' +
-      (SGN ? '<div class="siglegend"><b class="lbl lbuy">BUY</b><b class="lbl lsell">SELL</b><b class="lbl lstop">STOP</b><span class="muted">ATR trailing stop · tap a candle for the rule · pinch to zoom</span></div>' : '') + strip;
+    return readout + selSig + '<div class="cwrap' + (UI.cfull ? ' full' : '') + '" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '" data-pr="' + (PW / W).toFixed(4) + '" data-hi="' + hi + '" data-lo="' + lo + '" data-ph="' + PH + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart with ' + nlab + ' signal labels">' + body + '</svg>' +
+      axis + '<span class="cax last mono" style="top:' + Math.max(0, Math.min(PH - 16, ly - 8)).toFixed(0) + 'px;width:' + AX + 'px">' + fmtP(last) + '</span>' + curPill + '</div>' +
+      '<div class="tax" style="margin-right:0">' + tax + timePill + '</div>' +
+      '<div class="siglegend">' + (SGN ? '<b class="lbl lbuy">BUY</b><b class="lbl lsell">SELL</b><b class="lbl lstop">STOP</b><span class="muted">One BUY, then nothing until its SELL or ATR STOP.</span>' : '') + '<span class="muted">Tap the chart to mark the time and price · pinch to zoom · ' + esc(srcLbl) + '</span></div>' + strip;
   }
   function civRow(iv) { return '<div class="civ">' + CINTERVALS.map(function (x) { return '<button data-act="civ" data-iv="' + x + '" aria-pressed="' + (iv === x) + '">' + x + '</button>'; }).join('') + '</div>'; }
   function ctools() {
@@ -1149,7 +1177,7 @@
     var box = document.getElementById('candlebox'); if (!box || box.dataset.bound) return;
     box.dataset.bound = '1';
     var x0 = null, off0 = 0, moved = false, pts = {}, pinch = null, pinched = false;
-    function geo() { var el = document.getElementById('cwrap'); if (!el) return null; var rc = el.getBoundingClientRect(); return { a: +el.dataset.a, n: +el.dataset.n, len: +el.dataset.len, left: rc.left, width: rc.width * (+el.dataset.pr || 1), top: rc.top, bottom: rc.bottom }; }
+    function geo() { var el = document.getElementById('cwrap'); if (!el) return null; var rc = el.getBoundingClientRect(); return { a: +el.dataset.a, n: +el.dataset.n, len: +el.dataset.len, left: rc.left, width: rc.width * (+el.dataset.pr || 1), top: rc.top, bottom: rc.bottom, hi: +el.dataset.hi, lo: +el.dataset.lo, ph: +el.dataset.ph }; }
     function zoomTo(g, newN, frac) {
       var len = g.len, n = clamp(Math.round(newN), Math.min(15, len), Math.min(len, 600));
       var center = g.a + frac * g.n, na = clamp(Math.round(center - frac * n), 0, len - n);
@@ -1173,7 +1201,7 @@
       if (moved) { var no = Math.max(0, off0 + Math.round(dx / per)); if (no !== UI.cOff) { UI.cOff = no; UI.cSel = null; box.innerHTML = candleSvg(box.dataset.t); } }
     });
     function up(e) { delete pts[e.pointerId]; if (ids().length < 2) pinch = null; if (!ids().length) x0 = null; }
-    box.addEventListener('pointerup', function (e) { if (x0 != null && !moved && !pinched) { var g = geo(); if (g && e.clientY >= g.top && e.clientY <= g.bottom) { UI.cSel = g.a + clamp(Math.floor((e.clientX - g.left) / g.width * g.n), 0, g.n - 1); box.innerHTML = candleSvg(box.dataset.t); } } x0 = null; up(e); });
+    box.addEventListener('pointerup', function (e) { if (x0 != null && !moved && !pinched) { var g = geo(); if (g && e.clientY >= g.top && e.clientY <= g.bottom && e.clientX <= g.left + g.width) { var ry = e.clientY - g.top; UI.cSel = g.a + clamp(Math.floor((e.clientX - g.left) / g.width * g.n), 0, g.n - 1); UI.cSelP = ry <= g.ph ? g.hi - ry / g.ph * (g.hi - g.lo) : null; box.innerHTML = candleSvg(box.dataset.t); } } x0 = null; up(e); });
     box.addEventListener('pointercancel', function (e) { x0 = null; up(e); });
     box.addEventListener('wheel', function (e) {
       if (!UI.cfull && !e.ctrlKey) return; // page scroll stays normal; trackpad pinch (ctrl+wheel) or full screen zooms
@@ -1728,6 +1756,7 @@
     czoom: function (el) { var n = UI.cN || (UI.cfull ? 120 : 60); UI.cN = Math.max(15, Math.min(600, Math.round(el.dataset.z === 'in' ? n / 1.5 : n * 1.5))); UI.cSel = null; refreshCandleBox(); },
     csig: function () { UI.csig = UI.csig === false; render(); },
     cfull: function () { UI.cfull = true; UI.cSel = null; render(); },
+    'csel-clear': function () { UI.cSel = null; UI.cSelP = null; refreshCandleBox(); },
     'bt-jump': function () { var bb = document.getElementById('btbox'); if (bb) bb.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
     'picked-ext': function (el) { var t = el.dataset.t; UI.sheet = null; UI.cOff = 0; UI.cSel = null; if (T(t)) { S.sel = t; save(); NAV.tab = 'battle'; NAV.stack = []; render(); return; } go({ name: 'quote', t: t }); },
     'cfull-close': function () { UI.cfull = false; render(); },

@@ -396,3 +396,11 @@ a.btn { display: flex; align-items: center; justify-content: center; }
 .cfull.land .cfull-chart { flex: 1; min-width: 0; overflow: hidden; }
 .cfull-bt .btgrid { grid-template-columns: 1fr 1fr; }
 .cfull-bt .bts b { font-size: 13px; }
+
+/* time axis + tap marker */
+.tax { position: relative; height: 18px; margin-top: 2px; font-size: 10px; color: var(--muted); overflow: hidden; }
+.tax .tt { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
+.tax .tpill { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; background: var(--fg); color: var(--bg); padding: 1px 6px; border-radius: 4px; font-weight: 600; z-index: 1; }
+.cax.cur { background: var(--fg); color: var(--bg); text-align: right; box-sizing: border-box; font-weight: 600; z-index: 1; }
+.selmark { display: inline-flex; align-items: center; gap: 6px; padding: 1px 4px 1px 8px; border-radius: 6px; background: var(--fg); color: var(--bg); font-weight: 600; }
+.selmark .lnk { color: var(--bg); padding: 0 4px; min-height: 0; font-size: 12px; }

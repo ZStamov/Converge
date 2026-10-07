@@ -49,6 +49,19 @@ await click('[data-act="civ"][data-iv="1D"]');
 await page.evaluate(() => document.getElementById('cwrap').scrollIntoView({ block: 'center' }));
 await shot('candles-signals-1D');
 // tap a candle that carries a signal
+const seqAll = [];
+for (const iv of ['1m', '5m', '1h', '1D', '1W']) {
+  await click(`[data-act="civ"][data-iv="${iv}"]`);
+  for (const z of [0, 1, 2]) { await click('[data-act="czoom"][data-z="out"]'); }
+  const seq = await page.$$eval('#cwrap .slab text', (a) => a.map((e) => e.textContent.replace('STOP', 'SELL')));
+  const bad = seq.findIndex((x, i) => i && x === seq[i - 1]);
+  seqAll.push(iv + ':' + seq.length);
+  check(`${iv}: labels alternate (${seq.slice(0, 8).join(' ')}${seq.length > 8 ? ' …' : ''})`, bad < 0 && seq.length > 0);
+  const tt = await cnt('.tax .tt');
+  check(`${iv}: time axis has ${tt} timestamps (${(await page.$$eval('.tax .tt', (a) => a.map((e) => e.textContent))).join(', ')})`, tt >= 2);
+}
+await click('[data-act="civ"][data-iv="1D"]');
+await click('[data-act="cpan"][data-p="end"]');
 const labels = await page.$$eval('#cwrap .slab text', (a) => [...new Set(a.map((e) => e.textContent))]);
 check('chart labels are words: ' + labels.join(', '), labels.includes('BUY') && labels.includes('SELL') && !(await page.$('#cwrap path')));
 const ticks = await cnt('#cwrap .cax.tick');
@@ -57,6 +70,9 @@ check('backtest strip under the chart', /Backtest · 1D/.test(await page.$eval('
 const hitInfo = await page.evaluate(() => { const p = document.querySelector('#cwrap .slab rect'); const r = p.getBoundingClientRect(); return { x: r.left + r.width / 2, y: document.getElementById('cwrap').getBoundingClientRect().top + 40 }; });
 await page.mouse.click(hitInfo.x, hitInfo.y);
 await page.waitForTimeout(200);
+check('tap marks time on the bottom axis: ' + await page.$eval('.tax .tpill', (e) => e.textContent).catch(() => 'none'), !!(await page.$('.tax .tpill')));
+check('tap marks price on the right scale: ' + await page.$eval('.cax.cur', (e) => e.textContent).catch(() => 'none'), !!(await page.$('.cax.cur')));
+check('readout shows the marked time and price: ' + await page.$eval('.selmark', (e) => e.textContent).catch(() => 'none'), !!(await page.$('.selmark')));
 check('tapping a marked candle names the rule: ' + (await page.$eval('#candlebox', (e) => (e.querySelector('.sigline') || {}).innerText || 'none')), !!(await page.$('#candlebox .sigline')));
 await shot('candle-signal-readout');
 await page.evaluate(() => document.getElementById('btbox').scrollIntoView());

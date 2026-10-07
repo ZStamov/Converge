@@ -136,15 +136,16 @@
     var buyAt = {}, sellAt = {}; D.sigs.forEach(function (g) { (g.side === 'buy' ? buyAt : sellAt)[g.i] = (g.side === 'buy' ? buyAt : sellAt)[g.i] || []; (g.side === 'buy' ? buyAt : sellAt)[g.i].push(g.id); });
     var trades = [], pos = null, eq = 1, peak = 1, mdd = 0, curve = [];
     for (var i = 1; i < n; i++) {
+      var exited = false;
       if (pos) {
         // trailing stop (lesson 20), checked intrabar
         if (I.atr[i - 1]) { pos.hiC = Math.max(pos.hiC, s.c[i - 1]); var stop = pos.hiC - mult * I.atr[i - 1]; pos.stop = pos.stop == null ? stop : Math.max(pos.stop, stop); }
         var exitPx = null, why = null;
         if (sellAt[i - 1]) { exitPx = s.o[i]; why = sellAt[i - 1][0]; }
         else if (pos.stop != null && s.l[i] <= pos.stop) { exitPx = Math.min(s.o[i], pos.stop); why = 'atr'; }
-        if (exitPx != null) { var ret = exitPx * (1 - cost) / (pos.px * (1 + cost)) - 1; trades.push({ in: pos.i, out: i, entry: pos.px, exit: exitPx, ret: ret, why: pos.why, exitWhy: why, bars: i - pos.i }); eq *= 1 + ret; pos = null; }
+        if (exitPx != null) { var ret = exitPx * (1 - cost) / (pos.px * (1 + cost)) - 1; trades.push({ in: pos.i, out: i, entry: pos.px, exit: exitPx, ret: ret, why: pos.why, exitWhy: why, bars: i - pos.i }); eq *= 1 + ret; pos = null; exited = true; }
       }
-      if (!pos && buyAt[i - 1]) pos = { i: i, px: s.o[i], hiC: s.o[i], stop: null, why: buyAt[i - 1][0] };
+      if (!pos && !exited && buyAt[i - 1]) pos = { i: i, px: s.o[i], hiC: s.o[i], stop: null, why: buyAt[i - 1][0] };
       var mark = pos ? eq * (s.c[i] * (1 - cost) / (pos.px * (1 + cost))) : eq;
       peak = Math.max(peak, mark); mdd = Math.min(mdd, mark / peak - 1); curve.push(mark);
     }
