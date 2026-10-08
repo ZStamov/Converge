@@ -76,7 +76,7 @@
     }
     persist();
   }
-  function schedulePush() { if (!S.auth) return; clearTimeout(SY.timer); SY.timer = setTimeout(function () { syncNow('change'); }, 1200); }
+  function schedulePush() { if (!S.auth && !ADB.ready) return; clearTimeout(SY.timer); SY.timer = setTimeout(function () { syncNow('change'); }, 1200); }
 
   var D = null;            // market data
   var DS = { source: null, error: null, loading: true };
@@ -691,10 +691,10 @@
     } else if (accountsReady()) {
       h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Your account</h2>' + msg + '<p style="margin:0 0 10px;font-size:13px;line-height:1.5">Sign in to see the same lots, theses, watchlist and settings on your phone, tablet and computer. Anything you’ve already added on this device is kept and merged into your account.</p><button class="btn sm pri" data-act="forum-auth">Sign in or create an account</button></section>';
     } else {
-      h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Your account</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (window.__CONVERGE_ARTIFACT__ ? 'This page has no sign-in. Accounts, sync across devices and subscriptions live in the Converge app and website.' : 'Accounts aren’t connected yet. The owner needs to add the Supabase settings (see the README).') + ' Everything here is saved on this device only.</p></section>';
+      h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Your account</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (window.__CONVERGE_ARTIFACT__ ? 'This page uses your Claude login: open it on any phone, tablet or computer where you’re signed in to Claude and your lots, theses, watchlist and settings follow you. Converge accounts and subscriptions live in the Converge app and website.' : 'Converge accounts aren’t connected yet (the owner adds the Supabase settings from the README). Until then, use Copy my data and Import data below to move your holdings between devices.') + '</p></section>';
     }
     // --- sync
-    h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Sync across devices</h2>' + (S.auth && accountsReady() ? '<button class="lnk" data-act="sync-now">Sync now</button>' : '') + '</div><p id="syncstat" class="syncstat ' + SY.status + '">' + syncLine() + '</p><p class="muted" style="margin:6px 0 0;font-size:12px;line-height:1.5">Synced: lots and their theses, closed trades and sell reasons, watchlist and watchlist theses, scanner screens and strategy toggles, muted sources, today’s briefing picks and the preferences below. Each device keeps its own notification permission.</p></section>';
+    h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Sync across devices</h2>' + (syncMode() ? '<button class="lnk" data-act="sync-now">Sync now</button>' : '') + '</div><p id="syncstat" class="syncstat ' + SY.status + '">' + syncLine() + '</p><p class="muted" style="margin:6px 0 0;font-size:12px;line-height:1.5">Synced: lots and their theses, closed trades and sell reasons, watchlist and watchlist theses, scanner screens and strategy toggles, muted sources, today’s briefing picks and the preferences below. Each device keeps its own notification permission.</p></section>';
     // --- plan & subscription
     var price = FCONF.premiumPrice, portal = safeUrl(FCONF.premiumPortalUrl), checkout = safeUrl(FCONF.premiumUrl);
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Plan &amp; subscription</h2>' +
@@ -717,8 +717,9 @@
       (isNative && plugin('LocalNotifications') ? tog('notify', S.notify, 'Divergence alerts', 'Notifications on this device') : '') + '</div></section>';
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Muted sources</h2>' + (S.muted.length ? S.muted.map(function (m) { return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0"><span>' + esc(m) + '</span><button class="btn sm" data-act="mute" data-name="' + esc(m) + '">Unmute</button></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">None. Mute a source from its profile.</p>') + '</section>';
     // --- data
-    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">' + (S.auth && accountsReady() ? 'Stored on this device and in your account. Only you can read it.' : 'Stored only on this device.') + ' ' + S.lots.length + ' lot' + (S.lots.length === 1 ? '' : 's') + ', ' + S.watchlist.length + ' on the watchlist.</p>' +
-      '<div class="btnrow">' + (window.__CONVERGE_ARTIFACT__ ? '' : '<button class="btn sm" data-act="export-data">Export my data</button>') + '<button class="btn sm dng" data-act="reset">' + (UI.confirmReset ? 'Tap again to erase' + (S.auth ? ' everywhere' : '') : 'Erase all my data' + (S.auth ? ' (all devices)' : '')) + '</button></div></section>';
+    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">' + (syncMode() === 'account' ? 'Stored on this device and in your Converge account. Only you can read it.' : syncMode() === 'page' ? 'Stored on this device and privately with your Claude account. Only you can read it.' : 'Stored only on this device.') + ' ' + S.lots.length + ' lot' + (S.lots.length === 1 ? '' : 's') + ', ' + S.watchlist.length + ' on the watchlist.</p>' +
+      '<div class="btnrow" style="margin-bottom:8px"><button class="btn sm" data-act="data-copy">Copy my data</button><button class="btn sm" data-act="data-import">Import data</button></div>' +
+      '<div class="btnrow">' + (window.__CONVERGE_ARTIFACT__ ? '' : '<button class="btn sm" data-act="export-data">Export file</button>') + '<button class="btn sm dng" data-act="reset">' + (UI.confirmReset ? 'Tap again to erase' + (syncMode() ? ' everywhere' : '') : 'Erase all my data' + (syncMode() ? ' (all devices)' : '')) + '</button></div></section>';
     if (accountsReady() && S.auth) h += '<section class="card dzone"><h2 class="eyebrow" style="margin-bottom:6px">Delete account</h2><p class="muted" style="margin:0 0 8px;font-size:13px;line-height:1.5">Permanently deletes your account, your synced data, your plan and your discussion posts. Type DELETE to confirm.</p><div class="inrow"><input class="in" id="ac-del" data-acct="del" autocomplete="off" placeholder="DELETE" value="' + esc(A0.del) + '"><button class="btn sm dng" data-act="acct-delete"' + (A0.del === 'DELETE' ? '' : ' disabled') + '>Delete</button></div></section>';
     // --- market data (unchanged information)
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Market data</h2><p style="margin:0;font-size:13px;line-height:1.5">Updated ' + esc(new Date(D.generatedAt).toLocaleString()) + ' (' + ago(D.generatedAt) + ').<br>Loaded from: ' + (DS.source === 'live' ? 'the live feed' : DS.source === 'snapshot' ? 'the snapshot built into this page' : 'the copy bundled with the app') + '.</p>' +
@@ -973,7 +974,7 @@
     var key = t + '|' + iv, hit = liveCache[key];
     if (hit && Date.now() - hit.at < 60000) return Promise.resolve(hit.d);
     var q = LIVE_Q[iv];
-    return fetchJson('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(t.replace('.', '-')) + '?range=' + q[0] + '&interval=' + q[1] + '&includePrePost=false', 9000)
+    return fetchJson('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(ysym(t)) + '?range=' + q[0] + '&interval=' + q[1] + '&includePrePost=false', 9000)
       .then(function (j) { var d = parseYahoo(j); if (!d) throw new Error('empty'); liveCache[key] = { at: Date.now(), d: d }; return d; });
   }
   function etDay(sec) { return new Date((sec - 4 * 3600) * 1000).toISOString().slice(0, 10); }
@@ -1020,7 +1021,8 @@
       .catch(function () { DIR.error = 'The stock list isn’t available right now.'; })
       .then(function () { DIR.loading = false; if (UI.sheet && UI.sheet.kind === 'pick') render(); else if (current().name === 'quote') render(); });
   }
-  function dirRow(t) { if (!DIR.map || DIR.map[t] == null) return null; var r = DIR.rows[DIR.map[t]]; return { t: r[0], n: r[1], ex: r[2], sp: !!r[3], sec: r[4], mc: r[5], p: r[6], ch: r[7] }; }
+  function dirRow(t) { if (!DIR.map || DIR.map[t] == null) return null; var r = DIR.rows[DIR.map[t]]; return { t: r[0], n: r[1], ex: r[2], sp: !!r[3], sec: r[4], mc: r[5], p: r[6], ch: r[7], y: r[8] || null }; }
+  function ysym(t) { var r = dirRow(t); return (r && r.y) || t.replace('.', '-'); }
   function dirSearch(q, limit) {
     if (!DIR.rows || !q) return [];
     var Q = q.toUpperCase(), a = [], b = [], c = [];
@@ -1050,6 +1052,7 @@
     return out;
   }
   function histSeries(t, iv) {
+    var EH = window.__CONVERGE_HIST__; if (!HIST[t] && EH && EH[t] && EH[t].t) HIST[t] = { d: EH[t] };
     if (T(t) || window.__CONVERGE_ARTIFACT__ && !HIST[t]) return null;
     if (!HIST[t]) { loadHist(t); return null; }
     var d = HIST[t].d; if (!d) return null;
@@ -1096,7 +1099,7 @@
   function emptyChartMsg(t, iv) {
     if (CDS.loading || (!CD && !CDS.error)) return 'Loading candles…';
     if (!T(t)) {
-      if (window.__CONVERGE_ARTIFACT__) return 'Charts for stocks outside the tracked list load in the Converge app and website. This page can’t download them.';
+      if (window.__CONVERGE_ARTIFACT__) return (/m$|h$/.test(iv) && HIST[t] ? 'This page has daily history for ' + esc(t) + ': pick 1D, 2D or 1W. Intraday candles are in the Android and iOS apps.' : 'This page includes daily charts for the major indexes, popular ETFs and the 100 largest US stocks. ' + esc(t) + '’s chart loads in the Converge app and website.');
       var h = HIST[t];
       if (/m$|h$/.test(iv) && !isNative) return 'Intraday candles for ' + esc(t) + ' are in the Android and iOS apps. On the web, pick 1D, 2D or 1W (2 years of daily history).';
       if (!h || h.loading) return 'Loading ' + esc(t) + ' history…';
@@ -1291,34 +1294,63 @@
     save();
   }
   function deviceName() {
-    var plat = isNative && Cap.getPlatform ? (Cap.getPlatform() === 'ios' ? 'iOS app' : Cap.getPlatform() === 'android' ? 'Android app' : 'App') : 'Web';
+    var plat = window.__CONVERGE_ARTIFACT__ ? 'Claude page' : isNative && Cap.getPlatform ? (Cap.getPlatform() === 'ios' ? 'iOS app' : Cap.getPlatform() === 'android' ? 'Android app' : 'App') : 'Web';
     var w = Math.min(window.screen && window.screen.width || window.innerWidth, window.innerWidth);
     return plat + ' · ' + (w < 600 ? 'phone' : w < 1100 ? 'tablet' : 'computer');
   }
+  // Two ways to sync: the Converge account (Supabase) in the apps and on the website, or, in the Converge page on
+  // claude.ai, the viewer's own private record that follows their Claude login.
+  var ADB = { ready: false, ref: null, unsub: null };
+  function initPageSync() {
+    if (!window.__CONVERGE_ARTIFACT__ || !window.claude || typeof window.claude.use !== 'function') return;
+    Promise.all([window.claude.use('db'), window.claude.use('user')]).then(function (x) {
+      var db = x[0], user = x[1]; if (!db || !user) return null;
+      return user.id().then(function (id) {
+        if (!id) return;
+        ADB.ref = db.doc('data/users/' + id + '/state'); ADB.ready = true;
+        syncNow('boot').then(function () {
+          // live: another device saved -> merge it in (only writes back if this device has something newer)
+          ADB.unsub = ADB.ref.onSnapshot(function (snap) { if (snap && !snap.metadata.hasPendingWrites && snap.exists) { var d = snap.data(); if (d && d.savedBy !== SY.myTag) setTimeout(function () { syncNow('remote'); }, 30); } }, function () { });
+        });
+        if (current().name === 'settings') render();
+      });
+    }).catch(function () { });
+  }
+  SY.myTag = Math.random().toString(36).slice(2, 10);
+  function syncMode() { return accountsReady() && S.auth ? 'account' : ADB.ready ? 'page' : null; }
   function syncNow(why) {
-    var Y = window.ConvergeSync;
-    if (!Y || !accountsReady() || !S.auth) return Promise.resolve(null);
+    var Y = window.ConvergeSync, mode = syncMode();
+    if (!Y || !mode) return Promise.resolve(null);
     if (SY.busy) { SY.again = true; return SY.p; }
     SY.busy = true; SY.status = 'syncing'; refreshSyncUi();
-    SY.p = ensureSession().then(function (sess) {
-      if (!sess) throw new Error('Your session expired. Please sign in again.');
-      var uid = sess.user.id;
-      if (why !== 'change' && why !== 'poll') sb('/auth/v1/user', { auth: true }).then(function (u) { if (!u || !S.auth) return; var nm = u.user_metadata && u.user_metadata.display_name; var ch = (nm && nm !== S.auth.name) || (u.email && u.email !== S.auth.user.email); if (nm) S.auth.name = nm; if (u.email) S.auth.user.email = u.email; if (ch) { persist(); render(); } }).catch(function () { });
-      return sb('/rest/v1/user_state?select=data,updated_at,device&user_id=eq.' + encodeURIComponent(uid), { auth: true }).then(function (rows) {
-        var row = rows && rows[0], remote = row && row.data && row.data.keys ? row.data : null;
-        var local = Y.exportDoc(S, S._sync), merged = Y.merge(local, remote), changed = !Y.same(merged, local);
-        if (changed) { SY.applying = true; Y.applyDoc(S, S._sync, merged); SYNCSNAP = Y.snapshot(S); persist(); SY.applying = false; UI.civ = (S.prefs && S.prefs.civ) || UI.civ; if (S.prefs && S.prefs.csig === false) UI.csig = false; }
-        SY.remoteDevice = row && row.device; SY.remoteAt = row && row.updated_at;
-        if (remote && Y.same(merged, remote)) return changed;
-        return sb('/rest/v1/user_state?on_conflict=user_id', { method: 'POST', auth: true, prefer: 'resolution=merge-duplicates,return=minimal', body: { user_id: uid, data: merged, device: deviceName(), updated_at: new Date().toISOString() } })
-          .then(function () { SY.remoteDevice = deviceName(); SY.remoteAt = new Date().toISOString(); return changed; });
-      });
+    var pull, push;
+    if (mode === 'page') {
+      pull = function () { return ADB.ref.get().then(function (snap) { var d = snap.exists ? snap.data() : null; SY.remoteDevice = d && d.device; SY.remoteAt = d && d.savedAt; try { return d && d.json ? JSON.parse(d.json) : null; } catch (e) { return null; } }); };
+      push = function (doc) { var at = new Date().toISOString(); return ADB.ref.set({ json: JSON.stringify(doc), device: deviceName(), savedAt: at, savedBy: SY.myTag }).then(function () { SY.remoteDevice = deviceName(); SY.remoteAt = at; }); };
+    } else {
+      var uid = null;
+      pull = function () {
+        return ensureSession().then(function (sess) {
+          if (!sess) throw new Error('Your session expired. Please sign in again.');
+          uid = sess.user.id;
+          if (why !== 'change' && why !== 'poll') sb('/auth/v1/user', { auth: true }).then(function (u) { if (!u || !S.auth) return; var nm = u.user_metadata && u.user_metadata.display_name; var ch = (nm && nm !== S.auth.name) || (u.email && u.email !== S.auth.user.email); if (nm) S.auth.name = nm; if (u.email) S.auth.user.email = u.email; if (ch) { persist(); render(); } }).catch(function () { });
+          return sb('/rest/v1/user_state?select=data,updated_at,device&user_id=eq.' + encodeURIComponent(uid), { auth: true }).then(function (rows) { var row = rows && rows[0]; SY.remoteDevice = row && row.device; SY.remoteAt = row && row.updated_at; return row && row.data && row.data.keys ? row.data : null; });
+        });
+      };
+      push = function (doc) { return sb('/rest/v1/user_state?on_conflict=user_id', { method: 'POST', auth: true, prefer: 'resolution=merge-duplicates,return=minimal', body: { user_id: uid, data: doc, device: deviceName(), updated_at: new Date().toISOString() } }).then(function () { SY.remoteDevice = deviceName(); SY.remoteAt = new Date().toISOString(); }); };
+    }
+    SY.p = pull().then(function (remote) {
+      var local = Y.exportDoc(S, S._sync), merged = Y.merge(local, remote), changed = !Y.same(merged, local);
+      if (changed) applyMerged(merged);
+      if (remote && Y.same(merged, remote)) return changed;
+      return push(merged).then(function () { return changed; });
     }).then(function (changed) {
-      SY.status = 'synced'; SY.at = Date.now(); SY.err = null;
+      SY.status = 'synced'; SY.at = Date.now(); SY.err = null; SY.mode = mode;
       if (changed && D) { if (!S.sel || !T(S.sel)) S.sel = firstTicker(); render(); }
       return changed;
     }).catch(function (e) {
-      SY.status = 'error'; SY.err = /user_state|relation|schema cache/i.test(e.message) ? 'The account database isn’t set up for sync yet (run supabase/schema.sql).' : e.message;
+      var m = (e && (e.message || e.code)) || 'try again';
+      SY.status = 'error'; SY.err = /user_state|relation|schema cache/i.test(m) ? 'The account database isn’t set up for sync yet (run supabase/schema.sql).' : m;
     }).then(function (x) {
       SY.busy = false; refreshSyncUi();
       if (SY.again) { SY.again = false; setTimeout(function () { syncNow('again'); }, 50); }
@@ -1326,12 +1358,17 @@
     });
     return SY.p;
   }
+  function applyMerged(merged) {
+    var Y = window.ConvergeSync;
+    SY.applying = true; Y.applyDoc(S, S._sync, merged); SYNCSNAP = Y.snapshot(S); persist(); SY.applying = false;
+    UI.civ = (S.prefs && S.prefs.civ) || UI.civ; if (S.prefs && S.prefs.csig === false) UI.csig = false;
+  }
   function syncLine() {
-    if (!accountsReady()) return 'Sync needs the Converge app or website.';
-    if (!S.auth) return 'Not signed in: everything stays on this device.';
+    var mode = syncMode();
+    if (!mode) return window.__CONVERGE_ARTIFACT__ ? 'Connecting to your Claude account… (sign in to Claude to sync this page)' : accountsReady() ? 'Not signed in: everything stays on this device.' : 'Accounts aren’t connected yet: everything stays on this device. Use Copy / Import below to move data.';
     if (SY.status === 'syncing') return 'Syncing…';
     if (SY.status === 'error') return 'Couldn’t sync: ' + esc(SY.err || 'try again');
-    if (SY.at) return 'Synced ' + esc(ago(new Date(SY.at).toISOString())) + (SY.remoteDevice ? ' · last saved from ' + esc(SY.remoteDevice) : '');
+    if (SY.at) return 'Synced ' + esc(ago(new Date(SY.at).toISOString())) + (mode === 'page' ? ' through your Claude account' : '') + (SY.remoteDevice ? ' · last saved from ' + esc(SY.remoteDevice) : '');
     return 'Waiting to sync…';
   }
   function refreshSyncUi() { var el = document.getElementById('syncstat'); if (el) { el.innerHTML = syncLine(); el.className = 'syncstat ' + SY.status; } }
@@ -1645,7 +1682,33 @@
   }
   function authPut(body) { return ensureSession().then(function (sess) { if (!sess) throw new Error('Please sign in again.'); return sb('/auth/v1/user', { method: 'PUT', auth: true, body: body }); }); }
   function acctDone(m) { UI.acctMsg = m; render(); }
+  function dataText() { var Y = window.ConvergeSync; return JSON.stringify({ app: 'Converge', kind: 'converge-data', exportedAt: new Date().toISOString(), data: Y ? Y.exportDoc(S, S._sync || {}) : null }); }
+  function importText(txt) {
+    var Y = window.ConvergeSync, j;
+    try { j = JSON.parse(String(txt || '').trim()); } catch (e) { return { error: 'That doesn’t look like Converge data. Copy it again with Copy my data.' }; }
+    var doc = j && j.data && j.data.keys ? j.data : j && j.keys ? j : null;
+    if (!doc || !Array.isArray(doc.lots)) return { error: 'That doesn’t look like Converge data. Copy it again with Copy my data.' };
+    var before = S.lots.length, local = Y.exportDoc(S, S._sync || {});
+    // the pasted copy counts as the newer one for settings it changed; lots merge one by one
+    var merged = Y.merge(local, doc);
+    applyMerged(merged); schedulePush();
+    return { added: S.lots.length - before, lots: S.lots.length };
+  }
+  window.__convergeImport = importText;
   var AA = {
+    'data-copy': function () { UI.sheet = { kind: 'datacopy' }; render(); var ta = document.getElementById('datacopy'); if (ta) { ta.focus(); ta.select(); } },
+    'data-copy-go': function () {
+      var ta = document.getElementById('datacopy'), txt = dataText();
+      var done = function () { toast('Copied. Paste it into Import data on your other device.'); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done).catch(function () { if (ta) { ta.focus(); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Select the text and copy it'); } } });
+      else if (ta) { ta.focus(); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Select the text and copy it'); } }
+    },
+    'data-import': function () { UI.impText = ''; UI.impMsg = ''; UI.sheet = { kind: 'dataimport' }; render(); },
+    'data-import-go': function () {
+      var r = importText(UI.impText);
+      if (r.error) { UI.impMsg = r.error; return render(); }
+      UI.sheet = null; render(); toast('Imported · ' + r.lots + ' lot' + (r.lots === 1 ? '' : 's') + (r.added > 0 ? ' (' + r.added + ' new)' : '') + (syncMode() ? ', syncing to your other devices' : ''));
+    },
     'acct-name': function () {
       var n = (UI.acct.name || '').trim();
       if (n.length < 2) return acctDone('Pick a display name of at least 2 characters.');
@@ -1698,11 +1761,11 @@
 
   function extResults(q, covered) {
     var seen = {}; covered.forEach(function (u) { seen[u.t] = 1; });
-    if (!q) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.rows ? 'Type a ticker or company name to search all ' + DIR.rows.length.toLocaleString('en-US') + ' US-listed stocks (Nasdaq, NYSE, NYSE American).' : DIR.loading ? 'Loading the list of US stocks…' : esc(DIR.error || '')) + '</p>';
-    if (!DIR.rows) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.loading ? 'Searching all US stocks…' : esc(DIR.error || 'The full stock list isn’t available here.')) + '</p>';
+    if (!q) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.rows ? 'Type a ticker or company name to search all ' + DIR.rows.length.toLocaleString('en-US') + ' US stocks, ETFs and indexes (Nasdaq, NYSE, NYSE American).' : DIR.loading ? 'Loading US stocks, ETFs and indexes…' : esc(DIR.error || '')) + '</p>';
+    if (!DIR.rows) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.loading ? 'Searching all US stocks, ETFs and indexes…' : esc(DIR.error || 'The full stock list isn’t available here.')) + '</p>';
     var hits = dirSearch(q, 40).filter(function (r) { return !seen[r[0]]; });
-    if (!hits.length) return covered.length ? '' : '<p class="muted" style="font-size:13px;margin:10px 2px">No US-listed stock matches “' + esc(q) + '”. OTC stocks aren’t included.</p>';
-    return '<h3 class="eyebrow" style="margin:14px 2px 6px">All US stocks</h3>' + hits.map(function (r) {
+    if (!hits.length) return covered.length ? '' : '<p class="muted" style="font-size:13px;margin:10px 2px">No US stock, ETF or index matches “' + esc(q) + '”. OTC stocks aren’t included.</p>';
+    return '<h3 class="eyebrow" style="margin:14px 2px 6px">All US stocks, ETFs &amp; indexes</h3>' + hits.map(function (r) {
       return '<button class="pickrow" data-act="picked-ext" data-t="' + esc(r[0]) + '"><span class="tk">' + esc(r[0]) + '</span><span class="nm">' + esc(r[1]) + '<br><span class="muted" style="font-size:11px">' + (r[3] ? 'S&amp;P 500 · ' : '') + esc(r[2] === 'NASDAQ' ? 'Nasdaq' : r[2]) + (r[5] ? ' · ' + compact(r[5]).replace('$', '$') : '') + '</span></span><span class="mono ' + cls(r[7]) + '" style="font-size:12px">' + (r[7] != null ? arrowPct(r[7]) : '') + '</span></button>';
     }).join('');
   }
@@ -1715,7 +1778,7 @@
     var h = '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px"><div style="min-width:0"><h1 class="disp" style="margin:0;font-size:24px;font-weight:700;line-height:1.15">' + esc(dr.n || t) + '</h1><div class="muted" style="font-size:12px;margin-top:2px">' + esc(t) + (dr.ex ? ' · ' + esc(dr.ex === 'NASDAQ' ? 'Nasdaq' : dr.ex) : '') + (dr.sp ? ' · S&amp;P 500' : '') + (dr.sec ? ' · ' + esc(dr.sec) : '') + (dr.mc ? ' · ' + compact(dr.mc) : '') + '</div></div>' +
       '<div style="text-align:right;flex:none"><div class="mono" style="font-size:22px">' + (price != null ? money(price) : '—') + '</div><div class="mono ' + cls(ch) + '" style="font-size:12px">' + (ch != null ? arrowPct(ch) : '') + '</div></div></div>';
     h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Chart · buy &amp; sell signals</h2></div>' + candleCard(t) + '</section>';
-    h += '<p class="note" style="margin:0">News, sentiment, quant grades and the discussion cover the ' + D.universe.length + ' tracked tickers. Charts, signals and backtests work for every US-listed stock.' + (dr.p != null && DIR.at ? ' Price as of ' + esc(ago(DIR.at)) + '.' : '') + '</p>';
+    h += '<p class="note" style="margin:0">News, sentiment, quant grades and the discussion cover the ' + D.universe.length + ' tracked tickers. Charts, signals and backtests work for every US stock, ETF and index.' + (dr.p != null && DIR.at ? ' Price as of ' + esc(ago(DIR.at)) + '.' : '') + '</p>';
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">More on ' + esc(t) + '</h2><div class="lnkrow">' + extLinks(t) + '</div></section>';
     h += '<section class="card" id="btbox" data-t="' + esc(t) + '">' + backtestInner(t) + '</section>';
     h += '<p class="foot">Free public sources, may be delayed. Not investment advice.</p>';
@@ -1730,7 +1793,7 @@
       var q = UI.pickQuery.trim().toUpperCase();
       var list = D.universe.filter(function (u) { return !q || u.t.indexOf(q) >= 0 || (u.name || '').toUpperCase().indexOf(q) >= 0; });
       var multi = sh.mode === 'watch';
-      body = '<h2 class="disp" style="margin:0 0 10px;font-size:20px">' + (multi ? 'Watchlist' : 'Choose a ticker') + '</h2><label class="sr" for="pickq">Search tickers</label><input class="in" id="pickq" data-pickq="1" placeholder="' + (sh.mode === 'draft' ? 'Search ' + D.universe.length + ' tracked tickers' : 'Search all US stocks') + '" value="' + esc(UI.pickQuery) + '" autocomplete="off">' +
+      body = '<h2 class="disp" style="margin:0 0 10px;font-size:20px">' + (multi ? 'Watchlist' : 'Choose a ticker') + '</h2><label class="sr" for="pickq">Search tickers</label><input class="in" id="pickq" data-pickq="1" placeholder="' + (sh.mode === 'draft' ? 'Search ' + D.universe.length + ' tracked tickers' : 'Search stocks, ETFs, indexes') + '" value="' + esc(UI.pickQuery) + '" autocomplete="off">' +
         '<div class="scroll">' + list.map(function (u) {
           var on = multi ? S.watchlist.indexOf(u.t) >= 0 : false, y = T(u.t);
           return '<button class="pickrow" data-act="picked" data-t="' + u.t + '" aria-pressed="' + on + '"><span class="tk">' + u.t + '</span><span class="nm">' + esc(u.name || '') + '</span><span class="mono ' + cls(y && y.changePct) + '" style="font-size:12px">' + (y ? arrowPct(y.changePct) : '') + '</span>' + (multi ? '<span style="width:20px;color:var(--accent)">' + (on ? ic('check', 18) : '') + '</span>' : '') + '</button>';
@@ -1750,6 +1813,8 @@
     if (sh.kind === 'scanrow') body = SC ? scanRowSheet(sh.t) : '';
     if (sh.kind === 'auth') body = authSheet();
     if (sh.kind === 'subscribe') body = subscribeSheet();
+    if (sh.kind === 'datacopy') body = '<h2 class="disp" style="margin:0 0 4px;font-size:20px">Copy my data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Copy this text, then on the other device open Account &amp; settings → Import data and paste it. Your lots, theses, watchlist and settings merge in; nothing there is deleted.</p><textarea class="in mono" id="datacopy" rows="9" readonly style="font-size:11px">' + esc(dataText()) + '</textarea><button class="btn pri" data-act="data-copy-go" style="margin-top:10px">Copy to clipboard</button>';
+    if (sh.kind === 'dataimport') body = '<h2 class="disp" style="margin:0 0 4px;font-size:20px">Import data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Paste the text from Copy my data on your other device. It’s merged with what’s here: matching lots keep their newest edit, new ones are added.</p><textarea class="in mono" id="dataimport" data-imp="1" rows="9" placeholder="Paste here" style="font-size:11px">' + esc(UI.impText || '') + '</textarea>' + (UI.impMsg ? '<p class="note" style="margin:8px 0 0">' + esc(UI.impMsg) + '</p>' : '') + '<button class="btn pri" data-act="data-import-go" style="margin-top:10px">Import</button>';
     return '<div class="sheet" data-act="sheet-bg"><div class="panel" role="dialog" aria-modal="true" data-stop="1"><div class="grab"></div>' + body + '</div></div>';
   }
 
@@ -1898,7 +1963,7 @@
     refresh: function () { loadData(true).then(function () { if (D) toast('Data refreshed'); }); },
     reset: function () {
       if (!UI.confirmReset) { UI.confirmReset = true; render(); return; }
-      if (S.auth && accountsReady()) {
+      if (syncMode()) {
         S.lots = []; S.watchTheses = {}; S.watchlist = DEFAULT.watchlist.slice(); S.muted = []; S.scan = null; S.brief = { day: null, picked: [], skipped: [] }; S.seenAlerts = [];
         UI.confirmReset = false; save(); syncNow('erase').then(function () { toast('Erased on every device'); render(); }); return;
       }
@@ -2072,6 +2137,7 @@
     if (el.dataset.pickq) { UI.pickQuery = el.value; render(); }
     if (el.dataset.au) FORUM.form[el.dataset.au] = el.value;
     if (el.id === 'forum-text') FORUM.draft = el.value;
+    if (el.dataset.imp) UI.impText = el.value;
     if (el.dataset.acct) { UI.acct[el.dataset.acct] = el.value; if (el.dataset.acct === 'del') { var bd = document.querySelector('[data-act="acct-delete"]'); if (bd) bd.disabled = el.value !== 'DELETE'; } }
   });
   document.addEventListener('change', function (e) {
@@ -2119,9 +2185,10 @@
     }).catch(function () { S.auth = null; persist(); });
   })();
   if (S.auth) setTimeout(function () { syncNow('boot'); }, 600);
-  setInterval(function () { if (S.auth && document.visibilityState === 'visible') syncNow('poll'); }, 30000);
-  document.addEventListener('visibilitychange', function () { if (S.auth && document.visibilityState === 'visible') syncNow('focus'); });
-  window.addEventListener('focus', function () { if (S.auth) syncNow('focus'); });
-  if (isNative && plugin('App')) plugin('App').addListener('appStateChange', function (st) { if (st.isActive && S.auth) syncNow('resume'); });
+  initPageSync();
+  setInterval(function () { if (syncMode() && document.visibilityState === 'visible') syncNow('poll'); }, 30000);
+  document.addEventListener('visibilitychange', function () { if (syncMode() && document.visibilityState === 'visible') syncNow('focus'); });
+  window.addEventListener('focus', function () { if (syncMode()) syncNow('focus'); });
+  if (isNative && plugin('App')) plugin('App').addListener('appStateChange', function (st) { if (st.isActive && syncMode()) syncNow('resume'); });
   window.__convergeSyncNow = syncNow;
 })();

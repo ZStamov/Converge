@@ -58,9 +58,9 @@ The 24 tickers in `config/universe.json`. Add or remove symbols there; the next 
 
 Build results (with log tails) are written to the `ci-status` branch.
 
-## Search: every US-listed stock
+## Search: every US stock, ETF and index
 
-The search box finds every common stock listed on Nasdaq, NYSE and NYSE American, plus all S&P 500 members (warrants, rights, units, notes, preferreds and OTC stocks are left out). Picking one outside the 24 tracked tickers opens a page with its candle chart, buy/sell signals and backtest.
+The search box finds every common stock listed on Nasdaq, NYSE and NYSE American, every US-listed ETF (SPY, QQQ, VOO…), and the major indexes: SPX (S&P 500), NDX, DJI, IXIC (Nasdaq Composite), RUT and VIX. About 11,000 symbols; warrants, rights, units, notes, preferreds and OTC stocks are left out. Picking one outside the 24 tracked tickers opens a page with its candle chart, buy/sell signals and backtest.
 
 `.github/workflows/history.yml` builds this from the S&P 500 list and Nasdaq's screener for the Nasdaq, NYSE and NYSE American exchanges, and keeps 2 years of daily bars per stock on the `history` branch (`symbols.json`, `h/<TICKER>.json`). It runs after each US close and every 2 hours. On the website these stocks get 1D, 2D and 1W candles; the Android and iOS apps load every interval live from Yahoo Finance. News, sentiment, quant grades and the discussion stay limited to the tracked tickers.
 
@@ -151,6 +151,14 @@ Signed out, lots, theses, the watchlist and settings stay on the device. Signed 
 - When: right after a change (about 1 second), when you sign in, when the app opens or comes back to the front, and every 30 seconds while it's open.
 - Conflicts: each setting keeps its latest change; lots merge one by one (newest edit wins, deletions carry over), so edits made on two devices at once don't overwrite each other. Data already on a device when you first sign in is merged into the account, not thrown away.
 - Storage: one private row per member in `public.user_state` (row-level security: only you can read or write yours). Run the updated `supabase/schema.sql` once more to add it.
+
+### Syncing in the one-file Converge page (claude.ai)
+
+The page published on claude.ai syncs through the viewer's Claude login instead of a Converge account: it keeps one private record per person (the `db` + `user` page capabilities, path `data/users/<id>/state`) that only that person can read. Opening the page on any device signed in to the same Claude account shows the same lots, theses, watchlist and settings; holdings entered before sync existed are uploaded the first time the page is opened on that device. The page also includes daily charts for the indexes, popular ETFs and the 100 largest stocks (`data-out/hist/` at build time).
+
+### Copy my data / Import data
+
+Works in every version, with or without accounts: *Copy my data* gives a block of text; *Import data* on another device merges it in (lots keep their newest edit, nothing is deleted). Handy for moving holdings into the apps before Supabase is set up.
 
 ### Account & settings (gear icon)
 
