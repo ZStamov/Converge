@@ -1,306 +1,198 @@
 job: probe
 status: success
-time: 2026-10-08T02:17:00Z
-commit: eafd7a5d9f6c8938c2b7802790906d70472eaf78
-run: https://github.com/ZStamov/Converge/actions/runs/37717071590
+time: 2026-10-08T02:20:03Z
+commit: f7472397a6cd718aa7748c70fb39f3505b2fc504
+run: https://github.com/ZStamov/Converge/actions/runs/37717303043
 ----
-Syntax Error (213): Illegal character <6d> in hex string
-Syntax Error (214): Illegal character <6c> in hex string
-Syntax Error (215): Illegal character <3b> in hex string
-Syntax Error (218): Illegal character <68> in hex string
-Syntax Error (220): Illegal character <72> in hex string
-Syntax Error (221): Illegal character <73> in hex string
-Syntax Error (223): Illegal character <74> in hex string
-Syntax Error (224): Illegal character <3d> in hex string
-Syntax Error (225): Illegal character <69> in hex string
-Syntax Error (226): Illegal character <73> in hex string
-Syntax Error (227): Illegal character <6f> in hex string
-Syntax Error (228): Illegal character <2d> in hex string
-Syntax Error (233): Illegal character <2d> in hex string
-Syntax Error (235): Illegal character <22> in hex string
-Syntax Error (236): Illegal character <2f> in hex string
-Syntax Error (241): Illegal character <74> in hex string
-Syntax Error (242): Illegal character <69> in hex string
-Syntax Error (243): Illegal character <74> in hex string
-Syntax Error (244): Illegal character <6c> in hex string
-Syntax Error: Couldn't find trailer dictionary
-Syntax Error: Couldn't find trailer dictionary
-Syntax Error: Couldn't read xref table
+zip files: 2026FD.txt, 2026FD.xml, fd.zip
+header: Prefix	Last	First	Suffix	FilingType	StateDst	Year	FilingDate	DocID
+	Aaron	Richard		W	MI04	2026	4/15/2026	8068
+	Abdulle	Abdisallam		C	MN02	2026	6/11/2026	10078673
+	Abdulle	Abdisallam		X	MN02	2026	5/20/2026	30028196
+PTR rows: 415
+Hon.	Wittman	Robert J.		P	VA01	2026	7/10/2026	20034916
+Hon.	Yakym	Rudy C.	III	P	IN02	2026	4/6/2026	20034298
+Hon.	Yakym	Rudy C.	III	P	IN02	2026	7/13/2026	20034984
 
-==== https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/4/6/2026/20034298.pdf HTTP 404 1245 bytes, Yakym Rudy C. 2026
-pdftotext failed Command failed: pdftotext -layout probe-tmp/p.pdf -
-Syntax Warning: May not be a PDF file (continuing anyway)
-Syntax Error (2): Illegal character <21> in hex string
-Syntax Error (4): Illegal character <4f> in hex string
-Syntax Error (6): Illegal character <54> in hex string
-Syntax Error (7): Illegal character <59> in hex string
-Syntax Error (8): Illegal character <50> in hex string
-Syntax Error (11): Illegal character <68> in hex string
-Syntax Error (12): Illegal character <74> in hex string
-Syntax Error (13): Illegal character <6d> in hex string
-Syntax Error (14): Illegal character <6c> in hex string
-Syntax Error (16): Illegal character <50> in hex string
-Syntax Error (17): Illegal character <55> in hex string
-Syntax Error (19): Illegal character <4c> in hex string
-Syntax Error (20): Illegal character <49> in hex string
-Syntax Error (23): Illegal character <22> in hex string
-Syntax Error (24): Illegal character <2d> in hex string
-Syntax Error (25): Illegal character <2f> in hex string
-Syntax Error (26): Illegal character <2f> in hex string
-Syntax Error (27): Illegal character <57> in hex string
-Syntax Error (30): Illegal character <2f> in hex string
-Syntax Error (31): Illegal character <2f> in hex string
-Syntax Error (33): Illegal character <54> in hex string
-Syntax Error (36): Illegal character <58> in hex string
-Syntax Error (37): Illegal character <48> in hex string
-Syntax Error (38): Illegal character <54> in hex string
-Syntax Error (39): Illegal character <4d> in hex string
-Syntax Error (40): Illegal character <4c> in hex string
-Syntax Error (43): Illegal character <2e> in hex string
-Syntax Error (46): Illegal character <53> in hex string
-Syntax Error (47): Illegal character <74> in hex string
-Syntax Error (48): Illegal character <72> in hex string
-Syntax Error (49): Illegal character <69> in hex string
-Syntax Error (51): Illegal character <74> in hex string
-Syntax Error (52): Illegal character <2f> in hex string
-Syntax Error (53): Illegal character <2f> in hex string
-Syntax Error (55): Illegal character <4e> in hex string
-Syntax Error (56): Illegal character <22> in hex string
-Syntax Error (58): Illegal character <22> in hex string
-Syntax Error (59): Illegal character <68> in hex string
-Syntax Error (60): Illegal character <74> in hex string
-Syntax Error (61): Illegal character <74> in hex string
-Syntax Error (62): Illegal character <70> in hex string
-Syntax Error (63): Illegal character <3a> in hex string
-Syntax Error (64): Illegal character <2f> in hex string
-Syntax Error (65): Illegal character <2f> in hex string
-Syntax Error (
-Syntax Warning: May not be a PDF file (continuing anyway)
-Syntax Error (2): Illegal character <21> in hex string
-Syntax Error (4): Illegal character <4f> in hex string
-Syntax Error (6): Illegal character <54> in hex string
-Syntax Error (7): Illegal character <59> in hex string
-Syntax Error (8): Illegal character <50> in hex string
-Syntax Error (11): Illegal character <68> in hex string
-Syntax Error (12): Illegal character <74> in hex string
-Syntax Error (13): Illegal character <6d> in hex string
-Syntax Error (14): Illegal character <6c> in hex string
-Syntax Error (16): Illegal character <50> in hex string
-Syntax Error (17): Illegal character <55> in hex string
-Syntax Error (19): Illegal character <4c> in hex string
-Syntax Error (20): Illegal character <49> in hex string
-Syntax Error (23): Illegal character <22> in hex string
-Syntax Error (24): Illegal character <2d> in hex string
-Syntax Error (25): Illegal character <2f> in hex string
-Syntax Error (26): Illegal character <2f> in hex string
-Syntax Error (27): Illegal character <57> in hex string
-Syntax Error (30): Illegal character <2f> in hex string
-Syntax Error (31): Illegal character <2f> in hex string
-Syntax Error (33): Illegal character <54> in hex string
-Syntax Error (36): Illegal character <58> in hex string
-Syntax Error (37): Illegal character <48> in hex string
-Syntax Error (38): Illegal character <54> in hex string
-Syntax Error (39): Illegal character <4d> in hex string
-Syntax Error (40): Illegal character <4c> in hex string
-Syntax Error (43): Illegal character <2e> in hex string
-Syntax Error (46): Illegal character <53> in hex string
-Syntax Error (47): Illegal character <74> in hex string
-Syntax Error (48): Illegal character <72> in hex string
-Syntax Error (49): Illegal character <69> in hex string
-Syntax Error (51): Illegal character <74> in hex string
-Syntax Error (52): Illegal character <2f> in hex string
-Syntax Error (53): Illegal character <2f> in hex string
-Syntax Error (55): Illegal character <4e> in hex string
-Syntax Error (56): Illegal character <22> in hex string
-Syntax Error (58): Illegal character <22> in hex string
-Syntax Error (59): Illegal character <68> in hex string
-Syntax Error (60): Illegal character <74> in hex string
-Syntax Error (61): Illegal character <74> in hex string
-Syntax Error (62): Illegal character <70> in hex string
-Syntax Error (63): Illegal character <3a> in hex string
-Syntax Error (64): Illegal character <2f> in hex string
-Syntax Error (65): Illegal character <2f> in hex string
-Syntax Error (66): Illegal character <77> in hex string
-Syntax Error (67): Illegal character <77> in hex string
-Syntax Error (68): Illegal character <77> in hex string
-Syntax Error (69): Illegal character <2e> in hex string
-Syntax Error (70): Illegal character <77> in hex string
-Syntax Error (72): Illegal character <2e> in hex string
-Syntax Error (73): Illegal character <6f> in hex string
-Syntax Error (74): Illegal character <72> in hex string
-Syntax Error (75): Illegal character <67> in hex string
-Syntax Error (76): Illegal character <2f> in hex string
-Syntax Error (77): Illegal character <54> in hex string
-Syntax Error (78): Illegal character <52> in hex string
-Syntax Error (79): Illegal character <2f> in hex string
-Syntax Error (80): Illegal character <78> in hex string
-Syntax Error (81): Illegal character <68> in hex string
-Syntax Error (82): Illegal character <74> in hex string
-Syntax Error (83): Illegal character <6d> in hex string
-Syntax Error (84): Illegal character <6c> in hex string
-Syntax Error (86): Illegal character <2f> in hex string
-Syntax Error (88): Illegal character <54> in hex string
-Syntax Error (90): Illegal character <2f> in hex string
-Syntax Error (91): Illegal character <78> in hex string
-Syntax Error (92): Illegal character <68> in hex string
-Syntax Error (93): Illegal character <74> in hex string
-Syntax Error (94): Illegal character <6d> in hex string
-Syntax Error (95): Illegal character <6c> in hex string
-Syntax Error (97): Illegal character <2d> in hex string
-Syntax Error (98): Illegal character <73> in hex string
-Syntax Error (99): Illegal character <74> in hex string
-Syntax Error (100): Illegal character <72> in hex string
-Syntax Error (101): Illegal character <69> in hex string
-Syntax Error (103): Illegal character <74> in hex string
-Syntax Error (104): Illegal character <2e> in hex string
-Syntax Error (106): Illegal character <74> in hex string
-Syntax Error (108): Illegal character <22> in hex string
-Syntax Error (113): Illegal character <68> in hex string
-Syntax Error (114): Illegal character <74> in hex string
-Syntax Error (115): Illegal character <6d> in hex string
-Syntax Error (116): Illegal character <6c> in hex string
-Syntax Error (118): Illegal character <78> in hex string
-Syntax Error (119): Illegal character <6d> in hex string
-Syntax Error (120): Illegal character <6c> in hex string
-Syntax Error (121): Illegal character <6e> in hex string
-Syntax Error (122): Illegal character <73> in hex string
-Syntax Error (123): Illegal character <3d> in hex string
-Syntax Error (124): Illegal character <22> in hex string
-Syntax Error (125): Illegal character <68> in hex string
-Syntax Error (126): Illegal character <74> in hex string
-Syntax Error (127): Illegal character <74> in hex string
-Syntax Error (128): Illegal character <70> in hex string
-Syntax Error (129): Illegal character <3a> in hex string
-Syntax Error (130): Illegal character <2f> in hex string
-Syntax Error (131): Illegal character <2f> in hex string
-Syntax Error (132): Illegal character <77> in hex string
-Syntax Error (133): Illegal character <77> in hex string
-Syntax Error (134): Illegal character <77> in hex string
-Syntax Error (135): Illegal character <2e> in hex string
-Syntax Error (136): Illegal character <77> in hex string
-Syntax Error (138): Illegal character <2e> in hex string
-Syntax Error (139): Illegal character <6f> in hex string
-Syntax Error (140): Illegal character <72> in hex string
-Syntax Error (141): Illegal character <67> in hex string
-Syntax Error (142): Illegal character <2f> in hex string
-Syntax Error (147): Illegal character <2f> in hex string
-Syntax Error (148): Illegal character <78> in hex string
-Syntax Error (149): Illegal character <68> in hex string
-Syntax Error (150): Illegal character <74> in hex string
-Syntax Error (151): Illegal character <6d> in hex string
-Syntax Error (152): Illegal character <6c> in hex string
-Syntax Error (153): Illegal character <22> in hex string
-Syntax Error (158): Illegal character <68> in hex string
-Syntax Error (166): Illegal character <6d> in hex string
-Syntax Error (168): Illegal character <74> in hex string
-Syntax Error (171): Illegal character <68> in hex string
-Syntax Error (172): Illegal character <74> in hex string
-Syntax Error (173): Illegal character <74> in hex string
-Syntax Error (174): Illegal character <70> in hex string
-Syntax Error (175): Illegal character <2d> in hex string
-Syntax Error (177): Illegal character <71> in hex string
-Syntax Error (178): Illegal character <75> in hex string
-Syntax Error (179): Illegal character <69> in hex string
-Syntax Error (180): Illegal character <76> in hex string
-Syntax Error (181): Illegal character <3d> in hex string
-Syntax Error (182): Illegal character <22> in hex string
-Syntax Error (184): Illegal character <6f> in hex string
-Syntax Error (185): Illegal character <6e> in hex string
-Syntax Error (186): Illegal character <74> in hex string
-Syntax Error (188): Illegal character <6e> in hex string
-Syntax Error (189): Illegal character <74> in hex string
-Syntax Error (190): Illegal character <2d> in hex string
-Syntax Error (191): Illegal character <54> in hex string
-Syntax Error (192): Illegal character <79> in hex string
-Syntax Error (193): Illegal character <70> in hex string
-Syntax Error (195): Illegal character <22> in hex string
-Syntax Error (198): Illegal character <6f> in hex string
-Syntax Error (199): Illegal character <6e> in hex string
-Syntax Error (200): Illegal character <74> in hex string
-Syntax Error (202): Illegal character <6e> in hex string
-Syntax Error (203): Illegal character <74> in hex string
-Syntax Error (204): Illegal character <3d> in hex string
-Syntax Error (205): Illegal character <22> in hex string
-Syntax Error (206): Illegal character <74> in hex string
-Syntax Error (208): Illegal character <78> in hex string
-Syntax Error (209): Illegal character <74> in hex string
-Syntax Error (210): Illegal character <2f> in hex string
-Syntax Error (211): Illegal character <68> in hex string
-Syntax Error (212): Illegal character <74> in hex string
-Syntax Error (213): Illegal character <6d> in hex string
-Syntax Error (214): Illegal character <6c> in hex string
-Syntax Error (215): Illegal character <3b> in hex string
-Syntax Error (218): Illegal character <68> in hex string
-Syntax Error (220): Illegal character <72> in hex string
-Syntax Error (221): Illegal character <73> in hex string
-Syntax Error (223): Illegal character <74> in hex string
-Syntax Error (224): Illegal character <3d> in hex string
-Syntax Error (225): Illegal character <69> in hex string
-Syntax Error (226): Illegal character <73> in hex string
-Syntax Error (227): Illegal character <6f> in hex string
-Syntax Error (228): Illegal character <2d> in hex string
-Syntax Error (233): Illegal character <2d> in hex string
-Syntax Error (235): Illegal character <22> in hex string
-Syntax Error (236): Illegal character <2f> in hex string
-Syntax Error (241): Illegal character <74> in hex string
-Syntax Error (242): Illegal character <69> in hex string
-Syntax Error (243): Illegal character <74> in hex string
-Syntax Error (244): Illegal character <6c> in hex string
-Syntax Error: Couldn't find trailer dictionary
-Syntax Error: Couldn't find trailer dictionary
-Syntax Error: Couldn't read xref table
+==== https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034984.pdf HTTP 200 65322 bytes, Yakym Rudy C. 2026
+                                                                                                                                  Filing ID #20034984
 
-==== https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/7/10/2026/20034916.pdf HTTP 404 1245 bytes, Wittman Robert J. 2026
-pdftotext failed Command failed: pdftotext -layout probe-tmp/p.pdf -
-Syntax Warning: May not be a PDF file (continuing anyway)
-Syntax Error (2): Illegal character <21> in hex string
-Syntax Error (4): Illegal character <4f> in hex string
-Syntax Error (6): Illegal character <54> in hex string
-Syntax Error (7): Illegal character <59> in hex string
-Syntax Error (8): Illegal character <50> in hex string
-Syntax Error (11): Illegal character <68> in hex string
-Syntax Error (12): Illegal character <74> in hex string
-Syntax Error (13): Illegal character <6d> in hex string
-Syntax Error (14): Illegal character <6c> in hex string
-Syntax Error (16): Illegal character <50> in hex string
-Syntax Error (17): Illegal character <55> in hex string
-Syntax Error (19): Illegal character <4c> in hex string
-Syntax Error (20): Illegal character <49> in hex string
-Syntax Error (23): Illegal character <22> in hex string
-Syntax Error (24): Illegal character <2d> in hex string
-Syntax Error (25): Illegal character <2f> in hex string
-Syntax Error (26): Illegal character <2f> in hex string
-Syntax Error (27): Illegal character <57> in hex string
-Syntax Error (30): Illegal character <2f> in hex string
-Syntax Error (31): Illegal character <2f> in hex string
-Syntax Error (33): Illegal character <54> in hex string
-Syntax Error (36): Illegal character <58> in hex string
-Syntax Error (37): Illegal character <48> in hex string
-Syntax Error (38): Illegal character <54> in hex string
-Syntax Error (39): Illegal character <4d> in hex string
-Syntax Error (40): Illegal character <4c> in hex string
-Syntax Error (43): Illegal character <2e> in hex string
-Syntax Error (46): Illegal character <53> in hex string
-Syntax Error (47): Illegal character <74> in hex string
-Syntax Error (48): Illegal character <72> in hex string
-Syntax Error (49): Illegal character <69> in hex string
-Syntax Error (51): Illegal character <74> in hex string
-Syntax Error (52): Illegal character <2f> in hex string
-Syntax Error (53): Illegal character <2f> in hex string
-Syntax Error (55): Illegal character <4e> in hex string
-Syntax Error (56): Illegal character <22> in hex string
-Syntax Error (58): Illegal character <22> in hex string
-Syntax Error (59): Illegal character <68> in hex string
-Syntax Error (60): Illegal character <74> in hex string
-Syntax Error (61): Illegal character <74> in hex string
-Syntax Error (62): Illegal character <70> in hex string
-Syntax Error (63): Illegal character <3a> in hex string
-Syntax Error (64): Illegal character <2f> in hex string
-Syntax Error (65): Illegal character <2f> in hex string
-Syntax Error (
+                           P                               T                                             R
+               Clerk of the House of Representatives • Legislative Resource Center • B81 Cannon Building • Washington, DC 20515
 
-senate token true [ 'csrftoken', '33a5c6d97f299a223cb6fc3925909ef7' ]
-agree 302 /search/ [ 'csrftoken', '33a5c6d97f299a223cb6fc3925909ef7', 'sessionid' ]
-search 200 {"draw": 0, "recordsTotal": 12, "recordsFiltered": 12, "data": [["John", "Fetterman", "Fetterman, John (Senator)", "<a href=\"/search/view/ptr/0541be4f-4f96-4d84-8d6f-d349f218bb2a/\" target=\"_blank\">Periodic Transaction Report for 10/07/2026</a>", "10/07/2026"], ["Sheldon", "Whitehouse", "Whitehouse, Sheldon (Senator)", "<a href=\"/search/view/ptr/6bf3b6f7-9e1b-499a-bd5a-990292ce2e72/\" target=\"_blank\">Periodic Transaction Report for 10/01/2026</a>", "10/01/2026"], ["James Conley", "Justice, II", "Justice II,  James Conley (Senator)", "<a href=\"/search/view/ptr/0a93a20c-2a0f-4979-80ca-cc2f61297527/\" target=\"_blank\">Periodic Transaction Report for 09/28/2026</a>", "09/28/2026"], ["Richard", "Blumenthal", "Blumenthal, Richard (Senator)", "<a href=\"/search/view/ptr/9e2ff733-aeac-4ce8-872c-3d6b7913da88/\" target=\"_blank\">Periodic Transaction Report for 09/28/2026</a>", "09/28/2026"], ["A. Mitchell", "McConnell, Jr.", "McConnell, A. Mitchell Jr. (Senator)", "<a href=\"/search/view/ptr/028aef33-dc0d-44a1-992f-aa35ee42685b/\" target=\"_blank\">Periodic Transaction Report for 09/21/2026</a>", "09/21/2026"]], "result": "ok"}
 
-ptr page 200 <table class="table table-striped"> <caption class="sr-only">List of transactions added to this report</caption> <thead> <tr class="header"> <th scope="col">&#35;</th> <th scope="col">Transaction Date</th> <th scope="col">Owner</th> <th scope="col">Ticker</th> <th scope="col">Asset Name</th> <th scope="col">Asset Type</th> <th scope="col">Type</th> <th scope="col">Amount</th> <th scope="col">Comment</th> </tr> </thead> <tbody> <tr> <td>2</td> <td> 09/16/2026 </td> <td>Child</td> <td> -- </td> <td> DELL INTL LLC/EMC CORP <div class="text-muted"><em>Rate/Coupon:</em> 5.6%<br> <em>Matures:</em> 2033-09-15</div> </td> <td>Corporate Bond</td> <td>Purchase</td> <td>$1,001 - $15,000</td> <td>--</td> </tr> <tr> <td>1</td> <td> 09/15/2026 </td> <td>Child</td> <td> -- </td> <td> DELL INTL LLC/EMC CORP <div class="text-muted"><em>Rate/Coupon:</em> 5.6%<br> <em>Matures:</em> 2033-09-15</div> </td> <td>Corporate Bond</td> <td>Purchase</td> <td>$1,001 - $15,000</td> <td>--</td> </tr> </tbody> </table>
+F          I
+Name:                 Hon. Rudy C. Yakym III
+Status:               Member
+State/District: IN02
+
+
+T
+ID         Owner Asset                                            Transaction Date                 Notification Amount                     Cap.
+                                                                  Type                             Date                                    Gains >
+                                                                                                                                           $200?
+
+                       Treasury Bill (3-Month, Matures            P                 07/13/2026 07/13/2026             $15,001 -
+                       10/15/2026) [GS]                                                                               $50,000
+                       F      S      : New
+                       S            O : Schwab (formerly TD Ameritrade)
+
+* For the complete list of asset type abbreviations, please visit https://fd.house.gov/reference/asset-type-codes.aspx.
+
+
+I                      V               D
+     Schwab (formerly TD Ameritrade)
+     L        : US
+
+
+
+I               P           O
+     Yes        No
+
+
+C                                  S
+    I CERTIFY that the statements I have made on the attached Periodic Transaction Report are true, complete, and correct to the best of
+my knowledge and belief. Further, I CERTIFY that I have disclosed all transactions as required by the STOCK Act.
+
+Digitally Signed: Hon. Rudy C. Yakym III, 07/13/2026
+
+
+==== https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034298.pdf HTTP 200 65318 bytes, Yakym Rudy C. 2026
+                                                                                                                                  Filing ID #20034298
+
+                           P                               T                                             R
+               Clerk of the House of Representatives • Legislative Resource Center • B81 Cannon Building • Washington, DC 20515
+
+
+F          I
+Name:                 Hon. Rudy C. Yakym III
+Status:               Member
+State/District: IN02
+
+
+T
+ID         Owner Asset                                            Transaction Date                 Notification Amount                     Cap.
+                                                                  Type                             Date                                    Gains >
+                                                                                                                                           $200?
+
+                       Treasury Bill (3-Month, Matures            P                 04/06/2026 04/06/2026             $15,001 -
+                       7/9/2026) [GS]                                                                                 $50,000
+                       F      S      : New
+                       S            O : Schwab (formerly TD Ameritrade)
+
+* For the complete list of asset type abbreviations, please visit https://fd.house.gov/reference/asset-type-codes.aspx.
+
+
+I                      V               D
+     Schwab (formerly TD Ameritrade)
+     L        : US
+
+
+
+I               P           O
+     Yes        No
+
+
+C                                  S
+    I CERTIFY that the statements I have made on the attached Periodic Transaction Report are true, complete, and correct to the best of
+my knowledge and belief. Further, I CERTIFY that I have disclosed all transactions as required by the STOCK Act.
+
+Digitally Signed: Hon. Rudy C. Yakym III, 04/06/2026
+
+
+==== https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034916.pdf HTTP 200 64839 bytes, Wittman Robert J. 2026
+                                                                                                                               Filing ID #20034916
+
+                           P                               T                                             R
+               Clerk of the House of Representatives • Legislative Resource Center • B81 Cannon Building • Washington, DC 20515
+
+
+F          I
+Name:                 Hon. Robert J. Wittman
+Status:               Member
+State/District: VA01
+
+
+T
+ID         Owner Asset                                            Transaction Date                 Notification Amount                   Cap.
+                                                                  Type                             Date                                  Gains >
+                                                                                                                                         $200?
+
+                       Crown Castle Inc. Common Stock             S                 06/30/2026 07/02/2026             $1,001 - $15,000
+                       (CCI) [ST]
+                       F      S      : New
+                       S            O : Morgan Stanley
+
+* For the complete list of asset type abbreviations, please visit https://fd.house.gov/reference/asset-type-codes.aspx.
+
+
+I                      V               D
+     Morgan Stanley
+
+
+
+I               P           O
+     Yes        No
+
+
+C                                  S
+    I CERTIFY that the statements I have made on the attached Periodic Transaction Report are true, complete, and correct to the best of
+my knowledge and belief. Further, I CERTIFY that I have disclosed all transactions as required by the STOCK Act.
+
+Digitally Signed: Hon. Robert J. Wittman , 07/10/2026
+
+
+==== https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033783.pdf HTTP 200 69119 bytes, Williams Roger 2026
+                                                                                                                                  Filing ID #20033783
+
+                           P                               T                                             R
+               Clerk of the House of Representatives • Legislative Resource Center • B81 Cannon Building • Washington, DC 20515
+
+
+F          I
+Name:                 Hon. Roger Williams
+Status:               Member
+State/District: TX25
+
+
+T
+ID         Owner Asset                                            Transaction Date                 Notification Amount                     Cap.
+                                                                  Type                             Date                                    Gains >
+                                                                                                                                           $200?
+
+                       Chevron Corporation Common Stock           S (partial)       12/22/2025 12/22/2025             $15,001 -
+                       (CVX) [ST]                                                                                     $50,000
+                       F      S      : New
+                       S            O : Charles Schwab 4067
+
+
+                       Diamondback Energy, Inc. - Common S (partial)                12/22/2025 12/22/2025             $1,001 - $15,000
+                       Stock (FANG) [ST]
+                       F      S      : New
+                       S            O : Charles Schwab 4067
+
+
+                       JP Morgan Chase & Co. Common               P                 12/22/2025 12/22/2025             $1,001 - $15,000
+                       Stock (JPM) [ST]
+                       F      S      : New
+                       S            O : Charles Schwab 4067
+
+
+                       RTX Corporation Common Stock               P                 12/22/2025 12/22/2025             $1,001 - $15,000
+                       (RTX) [ST]
+                       F      S      : New
+                       S            O : Charles Schwab 4067
+
+* For the complete list of asset type abbreviations, please visit https://fd.house.gov/reference/asset-type-codes.aspx.
+
+
+I                      V              D
+     Charles Schwab 4067
+
+
+
+I               P           O
+     Yes        No
+C                               S
+    I CERTIFY that the statements I have made on the attached Periodic Transaction Report are true, complete, and correct to the best of
+my knowledge and belief. Further, I CERTIFY that I have disclo
