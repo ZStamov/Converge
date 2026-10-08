@@ -99,7 +99,7 @@ Copies without an account system (the one-file page, or before Supabase is set u
 
 ## Politicians, hedge funds and insiders (every stock)
 
-Under each stock's discussion, three panels (`.github/workflows/smart.yml`, every 4 hours, `smart` branch: `congress.json`, `s/<TICKER>.json`):
+Under each stock's discussion, a *Who owns it* row with three columns (politicians, hedge funds, insiders: tap one for its detail) (`.github/workflows/smart.yml`, every 4 hours, `smart` branch: `congress.json`, `s/<TICKER>.json`):
 
 - **Politicians:** stock and option trades disclosed by members of Congress in the last 2 years, parsed from the official STOCK Act Periodic Transaction Reports: the House Clerk's PTR PDFs and the Senate's eFD reports, with party and state from the open `unitedstates/congress-legislators` dataset. Shows who, buy or sell, the reported amount range, whose account (self, spouse…), trade and filing dates, and a link to the filing. Scanned paper filings can't be read and are skipped.
 - **Hedge funds & institutions:** 13F holdings via Nasdaq: institutional ownership, how many holders increased, decreased, opened or closed positions, well-known hedge funds among the 300 largest holders (matched by name), and the quarter's biggest buyers and sellers.
@@ -154,7 +154,7 @@ Each ticker page has candles at 1m, 2m, 5m, 1h, 2h, 4h, 5h, 1D, 2D and 1W. The A
 
 ## Strategy scanners (Premium)
 
-Five toggles in the Scanner (scalping, short-term swing, medium-term swing, position/trend, multi-year value) apply the criteria from the strategy playbook. Criteria that need data free sources don't provide (float, VWAP) are listed and skipped; fundamental criteria need the `SEC_USER_AGENT` secret.
+Five toggles in the Scanner, one active at a time (scalping, short-term swing, medium-term swing, position/trend, multi-year value) apply the criteria from the strategy playbook. Criteria that need data free sources don't provide (float, VWAP) are listed and skipped; fundamental criteria need the `SEC_USER_AGENT` secret.
 
 ## Your data and syncing across devices
 

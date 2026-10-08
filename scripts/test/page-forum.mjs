@@ -84,7 +84,12 @@ check('owner can remove a post (moderation)', (await posts(A)).length === 1 && (
 // panels in the page for a tracked ticker
 await A.page.evaluate(() => document.getElementById('smartbox').scrollIntoView()); await A.page.waitForTimeout(200);
 const sm = await A.page.$eval('#smartbox', (e) => e.innerText.replace(/\s+/g, ' '));
-check('three panels under the discussion: ' + sm.slice(0, 160), /POLITICIANS/i.test(sm) && /HEDGE FUNDS/i.test(sm) && /INSIDER BUYS/i.test(sm));
+const cols = await A.page.$$eval('#smartbox .ocol', (a) => a.map((e) => e.querySelector('.ot').textContent));
+check('three ownership columns under the discussion: ' + cols.join(' | '), cols.join('|') === 'Politicians|Hedge funds|Insiders');
+for (const k of ['f', 'i', 'c']) { await A.page.click(`#smartbox [data-act="own-tab"][data-k="${k}"]`); await A.page.waitForTimeout(150); }
+await A.page.click('#smartbox [data-act="own-tab"][data-k="f"]'); await A.page.waitForTimeout(150);
+check('tapping a column shows its detail: ' + (await A.page.$eval('#smartbox', (e) => e.innerText.replace(/\s+/g, ' '))).slice(0, 120), /HEDGE FUNDS &/i.test(await A.page.$eval('#smartbox', (e) => e.innerText)) && !/STOCK Act/.test(await A.page.$eval('#smartbox', (e) => e.innerText)));
+await A.page.click('#smartbox [data-act="own-tab"][data-k="c"]'); await A.page.waitForTimeout(150);
 await A.page.screenshot({ path: path.join(out, 'phone-nvda-panels.png'), fullPage: false });
 console.log(errs.length ? errs.join('\n') : 'no errors');
 await browser.close(); process.exit(errs.length ? 1 : 0);

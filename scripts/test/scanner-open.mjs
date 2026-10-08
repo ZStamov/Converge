@@ -19,7 +19,10 @@ const click = async (sel) => { await page.click(sel); await page.waitForTimeout(
 let n = 0; const shot = async (nm) => { await page.waitForTimeout(200); await page.screenshot({ path: path.join(out, String(++n).padStart(2, '0') + '-' + nm + '.png') }); };
 await page.goto('http://localhost:8102/'); await page.waitForSelector('.nav');
 await click('[data-act="tab"][data-tab="scan"]'); await page.waitForSelector('.tbl');
+await click('[data-act="preset"][data-id="mswing"]');
 await click('[data-act="preset"][data-id="swing"]');
+const onNow = await page.$$eval('[data-act="preset"][aria-pressed="true"]', (a) => a.map((e) => e.dataset.id));
+check('only one strategy toggle on at a time: ' + onNow.join(','), onNow.length === 1 && onNow[0] === 'swing');
 await click('[data-act="scan-toggle"]');
 await page.selectOption('[data-scanf="sec"]', { index: 1 }).catch(() => {});
 await page.waitForTimeout(200);

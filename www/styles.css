@@ -441,3 +441,14 @@ a.btn.sm { text-decoration: none; }
 .ptag.pD { background: rgba(70, 130, 255, .18); color: #8fb4ff; } .ptag.pR { background: rgba(255, 90, 90, .16); color: #ff9c9c; } .ptag.pI { background: rgba(200, 200, 200, .16); }
 .smallkv { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)) !important; margin-top: 4px; }
 .smallkv .v { font-size: 14px; }
+
+/* who owns it: three columns */
+.own3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ocol { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; min-width: 0; }
+.ocol.on { border-color: var(--accent-line); background: var(--accent-soft2); }
+.ocol .ot { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ocol.on .ot { color: var(--accent); }
+.ocol .ob { font: 700 20px/1.15 var(--f-mono, ui-monospace, monospace); margin-top: 4px; }
+.ocol .ol { font-size: 10.5px; color: var(--muted); margin-bottom: 4px; }
+.ocol .ox { font-size: 11px; line-height: 1.35; color: var(--fg2, var(--fg)); overflow-wrap: anywhere; }
+@media (max-width: 380px) { .ocol { padding: 8px; } .ocol .ob { font-size: 17px; } }

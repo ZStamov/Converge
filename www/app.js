@@ -1864,6 +1864,7 @@
         return '<div class="srow"><div><b>' + esc(String(x.who || '').replace(/\b(Mr|Mrs|Ms|Dr|Hon)\.?(?=\s|$)/g, '').replace(/\s+/g, ' ').trim()) + '</b> <span class="ptag p' + esc(x.party || 'x') + '">' + esc(tag) + '</span><br><span class="muted">' + esc(x.ch) + (x.owner && x.owner !== 'Self' ? ' · ' + esc(x.owner) : '') + (x.option ? ' · option' : '') + ' · traded ' + esc(fdate(x.date)) + (x.filed ? ' · filed ' + esc(fdate(x.filed)) : '') + '</span></div><div class="scol"><b class="' + (x.type === 'buy' ? 'up' : 'down') + '">' + esc(x.type === 'buy' ? 'BUY' : x.type === 'exchange' ? 'EXCH' : 'SELL') + '</b><br><span class="muted mono">' + esc(x.amount || '') + '</span>' + (safeUrl(x.url) ? '<br><a class="lnk" href="' + esc(x.url) + '" target="_blank" rel="noopener noreferrer">Filing ↗</a>' : '') + '</div></div>';
       }).join('') + '</div>' + moreBtn(ck, C.length, nC) : '<p class="muted" style="margin:0;font-size:13px">No member of Congress disclosed a trade in ' + esc(t) + ' in the last 2 years.</p>') +
       '<p class="foot" style="text-align:left;margin:8px 0 0">STOCK Act Periodic Transaction Reports from the House Clerk and Senate eFD. Amounts are the ranges members must report; filings can come up to 45 days after the trade.</p></section>';
+    var hC = h; h = '';
     // 2. hedge funds
     var F = d.funds, fk = t + ':f';
     h += '<section class="card smartc">' + head('f', 'Hedge funds &amp; institutions', F && F.instPct != null ? F.instPct + '% held by institutions' : '');
@@ -1877,6 +1878,7 @@
       if ((F.sellers || []).length) h += '<h3 class="eyebrow" style="margin:12px 0 4px">Biggest sellers last quarter</h3><div class="srows">' + F.sellers.slice(0, 3).map(frow).join('') + '</div>';
     }
     h += '<p class="foot" style="text-align:left;margin:8px 0 0">13F holdings via Nasdaq. Funds report 45 days after each quarter ends; hedge funds are matched by name from a list of well-known managers.</p></section>';
+    var hF = h; h = '';
     // 3. insiders
     var I = d.insider, ik = t + ':i', showSells = !!open[t + ':is'];
     h += '<section class="card smartc">' + head('i', 'Insider buys', I && I.buys ? I.buys[0] + ' buys in 3 mo · ' + I.buys[1] + ' in 12 mo' : '');
@@ -1892,7 +1894,22 @@
       }).join('') + '</div>' + moreBtn(ik, list.length, nI) : '<p class="muted" style="margin:6px 0 0;font-size:13px">No open-market insider buys in the latest filings' + (all.length ? ' (' + all.length + ' other trades, mostly sales and option exercises).' : '.') + '</p>';
     }
     h += '<p class="foot" style="text-align:left;margin:8px 0 0">SEC Form 4 filings via Nasdaq. Insider buys with their own money are the stronger signal; many sales are planned (10b5-1) or for taxes.' + (d.nasdaqAt ? ' Updated ' + esc(ago(d.nasdaqAt)) + '.' : '') + '</p></section>';
-    return h;
+    var hI = h;
+    // three ownership columns; tap one for its detail
+    var tab = (UI.ownTab && UI.ownTab[t]) || 'c', F2 = d.funds || {}, I2 = d.insider || {}, shOut = F2.shOut;
+    var members = {}; C.forEach(function (x) { members[x.who] = (members[x.who] || 0) + (x.type === 'buy' ? 1 : -1); });
+    var nMem = Object.keys(members).length, netBuyers = Object.keys(members).filter(function (k) { return members[k] > 0; }).length;
+    var hfShares = (F2.hedge || []).reduce(function (a, x) { return a + (x.shares || 0); }, 0), hfUp = (F2.hedge || []).filter(function (x) { return x.chg > 0; }).length, hfDn = (F2.hedge || []).filter(function (x) { return x.chg < 0; }).length;
+    var held = {}; (I2.trades || []).concat(I2.buyTrades || []).forEach(function (x) { if (x.who && num(x.held) && (!held[x.who] || (x.date || '') > held[x.who].date)) held[x.who] = { date: x.date || '', n: x.held }; });
+    var insShares = Object.keys(held).reduce(function (a, k) { return a + held[k].n; }, 0);
+    var pctOf = function (n) { return shOut && n ? (n / shOut * 100 < 0.01 ? '<0.01%' : (n / shOut * 100).toFixed(n / shOut * 100 < 1 ? 2 : 1) + '%') : null; };
+    var col = function (k, title, big, bigLbl, lines, tone) { return '<button class="ocol' + (tab === k ? ' on' : '') + '" data-act="own-tab" data-t="' + esc(t) + '" data-k="' + k + '" aria-pressed="' + (tab === k) + '"><span class="ot">' + title + '</span><span class="ob ' + (tone || '') + '">' + big + '</span><span class="ol">' + bigLbl + '</span>' + lines.map(function (l) { return '<span class="ox">' + l + '</span>'; }).join('') + '</button>'; };
+    var g = '<section class="card own"><div class="sechead" style="margin-bottom:8px"><h2 class="eyebrow">Who owns ' + esc(t) + '</h2><span class="muted" style="font-size:11px">Tap a column</span></div><div class="own3">' +
+      col('c', 'Politicians', String(nMem), nMem === 1 ? 'member traded' : 'members traded', [buys + ' buys · ' + (C.length - buys) + ' sells', nMem ? (netBuyers * 2 > nMem ? '<b class="up">Net buying</b>' : netBuyers * 2 < nMem ? '<b class="down">Net selling</b>' : 'Mixed') : '2 years'], '') +
+      col('f', 'Hedge funds', pctOf(hfShares) || String((F2.hedge || []).length), pctOf(hfShares) ? 'of shares' : 'funds found', [(F2.hedge || []).length + ' funds · ' + (F2.instPct != null ? F2.instPct + '% inst.' : ''), (hfUp || hfDn) ? '<b class="up">' + hfUp + ' added</b> · <b class="down">' + hfDn + ' cut</b>' : 'No change data'], '') +
+      col('i', 'Insiders', pctOf(insShares) || (I2.buys ? String(I2.buys[1]) : '—'), pctOf(insShares) ? 'held by filers' : 'buys in 12 mo', [I2.buys ? '<b class="up">' + I2.buys[1] + ' buys</b> · <b class="down">' + (I2.sells ? I2.sells[1] : 0) + ' sells</b>' : 'No filings', I2.buys ? '12 months' : ''], '') +
+      '</div></section>';
+    return g + (tab === 'f' ? hF : tab === 'i' ? hI : hC) + '<p class="foot" style="text-align:left;margin:-4px 2px 0">' + (shOut ? 'Percentages use ' + bigNum(shOut) + ' shares outstanding. Hedge-fund share = well-known funds among the largest holders; insider share = latest holdings of insiders who filed recently.' : 'Ownership percentages appear after the next data refresh.') + '</p>';
   }
 
   // ---- quote page for any US-listed stock outside the tracked list
@@ -2115,7 +2132,7 @@
     'cfull-close': function () { UI.cfull = false; render(); },
     'sig-info': function (el) { UI.sigInfo = UI.sigInfo === el.dataset.id ? null : el.dataset.id; refreshCandleBox(); },
     cpan: function (el) { var n = UI.cN || 60; UI.cSel = null; if (el.dataset.p === 'end') UI.cOff = 0; else UI.cOff = Math.max(0, (UI.cOff || 0) + (el.dataset.p === 'back' ? Math.round(n / 2) : -Math.round(n / 2))); refreshCandleBox(); },
-    preset: function (el) { if (!isPremium()) { UI.sheet = { kind: 'subscribe', why: 'preset' }; return render(); } var st = scanState(); st.presets = st.presets || {}; st.presets[el.dataset.id] = !st.presets[el.dataset.id]; if (st.presets[el.dataset.id]) st.view = 'strategy'; UI.scanLimit = 100; save(); render(); },
+    preset: function (el) { if (!isPremium()) { UI.sheet = { kind: 'subscribe', why: 'preset' }; return render(); } var st = scanState(); st.presets = st.presets || {}; var was = !!st.presets[el.dataset.id]; st.presets = {}; st.presets[el.dataset.id] = !was; if (st.presets[el.dataset.id]) st.view = 'strategy'; UI.scanLimit = 100; save(); render(); },
     'preset-info': function (el) { UI.presetOpen = UI.presetOpen === el.dataset.id ? null : el.dataset.id; render(); },
     'scan-refresh': function () { SC = null; SCS.error = null; loadScanner(true); },
     'scan-toggle': function () { var st = scanState(); if (UI.scanCollapsed) { UI.scanCollapsed = false; st.open = true; } else st.open = !st.open; save(); render(); },
@@ -2128,6 +2145,7 @@
       if (T(t)) { S.sel = t; save(); NAV.tab = 'battle'; NAV.stack = []; render(); return; }
       go({ name: 'quote', t: t });
     },
+    'own-tab': function (el) { UI.ownTab = UI.ownTab || {}; UI.ownTab[el.dataset.t] = el.dataset.k; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
     'smart-more': function (el) { UI.smartOpen = UI.smartOpen || {}; UI.smartOpen[el.dataset.k] = true; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
     'smart-sells': function (el) { UI.smartOpen = UI.smartOpen || {}; var k = el.dataset.t + ':is'; UI.smartOpen[k] = !UI.smartOpen[k]; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
     'scan-edit': function () { var st = scanState(); UI.scanCollapsed = false; st.open = true; save(); render(); },
