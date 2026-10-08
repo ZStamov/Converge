@@ -900,10 +900,18 @@
     }
     var nActive = Object.keys(st.f).length;
     var h = '<div class="scan-top"><label class="sr" for="scan-signal">Signal</label><select class="in" id="scan-signal" data-scan="signal">' + SIGNALS.map(function (s) { return '<option value="' + s[0] + '"' + (st.signal === s[0] ? ' selected' : '') + '>Signal: ' + esc(s[1]) + '</option>'; }).join('') + '</select>' +
-      '<button class="btn sm" data-act="scan-toggle" aria-expanded="' + !!st.open + '">Filters' + (nActive ? ' (' + nActive + ')' : '') + '</button></div>';
-    h += presetsCard();
-    if (st.saved && st.saved.length) h += '<div class="chips">' + st.saved.map(function (s, i) { return '<button class="chip" data-act="scan-load" data-i="' + i + '">' + esc(s.name) + '</button>'; }).join('') + '</div>';
-    if (st.open) {
+      '<button class="btn sm" data-act="scan-toggle" aria-expanded="' + (!!st.open && !UI.scanCollapsed) + '">' + (UI.scanCollapsed ? 'Edit filters' : 'Filters') + (nActive ? ' (' + nActive + ')' : '') + '</button></div>';
+    if (UI.scanCollapsed) {
+      var onP = PRESETS.filter(function (p) { return isPremium() && (st.presets || {})[p.id]; });
+      var fl = Object.keys(st.f).map(function (id) { var d = FIDX[id]; if (!d) return null; var o = d.o.filter(function (x) { return x[0] === st.f[id]; })[0]; return d.label + ': ' + (o ? o[0] : st.f[id]); }).filter(Boolean);
+      var sigN = st.signal && st.signal !== 'none' ? sigDef(st.signal)[1] : null;
+      h += '<section class="card scan-sum"><div class="sechead"><h2 class="eyebrow">Your screen</h2><button class="btn sm" data-act="scan-edit">Edit</button></div><div class="chips">' +
+        (onP.length || fl.length || sigN ? onP.map(function (p) { return '<button class="chip on" data-act="scan-edit" aria-label="Edit ' + esc(p.name) + '">' + esc(p.name) + ' · Edit</button>'; }).join('') + (sigN ? '<button class="chip on" data-act="scan-edit">Signal: ' + esc(sigN) + ' · Edit</button>' : '') + fl.map(function (x) { return '<button class="chip on" data-act="scan-edit">' + esc(x) + ' · Edit</button>'; }).join('') : '<span class="muted" style="font-size:13px">No filters: all ' + SC.count + ' stocks.</span>') + '</div></section>';
+    } else {
+      h += presetsCard();
+      if (st.saved && st.saved.length) h += '<div class="chips">' + st.saved.map(function (s, i) { return '<button class="chip" data-act="scan-load" data-i="' + i + '">' + esc(s.name) + '</button>'; }).join('') + '</div>';
+    }
+    if (st.open && !UI.scanCollapsed) {
       var groups = ['Descriptive', 'Fundamental', 'Technical', 'All'];
       h += '<section class="card" style="padding:12px"><div class="seg" role="tablist" aria-label="Filter groups">' + groups.map(function (g) { var n = Object.keys(st.f).filter(function (id) { return FIDX[id] && FIDX[id].g === g; }).length; return '<button role="tab" data-act="scan-group" data-g="' + g + '" aria-pressed="' + (st.group === g) + '">' + ({ Descriptive: 'Descr.', Fundamental: 'Fund.', Technical: 'Tech.', All: 'All' })[g] + (n ? ' ' + n : '') + '</button>'; }).join('') + '</div>';
       if ((st.group === 'Fundamental' || st.group === 'All') && !SC.fundamentals) h += '<p class="note" style="margin:10px 0 0">Fundamental filters need SEC data. Add the <b>SEC_USER_AGENT</b> secret in the GitHub repository and they switch on at the next hourly run.</p>';
@@ -940,7 +948,8 @@
     return '<h2 class="disp" style="margin:0;font-size:22px">' + esc(t) + ' <span class="muted" style="font-size:14px;font-weight:400">' + esc(r.n || '') + '</span></h2><p class="muted" style="margin:2px 0 10px;font-size:12px">' + esc([r.sec, r.ind, r.ex].filter(Boolean).join(' · ')) + '</p>' +
       '<div class="scroll"><div class="kv">' + ['p', 'ch', 'mc', 'pe', 'ps', 'dy', 'pm', 'pytd', 'py', 'rsi', 'beta', 'rv', 's50', 's200', 'hi52'].map(kv).join('') + '</div>' +
       '<div class="lnkrow" style="margin-top:12px">' + extLinks(t) + '</div></div>' +
-      '<div class="btnrow" style="margin-top:12px">' + (covered ? '<button class="btn" data-act="battle" data-t="' + esc(t) + '">Open in Battleground</button>' : '<span class="muted" style="font-size:12px;align-self:center">News and sentiment cover ' + D.universe.length + ' tickers; add more in config/universe.json.</span>') + '</div>';
+      '<div class="btnrow" style="margin-top:12px"><button class="btn pri" data-act="open-chart" data-t="' + esc(t) + '">' + (covered ? 'Open in Battleground' : 'Open chart &amp; signals') + '</button></div>' +
+      (covered ? '' : '<p class="muted" style="margin:6px 0 0;font-size:11px">Chart, BUY/SELL signals and backtest. News and sentiment cover the ' + D.universe.length + ' tracked tickers.</p>');
   }
   function extLinks(t) {
     var u = encodeURIComponent(t), x = encodeURIComponent('$' + t);
@@ -1019,7 +1028,7 @@
       .catch(function () { if (snap && snap.kind === 'symbols') return snap; throw new Error('none'); })
       .then(function (d) { DIR.rows = d.rows; DIR.at = d.generatedAt; DIR.through = d.barsThrough; DIR.map = {}; d.rows.forEach(function (r, i) { DIR.map[r[0]] = i; }); })
       .catch(function () { DIR.error = 'The stock list isn’t available right now.'; })
-      .then(function () { DIR.loading = false; if (UI.sheet && UI.sheet.kind === 'pick') render(); else if (current().name === 'quote') render(); });
+      .then(function () { DIR.loading = false; if (UI.sheet && UI.sheet.kind === 'pick') render(); else if (current().name === 'quote' && DIR.rows) render(); });
   }
   function dirRow(t) { if (!DIR.map || DIR.map[t] == null) return null; var r = DIR.rows[DIR.map[t]]; return { t: r[0], n: r[1], ex: r[2], sp: !!r[3], sec: r[4], mc: r[5], p: r[6], ch: r[7], y: r[8] || null }; }
   function ysym(t) { var r = dirRow(t); return (r && r.y) || t.replace('.', '-'); }
@@ -1771,8 +1780,10 @@
   }
   // ---- quote page for any US-listed stock outside the tracked list
   function scrQuote(t) {
-    if (!DIR.rows && !DIR.loading) setTimeout(loadDir, 0);
-    var dr = dirRow(t) || { t: t, n: '', ex: '', sp: false, sec: '', mc: null, p: null, ch: null };
+    if (!DIR.rows && !DIR.loading && !DIR.error) setTimeout(loadDir, 0);
+    var dr = dirRow(t), sr = null;
+    if (!dr && SC && SC.rows) for (var si = 0; si < SC.rows.length; si++) if (SC.rows[si].t === t) { sr = SC.rows[si]; break; }
+    if (!dr) dr = sr ? { t: t, n: sr.n || '', ex: sr.ex || '', sp: (sr.idx || []).indexOf('S&P 500') >= 0, sec: sr.sec || '', mc: sr.mc, p: sr.p, ch: sr.ch } : { t: t, n: '', ex: '', sp: false, sec: '', mc: null, p: null, ch: null };
     var r1 = candleSeries(t, '1D').s, lastC = r1 && r1.c.length ? r1.c[r1.c.length - 1] : null, prevC = r1 && r1.c.length > 1 ? r1.c[r1.c.length - 2] : null;
     var price = dr.p != null ? dr.p : lastC, ch = dr.ch != null ? dr.ch : (lastC && prevC ? (lastC / prevC - 1) * 100 : null);
     var h = '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px"><div style="min-width:0"><h1 class="disp" style="margin:0;font-size:24px;font-weight:700;line-height:1.15">' + esc(dr.n || t) + '</h1><div class="muted" style="font-size:12px;margin-top:2px">' + esc(t) + (dr.ex ? ' · ' + esc(dr.ex === 'NASDAQ' ? 'Nasdaq' : dr.ex) : '') + (dr.sp ? ' · S&amp;P 500' : '') + (dr.sec ? ' · ' + esc(dr.sec) : '') + (dr.mc ? ' · ' + compact(dr.mc) : '') + '</div></div>' +
@@ -1888,7 +1899,7 @@
     feedf: function (el) { S.feedFilter = el.dataset.f; save(); render(); },
     vtab: function (el) { UI.vaultTab = el.dataset.v; render(); },
     settings: function () { UI.sheet = null; go({ name: 'settings' }); },
-    battle: function (el) { S.sel = el.dataset.t; if (el.dataset.side) UI.side = el.dataset.side; save(); NAV.tab = 'battle'; NAV.stack = []; render(); },
+    battle: function (el) { UI.sheet = null; S.sel = el.dataset.t; if (el.dataset.side) UI.side = el.dataset.side; save(); NAV.tab = 'battle'; NAV.stack = []; render(); },
     alert: function (el) { go({ name: 'alert', t: el.dataset.t }); },
     source: function (el) { go({ name: 'source', name2: el.dataset.name }); },
     briefing: function () { UI.briefIdx = 0; go({ name: 'briefing' }); },
@@ -1904,7 +1915,7 @@
       if (l.thesis) { UI.draft.title = th.title; UI.draft.why = th.why || ''; UI.draft.pins = (th.pins || []).slice(); UI.draft.target = th.target ? String(th.target) : ''; UI.draft.horizon = th.horizon || '12M'; UI.draft.kill = th.kill || ''; }
       go({ name: 'add' });
     },
-    pick: function (el) { UI.sheet = { kind: 'pick', mode: el.dataset.mode }; UI.pickQuery = ''; loadDir(); render(); },
+    pick: function (el) { UI.sheet = { kind: 'pick', mode: el.dataset.mode }; UI.pickQuery = ''; if (DIR.error && !DIR.rows) DIR.error = null; loadDir(); render(); },
     picked: function (el) {
       var t = el.dataset.t, mode = UI.sheet.mode;
       if (mode === 'watch') {
@@ -1988,11 +1999,17 @@
     preset: function (el) { if (!isPremium()) { UI.sheet = { kind: 'subscribe', why: 'preset' }; return render(); } var st = scanState(); st.presets = st.presets || {}; st.presets[el.dataset.id] = !st.presets[el.dataset.id]; if (st.presets[el.dataset.id]) st.view = 'strategy'; UI.scanLimit = 100; save(); render(); },
     'preset-info': function (el) { UI.presetOpen = UI.presetOpen === el.dataset.id ? null : el.dataset.id; render(); },
     'scan-refresh': function () { SC = null; SCS.error = null; loadScanner(true); },
-    'scan-toggle': function () { var st = scanState(); st.open = !st.open; save(); render(); },
+    'scan-toggle': function () { var st = scanState(); if (UI.scanCollapsed) { UI.scanCollapsed = false; st.open = true; } else st.open = !st.open; save(); render(); },
     'scan-group': function (el) { scanState().group = el.dataset.g; save(); render(); },
     'scan-view': function (el) { scanState().view = el.dataset.v; save(); render(); },
     'scan-sort': function (el) { var st = scanState(), k = el.dataset.k; if (st.sort.k === k) st.sort.dir *= -1; else st.sort = { k: k, dir: ['t', 'n', 'sec', 'ind', 'ctry'].indexOf(k) >= 0 ? 1 : -1 }; save(); render(); },
-    'scan-row': function (el) { UI.sheet = { kind: 'scanrow', t: el.dataset.t }; render(); },
+    'scan-row': function (el) { var st = scanState(); UI.scanCollapsed = true; if (st.open) { st.open = false; save(); } UI.sheet = { kind: 'scanrow', t: el.dataset.t }; render(); },
+    'open-chart': function (el) {
+      var t = el.dataset.t; UI.sheet = null; UI.cOff = 0; UI.cSel = null; UI.scanCollapsed = true;
+      if (T(t)) { S.sel = t; save(); NAV.tab = 'battle'; NAV.stack = []; render(); return; }
+      go({ name: 'quote', t: t });
+    },
+    'scan-edit': function () { var st = scanState(); UI.scanCollapsed = false; st.open = true; save(); render(); },
     'scan-more': function () { UI.scanLimit = (UI.scanLimit || 100) + 100; render(); },
     'scan-reset': function () { var st = scanState(); st.f = {}; st.signal = 'none'; save(); render(); },
     'scan-save': function () {

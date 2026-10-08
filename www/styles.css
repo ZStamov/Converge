@@ -426,3 +426,4 @@ a.btn { display: flex; align-items: center; justify-content: center; }
 a.btn.sm { text-decoration: none; }
 /* wide screens: keep the phone layout readable and centered */
 @media (min-width: 900px) { .cfull .civ button { min-height: 32px; } }
+.scan-sum .chip.on { border-color: var(--accent-line); color: var(--accent); background: var(--accent-soft2); }
