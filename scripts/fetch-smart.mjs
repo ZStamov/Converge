@@ -113,29 +113,36 @@ writeJ('cache/senate.json', senate);
 const congress = [];
 for (const f of Object.values(house)) for (const tr of f.trades || []) { const m = member('House', f.last, f.first, f.sd); congress.push({ ...tr, who: `${f.first} ${f.last}`.replace(/\s+/g, ' ').trim(), ch: 'House', party: m.party, state: m.state, district: m.district, filed: f.filed, url: f.url }); }
 for (const f of Object.values(senate)) for (const tr of f.trades || []) { const m = member('Senate', f.last, f.first, null); congress.push({ ...tr, who: `${f.first} ${f.last}`.replace(/\s+/g, ' ').trim(), ch: 'Senate', party: m.party, state: m.state, district: null, filed: f.filed, url: f.url }); }
+for (const x of congress) {
+  const lim = x.filed || new Date().toISOString().slice(0, 10);
+  if (x.date && x.date > lim) { const y1 = (+x.date.slice(0, 4) - 1) + x.date.slice(4); x.date = y1 <= lim ? y1 : lim; x.dateFixed = true; }
+}
 const recent = congress.filter((x) => x.date >= SINCE).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 writeJ('congress.json', { app: 'Converge', kind: 'congress', generatedAt: new Date().toISOString(), since: SINCE, sources: ['U.S. House Clerk Periodic Transaction Reports', 'U.S. Senate eFD Periodic Transaction Reports', 'unitedstates/congress-legislators'], count: recent.length, trades: recent });
 const byT = {}; for (const x of recent) (byT[x.t] = byT[x.t] || []).push(x);
 console.log(`congress: ${recent.length} stock trades (House +${houseNew}, Senate +${senateNew} new filings)`);
 
 // ---------------------------------------------------------------- funds (13F) + insiders (Form 4), per stock
-const HEDGE = /renaissance tech|citadel advisors|bridgewater|two sigma|d\.?\s?e\.? shaw|millennium management|point72|aqr capital|tiger global|coatue|pershing square|third point|elliott (investment|management)|viking global|lone pine|baupost|appaloosa|soros fund|duquesne|greenlight capital|balyasny|marshall wace|maverick capital|dragoneer|whale rock|valueact|starboard value|icahn|trian fund|glenview|tudor investment|moore capital|paulson & co|scion asset|arrowstreet|man group|winton|squarepoint|schonfeld|exodus ?point|hudson bay|magnetar|sculptor|farallon|eminence capital|greenoaks|altimeter|d1 capital|durable capital|sachem head|jana partners|light street|egerton|lansdowne|ako capital|davidson kempner|king street|anchorage capital|holocene|walleye|qube research|g2 investment|caxton|graham capital|brevan howard|alkeon|jericho|candriam|bain capital (public|credit)|steadview|tci fund|children'?s investment|lansdowne|cantillon|maplelane|hound partners|soroban|light street|sands capital|spruce house|eagle capital|akre|abrams capital|ancora|engaged capital|land & buildings|politan|irenic|legion partners|cevian/i;
+const HEDGE = /\b(?:renaissance tech|citadel advisors|bridgewater|two sigma|d\.?\s?e\.? shaw|millennium management|point72|aqr capital|tiger global|coatue|pershing square|third point|elliott (investment|management)|viking global|lone pine|baupost|appaloosa|soros fund|duquesne|greenlight capital|balyasny|marshall wace|maverick capital|dragoneer|whale rock|valueact|starboard value|icahn|trian fund|glenview|tudor investment|moore capital|paulson & co|scion asset|arrowstreet|man group|winton|squarepoint|schonfeld|exodus ?point|hudson bay|magnetar|sculptor|farallon|eminence capital|greenoaks|altimeter|d1 capital|durable capital|sachem head|jana partners|light street|egerton|lansdowne|ako capital|davidson kempner|king street|anchorage capital|holocene|walleye|qube research|g2 investment|caxton|graham capital|brevan howard|alkeon|jericho|bain capital (public|credit)|steadview|tci fund|children'?s investment|lansdowne|cantillon|maplelane|hound partners|soroban|light street|spruce house|abrams capital|ancora|engaged capital|land & buildings|politan|irenic|legion partners|cevian)/i;
 const nas = readJ('cache/nasdaq.json', {});
 const sym = await get('https://raw.githubusercontent.com/' + (process.env.GITHUB_REPOSITORY || 'ZStamov/Converge') + '/history/symbols.json', { as: 'json', timeout: 60000 }).catch(() => null);
 const tracked = JSON.parse(fs.readFileSync(new URL('../config/universe.json', import.meta.url))).tickers;
 const stocks = (sym ? sym.rows.filter((r) => ['NASDAQ', 'NYSE', 'NYSE American'].includes(r[2])) : []).map((r) => ({ t: r[0], sp: r[3], mc: r[5] || 0 }));
 const prio = (s) => (tracked.includes(s.t) ? 2e15 : 0) + (s.sp ? 1e15 : 0) + s.mc;
 stocks.sort((a, b) => prio(b) - prio(a));
-const stale = stocks.filter((s) => !nas[s.t] || Date.now() - nas[s.t].at > 20 * 3600e3).sort((a, b) => ((nas[a.t] || {}).at || 0) - ((nas[b.t] || {}).at || 0) || prio(b) - prio(a));
+const stale = stocks.filter((s) => !nas[s.t] || nas[s.t].v !== 2 || Date.now() - nas[s.t].at > 20 * 3600e3).sort((a, b) => ((nas[a.t] || {}).at || 0) - ((nas[b.t] || {}).at || 0) || prio(b) - prio(a));
 console.log(`nasdaq: ${stocks.length} stocks, ${stale.length} due for refresh`);
 let nOk = 0, nFail = 0, consecutiveFail = 0;
 async function nasdaq(t) {
   const q = t.replace('.', '%25sl%25');
-  const [ins, inst] = await Promise.all([
+  const [ins, inst, insBuys] = await Promise.all([
     get(`https://api.nasdaq.com/api/company/${q}/insider-trades?limit=40&type=ALL&sortColumn=lastDate&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null),
-    get(`https://api.nasdaq.com/api/company/${q}/institutional-holdings?limit=300&type=TOTAL&sortColumn=marketValue&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null)
+    get(`https://api.nasdaq.com/api/company/${q}/institutional-holdings?limit=300&type=TOTAL&sortColumn=marketValue&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null),
+    get(`https://api.nasdaq.com/api/company/${q}/insider-trades?limit=20&type=buys&sortColumn=lastDate&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null)
   ]);
-  const rec = { at: Date.now() };
+  const rec = { at: Date.now(), v: 2 };
+  const rowsOf = (x) => ((x && x.data && x.data.transactionTable && x.data.transactionTable.table && x.data.transactionTable.table.rows) || []);
+  const mapT = (r) => ({ who: r.insider, rel: r.relation, date: isoUS(r.lastDate), type: r.transactionType, own: r.ownType, shares: num(r.sharesTraded), price: num(r.lastPrice), held: num(r.sharesHeld) });
   const d1 = ins && ins.data;
   if (d1) {
     const cnt = {}; (d1.numberOfTrades && d1.numberOfTrades.rows || []).forEach((r) => { cnt[r.insiderTrade] = [num(r.months3), num(r.months12)]; });
@@ -143,7 +150,8 @@ async function nasdaq(t) {
     rec.insider = {
       buys: cnt['Number of Open Market Buys'] || null, sells: cnt['Number of Sells'] || null,
       sharesBought: sh['Number of Shares Bought'] || null, sharesSold: sh['Number of Shares Sold'] || null,
-      trades: ((d1.transactionTable && d1.transactionTable.table && d1.transactionTable.table.rows) || []).map((r) => ({ who: r.insider, rel: r.relation, date: isoUS(r.lastDate), type: r.transactionType, own: r.ownType, shares: num(r.sharesTraded), price: num(r.lastPrice), held: num(r.sharesHeld) }))
+      trades: rowsOf(ins).map(mapT),
+      buyTrades: rowsOf(insBuys).map(mapT).filter((x) => /buy|purchase/i.test(x.type || ''))
     };
   }
   const d2 = inst && inst.data;

@@ -1883,7 +1883,7 @@
     if (!I) h += '<p class="muted" style="margin:0;font-size:13px">No Form 4 insider filings available for ' + esc(t) + '.</p>';
     else {
       var all = I.trades || [], isBuy = function (x) { return /buy|purchase/i.test(x.type || ''); };
-      var list = showSells ? all : all.filter(isBuy), nI = open[ik] ? list.length : 5;
+      var buysL = (I.buyTrades && I.buyTrades.length) ? I.buyTrades : all.filter(isBuy), list = showSells ? all : buysL, nI = open[ik] ? list.length : 5;
       h += '<div class="kv smallkv"><div><div class="k">Buys 12 mo</div><div class="v up">' + nfmt(I.buys && I.buys[1]) + '</div></div><div><div class="k">Sells 12 mo</div><div class="v down">' + nfmt(I.sells && I.sells[1]) + '</div></div><div><div class="k">Shares bought</div><div class="v">' + nfmt(I.sharesBought && I.sharesBought[1]) + '</div></div><div><div class="k">Shares sold</div><div class="v">' + nfmt(I.sharesSold && I.sharesSold[1]) + '</div></div></div>';
       h += '<div class="chips" style="margin:10px 0 2px"><button class="chip" data-act="smart-sells" data-t="' + esc(t) + '" aria-pressed="' + !showSells + '">Buys only</button><button class="chip" data-act="smart-sells" data-t="' + esc(t) + '" aria-pressed="' + showSells + '">All trades</button></div>';
       h += list.length ? '<div class="srows">' + list.slice(0, nI).map(function (x) {
