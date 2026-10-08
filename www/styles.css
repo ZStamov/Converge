@@ -452,3 +452,9 @@ a.btn.sm { text-decoration: none; }
 .ocol .ol { font-size: 10.5px; color: var(--muted); margin-bottom: 4px; }
 .ocol .ox { font-size: 11px; line-height: 1.35; color: var(--fg2, var(--fg)); overflow-wrap: anywhere; }
 @media (max-width: 380px) { .ocol { padding: 8px; } .ocol .ob { font-size: 17px; } }
+
+/* ownership detail tabs */
+.owntabs { margin-top: 12px; }
+.owntabs button { font-size: 12px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.owntabs .tcount { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 3px; border-radius: 9px; font: 600 10px/16px var(--f-mono, ui-monospace, monospace); background: var(--line); color: var(--fg2); }
+.owntabs button[aria-pressed="true"] .tcount { background: rgba(0,0,0,.18); color: inherit; }

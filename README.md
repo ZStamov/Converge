@@ -82,7 +82,9 @@ Notifications are checked while the app is open or in the background on the phon
 
 ## Market sentiment (5-minute)
 
-`.github/workflows/pulse.yml` runs every 5 minutes during US market hours and writes `pulse.json` to the `pulse` branch. The web app reads it from `https://raw.githubusercontent.com/ZStamov/converge/pulse/pulse.json`; the Android and iOS apps pull the 5-minute bars straight from Yahoo Finance. Every copy re-checks every 5 minutes while open.
+The live-quotes job (`.github/workflows/quotes.yml`) also fetches the 5-minute bars every 5 minutes from 9:25 am to 4:15 pm ET and publishes them as `p/<YYYYMMDDHHmm>.json` on the `quotes` branch (plus `pulse.json` on the `pulse` branch for older versions). The web app checks every minute and picks up each new reading as soon as it's published; the Android and iOS apps pull the 5-minute bars straight from Yahoo Finance.
+
+GitHub's scheduler skips most frequent cron runs, so the live-quotes job doesn't depend on it: one run lasts about 5½ hours (sleeping while the market is closed) and starts the next run itself when it ends. A cron entry twice an hour only restarts the chain if it ever breaks.
 
 Score (0–100): 30% S&P 500 change vs. yesterday's close, 20% price vs. VWAP (SPY and QQQ), 20% last-30-minute momentum, 20% breadth (how many of the 4 index ETFs and 11 sector ETFs are up), 10% VIX change (falling VIX is bullish). 60 or more is Bullish (green), 40 or less Bearish (orange), in between Neutral (yellow). GitHub's scheduler can run a few minutes late at busy times.
 
@@ -122,6 +124,8 @@ Under each stock's discussion, a *Who owns it* row with three columns (politicia
 - **Insider buys:** Form 4 insider trades via Nasdaq: open-market buys and sells over 3 and 12 months, and the latest trades (buys only, or all trades).
 
 The claude.ai page carries this data for the tracked tickers and the popular names it embeds.
+
+Under every stock, **Who owns** shows three summary columns and a tab bar: **Politicians** (STOCK Act trades), **Hedge funds** (13F holdings, biggest buyers and sellers) and **Insider trades** (Form 4: buys only, or all trades; all trades by default when nobody bought recently).
 
 ## Discussion board (per stock)
 

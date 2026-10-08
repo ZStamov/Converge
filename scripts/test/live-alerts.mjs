@@ -12,6 +12,8 @@ const srv = http.createServer((req, res) => { let p = path.join(www, decodeURICo
 const C = JSON.parse(fs.readFileSync(path.join(www, 'data', 'candles.json'), 'utf8'));
 const scale = (s, f) => ({ t: s.t, o: s.o.map((x) => +(x * f).toFixed(3)), h: s.h.map((x) => +(x * f).toFixed(3)), l: s.l.map((x) => +(x * f).toFixed(3)), c: s.c.map((x) => +(x * f).toFixed(3)), v: s.v });
 const symbols = { app: 'Converge', kind: 'symbols', generatedAt: new Date().toISOString(), barsThrough: '2026-10-07', count: 3, rows: [['SOFI', 'SoFi Technologies Inc.', 'NASDAQ', 0, 'Finance', 2e10, 15.5, 1.2], ['PLTR', 'Palantir Technologies', 'NASDAQ', 1, 'Information Technology', 4.6e11, 190, 1.0], ['F', 'Ford Motor Company', 'NYSE', 1, 'Consumer Discretionary', 4e10, 11.2, -0.4]] };
+const PULSE0 = JSON.parse(fs.readFileSync('data-out/pulse.json', 'utf8'));
+let pulseUrls = [], pulseSpy = null;
 let quotes = { AAPL: [340.0, 1.0], SOFI: [16.0, 3.2], PLTR: [200.0, 3.0], F: [11.5, 2.0] }, served = 0;
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
@@ -21,6 +23,7 @@ const errs = []; page.on('pageerror', (e) => errs.push('pageerror: ' + e.message
 await page.route('https://raw.githubusercontent.com/**', (r) => {
   const u = r.request().url();
   if (u.includes('/quotes/q/') || u.includes('/quotes/h/')) { served++; return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ app: 'Converge', kind: 'quotes', at: new Date().toISOString(), minute: u.match(/(\d{12})\.json/)[1], q: quotes }) }); }
+  if (u.includes('/quotes/p/')) { pulseUrls.push(u.match(/(\d{12})\.json/)[1]); const d = JSON.parse(JSON.stringify(PULSE0)); d.generatedAt = new Date(Date.now()).toISOString(); if (pulseSpy) { d.index.SPY.price = pulseSpy; } return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(d) }); }
   if (u.includes('/history/symbols.json')) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(symbols) });
   const m = u.match(/\/history\/h\/([A-Z.]+)\.json/); if (m) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(scale(C.tickers.AAPL.d1, m[1] === 'SOFI' ? 0.046 : m[1] === 'F' ? 0.033 : 0.58)) });
   return r.abort();
@@ -79,5 +82,15 @@ check('the same signal does not notify twice', (await page.evaluate(() => window
 await click('[data-act="tab"][data-tab="command"]');
 check('Command lists the alert and the signal it sent', /Signal alerts/i.test(await page.$eval('#main', (e) => e.innerText)) && /BUY/.test(await page.$eval('#main', (e) => e.innerText)));
 await page.screenshot({ path: path.join(out, '04-command-alerts.png') });
+// market sentiment: a fresh 5-minute reading is picked up without reloading
+await page.evaluate(() => window.scrollTo(0, 0));
+const ps = () => page.$eval('#pulsebox', (e) => e.innerText.replace(/\s+/g, ' ')).catch(() => '');
+check('sentiment loaded from the 5-minute file: ' + pulseUrls.slice(0, 2).join(','), pulseUrls.length > 0 && Number(pulseUrls[0].slice(-2)) % 5 === 0);
+const n0 = pulseUrls.length, before = await ps();
+pulseSpy = PULSE0.index.SPY.prevClose * 1.02;
+await page.clock.runFor(6 * 60000); await page.waitForTimeout(800);
+const after = await ps();
+check('5 minutes later the sentiment refreshed: ' + (pulseUrls.length - n0) + ' new fetch(es) · ' + after.slice(0, 90), pulseUrls.length > n0 && after !== before);
+await page.screenshot({ path: path.join(out, '05-pulse.png') });
 console.log(errs.length ? errs.join('\n') : 'no errors');
 await browser.close(); srv.close(); process.exit(errs.length ? 1 : 0);

@@ -1,25 +1,28 @@
 name: Live quotes (every minute)
 
+# One long-running job publishes quotes every minute and the market pulse every 5 minutes during US market hours
+# (the script sleeps when the market is closed). GitHub's scheduler drops most frequent cron runs, so each run
+# starts the next one itself when it ends; the cron entries below only restart the chain if it ever breaks.
 on:
   schedule:
-    - cron: '0 13-20 * * 1-5'   # each run loops for ~58 minutes: 9 am–5 pm ET, Monday to Friday
-    - cron: '30 21 * * 1-5'     # one after-hours snapshot
+    - cron: '7,37 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['scripts/fetch-quotes.mjs', '.github/workflows/quotes.yml']
+    paths: ['scripts/fetch-quotes.mjs', 'scripts/lib/pulse.mjs', '.github/workflows/quotes.yml']
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: live-quotes
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   quotes:
     runs-on: ubuntu-latest
-    timeout-minutes: 62
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,10 +32,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Quotes every minute
-        run: |
-          secs=3480
-          if [ "$(date -u +%H)" = "21" ]; then secs=50; fi
-          node scripts/fetch-quotes.mjs quotes-out "$secs"
+      - name: Quotes every minute, market pulse every 5 minutes
+        run: node scripts/fetch-quotes.mjs quotes-out 19800
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start the next run
+        if: always() && github.ref == 'refs/heads/main'
+        run: gh workflow run quotes.yml -R "$GITHUB_REPOSITORY" --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

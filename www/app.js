@@ -1794,12 +1794,23 @@
       .concat(Object.keys(PULSE_SEC).map(function (s) { return one(s).then(function (o) { out.sectors[s] = { name: PULSE_SEC[s], prevClose: o.prevClose, price: o.price, c: o.c }; }).catch(function () { }); }));
     return Promise.all(jobs).then(function () { if (!validPulse(out)) throw new Error('no SPY'); return out; });
   }
+  // the live-quotes job writes p/<YYYYMMDDHHmm>.json every 5 minutes; a new name each time skips GitHub's 5-minute file cache
+  function pulseFeed() {
+    var now = Date.now(), slot = Math.floor(now / 300000) * 300000, keys = [0, 1, 2, 3, 4, 6].map(function (k) { return minuteKey(slot - k * 300000); });
+    var have = PULSE.d && PULSE.src === 'feed' ? minuteKey(Date.parse(PULSE.d.generatedAt) - 60000) : '';
+    return new Promise(function (res, rej) {
+      (function next(i) {
+        if (i >= keys.length || keys[i] < have) return fetchJson(CFG.pulse + '?t=' + Math.floor(Date.now() / 60000)).then(function (d) { if (!validPulse(d)) throw new Error('bad'); res(d); }).catch(rej);
+        fetchJson(CFG.quotes + 'p/' + keys[i] + '.json', 9000).then(function (d) { if (!validPulse(d)) throw new Error('bad'); res(d); }).catch(function () { next(i + 1); });
+      })(0);
+    });
+  }
   function loadPulse() {
     if (PULSE.loading) return;
     PULSE.loading = true;
     var snap = window.__CONVERGE_PULSE__;
     var p = isNative ? pulseLive().then(function (d) { return { d: d, src: 'live' }; })
-        : fetchJson(CFG.pulse + '?t=' + Math.floor(Date.now() / 60000)).then(function (d) { if (!validPulse(d)) throw new Error('bad'); return { d: d, src: 'feed' }; });
+        : pulseFeed().then(function (d) { return { d: d, src: 'feed' }; });
     p.catch(function () { if (validPulse(snap)) return { d: snap, src: 'snapshot' }; throw new Error('none'); })
       .then(function (r) { if (!PULSE.d || Date.parse(r.d.generatedAt) >= Date.parse(PULSE.d.generatedAt)) { PULSE.d = r.d; PULSE.src = r.src; } PULSE.at = Date.now(); })
       .catch(function () { })
@@ -2010,7 +2021,8 @@
     var S0 = SMART[t] || {}, d = S0.d, open = UI.smartOpen || {};
     var head = function (k, title, sub) { return '<div class="sechead"><h2 class="eyebrow">' + title + '</h2>' + (sub ? '<span class="muted" style="font-size:11px">' + sub + '</span>' : '') + '</div>'; };
     if (S0.loading) return '<section class="card"><p class="muted" style="margin:0;font-size:13px">Loading politicians, hedge funds and insider trades…</p></section>';
-    if (!d) return '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Politicians · Hedge funds · Insiders</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (S0.page ? 'This page carries this data for the tracked tickers, the major indexes’ biggest stocks and popular names. ' + esc(t) + '’s opens in the Converge app and website.' : 'No congressional trades, fund filings or insider trades on record for ' + esc(t) + ' yet. The data refreshes every 4 hours.') + '</p></section>';
+    var none = '';
+    if (!d) { d = { congress: [] }; none = '<p class="muted" style="margin:0 2px;font-size:12px;line-height:1.5">' + (S0.page ? 'This page carries politician, fund and insider data for the tracked tickers, the major indexes’ biggest stocks and popular names. ' + esc(t) + '’s is in the Converge app and website.' : 'No congressional trades, fund filings or insider trades on record for ' + esc(t) + ' yet. The data refreshes every 4 hours.') + '</p>'; }
     var h = '';
     // 1. politicians
     var C = d.congress || [], ck = t + ':c', nC = open[ck] ? C.length : 5, buys = C.filter(function (x) { return x.type === 'buy'; }).length;
@@ -2036,14 +2048,15 @@
     h += '<p class="foot" style="text-align:left;margin:8px 0 0">13F holdings via Nasdaq. Funds report 45 days after each quarter ends; hedge funds are matched by name from a list of well-known managers.</p></section>';
     var hF = h; h = '';
     // 3. insiders
-    var I = d.insider, ik = t + ':i', showSells = !!open[t + ':is'];
-    h += '<section class="card smartc">' + head('i', 'Insider buys', I && I.buys ? I.buys[0] + ' buys in 3 mo · ' + I.buys[1] + ' in 12 mo' : '');
+    var I = d.insider, ik = t + ':i', showSells = !!open[t + ':is'], isBuy0 = function (x) { return /buy|purchase/i.test(x.type || ''); };
+    if (I && open[t + ':is'] === undefined) showSells = !((I.buyTrades && I.buyTrades.length) || (I.trades || []).some(isBuy0)); // nothing bought recently: show every trade
+    h += '<section class="card smartc">' + head('i', 'Insider trades', I && I.buys ? I.buys[0] + ' buys in 3 mo · ' + I.buys[1] + ' in 12 mo' : '');
     if (!I) h += '<p class="muted" style="margin:0;font-size:13px">No Form 4 insider filings available for ' + esc(t) + '.</p>';
     else {
       var all = I.trades || [], isBuy = function (x) { return /buy|purchase/i.test(x.type || ''); };
       var buysL = (I.buyTrades && I.buyTrades.length) ? I.buyTrades : all.filter(isBuy), list = showSells ? all : buysL, nI = open[ik] ? list.length : 5;
       h += '<div class="kv smallkv"><div><div class="k">Buys 12 mo</div><div class="v up">' + nfmt(I.buys && I.buys[1]) + '</div></div><div><div class="k">Sells 12 mo</div><div class="v down">' + nfmt(I.sells && I.sells[1]) + '</div></div><div><div class="k">Shares bought</div><div class="v">' + bigNum(I.sharesBought && I.sharesBought[1]) + '</div></div><div><div class="k">Shares sold</div><div class="v">' + bigNum(I.sharesSold && I.sharesSold[1]) + '</div></div></div>';
-      h += '<div class="chips" style="margin:10px 0 2px"><button class="chip" data-act="smart-sells" data-t="' + esc(t) + '" aria-pressed="' + !showSells + '">Buys only</button><button class="chip" data-act="smart-sells" data-t="' + esc(t) + '" aria-pressed="' + showSells + '">All trades</button></div>';
+      h += '<div class="chips" style="margin:10px 0 2px"><button class="chip" data-act="smart-sells" data-v="0" data-t="' + esc(t) + '" aria-pressed="' + !showSells + '">Buys only</button><button class="chip" data-act="smart-sells" data-v="1" data-t="' + esc(t) + '" aria-pressed="' + showSells + '">All trades</button></div>';
       h += list.length ? '<div class="srows">' + list.slice(0, nI).map(function (x) {
         var buy = isBuy(x);
         return '<div class="srow"><div><b>' + esc(x.who) + '</b><br><span class="muted">' + esc(x.rel || '') + ' · ' + esc(fdate(x.date)) + (x.own ? ' · ' + esc(x.own) : '') + '</span></div><div class="scol"><b class="' + (buy ? 'up' : /sell/i.test(x.type || '') ? 'down' : '') + '">' + esc(x.type || '') + '</b><br><span class="muted mono">' + nfmt(x.shares) + (num(x.price) ? ' @ ' + money(x.price) : '') + '</span></div></div>';
@@ -2060,11 +2073,14 @@
     var insShares = Object.keys(held).reduce(function (a, k) { return a + held[k].n; }, 0);
     var pctOf = function (n) { return shOut && n ? (n / shOut * 100 < 0.01 ? '<0.01%' : (n / shOut * 100).toFixed(n / shOut * 100 < 1 ? 2 : 1) + '%') : null; };
     var col = function (k, title, big, bigLbl, lines, tone) { return '<button class="ocol' + (tab === k ? ' on' : '') + '" data-act="own-tab" data-t="' + esc(t) + '" data-k="' + k + '" aria-pressed="' + (tab === k) + '"><span class="ot">' + title + '</span><span class="ob ' + (tone || '') + '">' + big + '</span><span class="ol">' + bigLbl + '</span>' + lines.map(function (l) { return '<span class="ox">' + l + '</span>'; }).join('') + '</button>'; };
-    var g = '<section class="card own"><div class="sechead" style="margin-bottom:8px"><h2 class="eyebrow">Who owns ' + esc(t) + '</h2><span class="muted" style="font-size:11px">Tap a column</span></div><div class="own3">' +
+    var g = '<section class="card own"><div class="sechead" style="margin-bottom:8px"><h2 class="eyebrow">Who owns ' + esc(t) + '</h2><span class="muted" style="font-size:11px">Tap a column or tab</span></div><div class="own3">' +
       col('c', 'Politicians', String(nMem), nMem === 1 ? 'member traded' : 'members traded', [buys + ' buys · ' + (C.length - buys) + ' sells', nMem ? (netBuyers * 2 > nMem ? '<b class="up">Net buying</b>' : netBuyers * 2 < nMem ? '<b class="down">Net selling</b>' : 'Mixed') : '2 years'], '') +
       col('f', 'Hedge funds', pctOf(hfShares) || String((F2.hedge || []).length), pctOf(hfShares) ? 'of shares' : 'funds found', [(F2.hedge || []).length + ' funds · ' + (F2.instPct != null ? F2.instPct + '% inst.' : ''), (hfUp || hfDn) ? '<b class="up">' + hfUp + ' added</b> · <b class="down">' + hfDn + ' cut</b>' : 'No change data'], '') +
       col('i', 'Insiders', pctOf(insShares) || (I2.buys ? String(I2.buys[1]) : '—'), pctOf(insShares) ? 'held by filers' : 'buys in 12 mo', [I2.buys ? '<b class="up">' + I2.buys[1] + ' buys</b> · <b class="down">' + (I2.sells ? I2.sells[1] : 0) + ' sells</b>' : 'No filings', I2.buys ? '12 months' : ''], '') +
-      '</div></section>';
+      '</div>' +
+      '<div class="seg amber owntabs" role="tablist" aria-label="Ownership detail">' + [['c', 'Politicians', C.length], ['f', 'Hedge funds', (F2.hedge || []).length], ['i', 'Insider trades', (I2.trades || []).length || (I2.buyTrades || []).length]].map(function (x) {
+        return '<button role="tab" data-act="own-tab" data-t="' + esc(t) + '" data-k="' + x[0] + '" aria-pressed="' + (tab === x[0]) + '" aria-selected="' + (tab === x[0]) + '">' + x[1] + (x[2] ? ' <span class="tcount">' + x[2] + '</span>' : '') + '</button>';
+      }).join('') + '</div>' + none + '</section>';
     return g + (tab === 'f' ? hF : tab === 'i' ? hI : hC) + '<p class="foot" style="text-align:left;margin:-4px 2px 0">' + (shOut ? 'Percentages use ' + bigNum(shOut) + ' shares outstanding. Hedge-fund share = well-known funds among the largest holders; insider share = latest holdings of insiders who filed recently.' : 'Ownership percentages appear after the next data refresh.') + '</p>';
   }
 
@@ -2304,7 +2320,7 @@
     },
     'own-tab': function (el) { UI.ownTab = UI.ownTab || {}; UI.ownTab[el.dataset.t] = el.dataset.k; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
     'smart-more': function (el) { UI.smartOpen = UI.smartOpen || {}; UI.smartOpen[el.dataset.k] = true; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
-    'smart-sells': function (el) { UI.smartOpen = UI.smartOpen || {}; var k = el.dataset.t + ':is'; UI.smartOpen[k] = !UI.smartOpen[k]; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
+    'smart-sells': function (el) { UI.smartOpen = UI.smartOpen || {}; var k = el.dataset.t + ':is'; UI.smartOpen[k] = el.dataset.v === '1'; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
     'scan-edit': function () { var st = scanState(); UI.scanCollapsed = false; st.open = true; save(); render(); },
     'scan-more': function () { UI.scanLimit = (UI.scanLimit || 100) + 100; render(); },
     'scan-reset': function () { var st = scanState(); st.f = {}; st.signal = 'none'; save(); render(); },
@@ -2484,7 +2500,8 @@
   setInterval(function () { if (document.visibilityState === 'visible') { loadQuotes(); nativeLive(); } }, 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadQuotes(); });
   loadPulse();
-  setInterval(function () { if (document.visibilityState === 'visible') loadPulse(); }, 5 * 60000);
+  // check every minute; a new 5-minute reading is picked up as soon as it's published
+  setInterval(function () { if (document.visibilityState !== 'visible') return; var g = PULSE.d && Date.parse(PULSE.d.generatedAt); var age = g ? Date.now() - g : 1e12; if (!g || Date.now() - PULSE.at > 4.5 * 60000 || (age > 5.5 * 60000 && age < 30 * 60000)) loadPulse(); }, 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && Date.now() - PULSE.at > 5 * 60000) loadPulse(); });
   fetchTier();
   // account links (password reset / email confirmation) land with a session in the URL hash

@@ -4,9 +4,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { fetchPulse } from './lib/pulse.mjs';
 
 const DIR = path.resolve(process.argv[2] || 'quotes-out');
-const UNTIL = Date.now() + (+process.argv[3] || 3480) * 1000; // stop after ~58 minutes; the next hourly job takes over
+const UNTIL = Date.now() + (+process.argv[3] || 3480) * 1000; // the workflow re-dispatches itself when this run ends
 const PUSH = process.argv[4] !== 'nopush';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
 const NH = { 'User-Agent': UA, Accept: 'application/json, text/plain, */*', Origin: 'https://www.nasdaq.com', Referer: 'https://www.nasdaq.com/' };
@@ -71,9 +72,34 @@ async function snapshot() {
 await baseline();
 console.log(`universe ${all.length}: ${hot.length} every minute, ${cold.length} in rotation; baseline ${Object.keys(Q).length}`);
 const key = (d) => d.toISOString().slice(0, 16).replace(/[-:T]/g, ''); // YYYYMMDDHHmm
+// New York clock: quotes 8:55 am–5:35 pm, pulse 9:25 am–4:15 pm, Monday to Friday
+const nyMin = (d) => { const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d).map((x) => [x.type, x.value])); return { wd: p.weekday, m: +p.hour * 60 + +p.minute }; };
+const inWin = (d, a, b) => { const n = nyMin(d); return !['Sat', 'Sun'].includes(n.wd) && n.m >= a && n.m <= b; };
+const quoteHours = (d) => inWin(d, 8 * 60 + 55, 17 * 60 + 35), pulseHours = (d) => inWin(d, 9 * 60 + 25, 16 * 60 + 15);
+let lastPulse = 0, pulseWritten = false, idleLogged = false;
+async function pulseNow(now) {
+  try {
+    const p = await fetchPulse(); if (!p.index.SPY) throw new Error('no SPY · ' + p.errors.join(' | '));
+    const k = key(now), body = JSON.stringify(p);
+    fs.mkdirSync(path.join(DIR, 'p'), { recursive: true });
+    fs.writeFileSync(path.join(DIR, 'p', k + '.json'), body); fs.writeFileSync(path.join(DIR, 'pulse.json'), body);
+    const pf = fs.readdirSync(path.join(DIR, 'p')).sort(); for (const f of pf.slice(0, Math.max(0, pf.length - 6))) fs.unlinkSync(path.join(DIR, 'p', f));
+    fs.writeFileSync(path.join(DIR, 'pulse-latest.json'), JSON.stringify({ minute: k, at: p.generatedAt }));
+    console.log(`${k}: pulse ${Object.keys(p.index).length} index, ${Object.keys(p.sectors).length} sectors`);
+    return true;
+  } catch (e) { console.log('pulse failed', e.message); return false; }
+}
 let rounds = 0;
 while (Date.now() < UNTIL) {
   const start = Date.now(), now = new Date();
+  if (!quoteHours(now)) {
+    if (!idleLogged) { console.log(`${key(now)}: market closed, waiting`); idleLogged = true; }
+    await sleep(60000); continue;
+  }
+  idleLogged = false;
+  // market pulse every 5 minutes (on the :00, :05 … marks), published with this minute's quotes
+  pulseWritten = false;
+  if (pulseHours(now) && (now.getUTCMinutes() % 5 === 0 || Date.now() - lastPulse > 6 * 60000)) { if (await pulseNow(now)) { lastPulse = Date.now(); pulseWritten = true; } }
   const { q, n, errs, live } = await snapshot();
   if (n > 1000) {
     const k = key(now), body = JSON.stringify({ app: 'Converge', kind: 'quotes', at: now.toISOString(), minute: k, source: 'Yahoo Finance (live; S&P 500, popular ETFs and indexes every minute, others in rotation), Nasdaq end-of-day as fallback', n, live, q });
@@ -88,6 +114,8 @@ while (Date.now() < UNTIL) {
     if (PUSH) {
       try {
         execFileSync('bash', ['-c', `cd "${DIR}" && rm -rf .git && git init -q -b quotes && git config user.name converge-bot && git config user.email 41898282+github-actions[bot]@users.noreply.github.com && git add -A && git commit -qm "Quotes ${k}" && git push -qf "https://x-access-token:${process.env.GITHUB_TOKEN}@github.com/${process.env.GITHUB_REPOSITORY}.git" quotes`], { stdio: 'inherit' });
+        // older app versions read the pulse branch
+        if (pulseWritten) execFileSync('bash', ['-c', `t=$(mktemp -d) && cp "${DIR}/pulse.json" "$t/" && cd "$t" && git init -q -b pulse && git config user.name converge-bot && git config user.email 41898282+github-actions[bot]@users.noreply.github.com && git add pulse.json && git commit -qm "Pulse ${k}" && git push -qf "https://x-access-token:${process.env.GITHUB_TOKEN}@github.com/${process.env.GITHUB_REPOSITORY}.git" pulse; rm -rf "$t"`], { stdio: 'inherit' });
       } catch (e) { console.log('push failed', e.message); }
     }
     rounds++; console.log(`${k}: ${n} quotes, ${live} live${errs.length ? ' · ' + errs.join(' | ') : ''} · ${Math.round((Date.now() - start) / 1000)}s`);
