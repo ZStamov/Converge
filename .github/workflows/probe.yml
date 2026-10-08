@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Tools
+        run: which pdftotext || (sudo apt-get update -q && sudo apt-get install -y -q poppler-utils)
       - name: Probe sources
         run: node scripts/source-probe.mjs 2>&1 | tee probe.log
       - name: Report
