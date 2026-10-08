@@ -111,7 +111,7 @@ writeJ('cache/senate.json', senate);
 
 // ---------------------------------------------------------------- one list of politicians' stock trades
 const congress = [];
-for (const f of Object.values(house)) for (const tr of f.trades || []) { const m = member('House', f.last, f.first, f.sd); congress.push({ ...tr, who: `${f.first} ${f.last}`.replace(/\s+/g, ' ').trim(), ch: 'House', party: m.party, state: m.state, district: m.district, filed: f.filed, url: f.url }); }
+for (const f of Object.values(house)) for (const tr of f.trades || []) { const m = member('House', f.last, f.first, f.sd); congress.push({ ...tr, who: `${f.first} ${f.last}`.replace(/\b(Mr|Mrs|Ms|Dr|Hon)\.?(?=\s|$)/g, '').replace(/\s+/g, ' ').trim(), ch: 'House', party: m.party, state: m.state, district: m.district, filed: f.filed, url: f.url }); }
 for (const f of Object.values(senate)) for (const tr of f.trades || []) { const m = member('Senate', f.last, f.first, null); congress.push({ ...tr, who: `${f.first} ${f.last}`.replace(/\s+/g, ' ').trim(), ch: 'Senate', party: m.party, state: m.state, district: null, filed: f.filed, url: f.url }); }
 for (const x of congress) {
   const lim = x.filed || new Date().toISOString().slice(0, 10);
