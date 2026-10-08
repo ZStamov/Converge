@@ -130,17 +130,17 @@ const tracked = JSON.parse(fs.readFileSync(new URL('../config/universe.json', im
 const stocks = (sym ? sym.rows.filter((r) => ['NASDAQ', 'NYSE', 'NYSE American'].includes(r[2])) : []).map((r) => ({ t: r[0], sp: r[3], mc: r[5] || 0 }));
 const prio = (s) => (tracked.includes(s.t) ? 2e15 : 0) + (s.sp ? 1e15 : 0) + s.mc;
 stocks.sort((a, b) => prio(b) - prio(a));
-const stale = stocks.filter((s) => !nas[s.t] || nas[s.t].v !== 3 || Date.now() - nas[s.t].at > 20 * 3600e3).sort((a, b) => ((nas[a.t] || {}).at || 0) - ((nas[b.t] || {}).at || 0) || prio(b) - prio(a));
+const stale = stocks.filter((s) => !nas[s.t] || nas[s.t].v !== 4 || Date.now() - nas[s.t].at > 20 * 3600e3).sort((a, b) => ((nas[a.t] || {}).at || 0) - ((nas[b.t] || {}).at || 0) || prio(b) - prio(a));
 console.log(`nasdaq: ${stocks.length} stocks, ${stale.length} due for refresh`);
 let nOk = 0, nFail = 0, consecutiveFail = 0;
 async function nasdaq(t) {
   const q = t.replace('.', '%25sl%25');
   const [ins, inst, insBuys] = await Promise.all([
-    get(`https://api.nasdaq.com/api/company/${q}/insider-trades?limit=40&type=ALL&sortColumn=lastDate&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null),
+    get(`https://api.nasdaq.com/api/company/${q}/insider-trades?limit=200&type=ALL&sortColumn=lastDate&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null),
     get(`https://api.nasdaq.com/api/company/${q}/institutional-holdings?limit=300&type=TOTAL&sortColumn=marketValue&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null),
-    get(`https://api.nasdaq.com/api/company/${q}/insider-trades?limit=20&type=buys&sortColumn=lastDate&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null)
+    Promise.resolve(null)
   ]);
-  const rec = { at: Date.now(), v: 3 };
+  const rec = { at: Date.now(), v: 4 };
   const rowsOf = (x) => ((x && x.data && x.data.transactionTable && x.data.transactionTable.table && x.data.transactionTable.table.rows) || []);
   const mapT = (r) => ({ who: r.insider, rel: r.relation, date: isoUS(r.lastDate), type: r.transactionType, own: r.ownType, shares: num(r.sharesTraded), price: num(r.lastPrice), held: num(r.sharesHeld) });
   const d1 = ins && ins.data;
@@ -150,8 +150,8 @@ async function nasdaq(t) {
     rec.insider = {
       buys: cnt['Number of Open Market Buys'] || null, sells: cnt['Number of Sells'] || null,
       sharesBought: sh['Number of Shares Bought'] || null, sharesSold: sh['Number of Shares Sold'] || null,
-      trades: rowsOf(ins).map(mapT),
-      buyTrades: rowsOf(insBuys).map(mapT).filter((x) => /buy|purchase/i.test(x.type || ''))
+      trades: rowsOf(ins).slice(0, 40).map(mapT),
+      buyTrades: rowsOf(ins).map(mapT).filter((x) => /buy|purchase/i.test(x.type || '')).slice(0, 25)
     };
   }
   const d2 = inst && inst.data;
