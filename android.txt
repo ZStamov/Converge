@@ -1,8 +1,8 @@
 job: android
 status: success
-time: 2026-10-08T02:56:00Z
-commit: 5f57a4a65d08bf6e242b4fa14cfe8884d234b7f1
-run: https://github.com/ZStamov/Converge/actions/runs/37719998299
+time: 2026-10-08T03:06:01Z
+commit: 9383ab326babe53da8e5cb9673ecd47d5d83a5f6
+run: https://github.com/ZStamov/Converge/actions/runs/37720955786
 ----
 CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-night/splash.png (4.35 KB)
 CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/main/res/drawable-land-night-ldpi/splash.png (4.35 KB)
@@ -21,16 +21,16 @@ CREATE android splash-dark /home/runner/work/Converge/Converge/android/app/src/m
 
 Totals:
 android: 148 generated, 1.28 MB total
-✔ Copying web assets from www to android/app/src/main/assets/public in 24.67ms
-✔ Creating capacitor.config.json in android/app/src/main/assets in 726.85μs
-✔ copy android in 37.46ms
-✔ Updating Android plugins in 4.26ms
+✔ Copying web assets from www to android/app/src/main/assets/public in 5.69ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 367.83μs
+✔ copy android in 11.41ms
+✔ Updating Android plugins in 900.02μs
 [info] Found 3 Capacitor plugins for android:
        @capacitor-community/text-to-speech@8.0.2
        @capacitor/app@8.1.2
        @capacitor/local-notifications@8.3.1
-✔ update android in 38.66ms
-[info] Sync finished in 0.101s
+✔ update android in 16.85ms
+[info] Sync finished in 0.039s
 Downloading https://services.gradle.org/distributions/gradle-8.14.3-all.zip
 .....................10%.....................20%......................30%.....................40%......................50%.....................60%.....................70%......................80%.....................90%......................100%
 
@@ -65,17 +65,17 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-app:writeDebugAarMetadata
 > Task :capacitor-android:writeDebugAarMetadata
 > Task :app:javaPreCompileDebug
-> Task :capacitor-community-text-to-speech:writeDebugAarMetadata
 > Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:preDebugBuild UP-TO-DATE
+> Task :capacitor-community-text-to-speech:writeDebugAarMetadata
 > Task :capacitor-local-notifications:preBuild UP-TO-DATE
 > Task :capacitor-local-notifications:preDebugBuild UP-TO-DATE
 > Task :capacitor-cordova-android-plugins:writeDebugAarMetadata
 > Task :capacitor-local-notifications:writeDebugAarMetadata
 > Task :capacitor-android:processDebugNavigationResources
 > Task :capacitor-app:processDebugNavigationResources
-> Task :app:checkDebugAarMetadata
 > Task :capacitor-community-text-to-speech:processDebugNavigationResources
+> Task :app:checkDebugAarMetadata
 > Task :capacitor-cordova-android-plugins:processDebugNavigationResources
 > Task :capacitor-local-notifications:processDebugNavigationResources
 > Task :app:processDebugNavigationResources
@@ -105,12 +105,12 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :capacitor-android:extractDeepLinksDebug
 > Task :capacitor-app:extractDeepLinksDebug
 > Task :capacitor-community-text-to-speech:extractDeepLinksDebug
-> Task :capacitor-app:processDebugManifest
-> Task :capacitor-community-text-to-speech:processDebugManifest
+> Task :app:parseDebugLocalResources
 > Task :capacitor-android:processDebugManifest
+> Task :capacitor-community-text-to-speech:processDebugManifest
+> Task :capacitor-app:processDebugManifest
 > Task :capacitor-cordova-android-plugins:extractDeepLinksDebug
 > Task :capacitor-local-notifications:extractDeepLinksDebug
-> Task :app:parseDebugLocalResources
 > Task :capacitor-cordova-android-plugins:processDebugManifest
 > Task :capacitor-local-notifications:processDebugManifest
 > Task :capacitor-android:compileDebugLibraryResources
@@ -120,27 +120,28 @@ WARNING: Using flatDir should be avoided because it doesn't support any meta-dat
 > Task :app:processDebugManifestForPackage
 > Task :capacitor-app:compileDebugLibraryResources
 > Task :capacitor-community-text-to-speech:compileDebugLibraryResources
-> Task :capacitor-app:parseDebugLocalResources
 > Task :capacitor-cordova-android-plugins:compileDebugLibraryResources
-> Task :capacitor-android:generateDebugRFile
+> Task :capacitor-app:parseDebugLocalResources
 > Task :capacitor-community-text-to-speech:parseDebugLocalResources
+> Task :capacitor-cordova-android-plugins:parseDebugLocalResources
+> Task :capacitor-android:generateDebugRFile
 > Task :capacitor-app:generateDebugRFile
+> Task :capacitor-cordova-android-plugins:generateDebugRFile
 > Task :capacitor-community-text-to-speech:generateDebugRFile
 > Task :capacitor-local-notifications:compileDebugLibraryResources
 > Task :capacitor-android:javaPreCompileDebug
 > Task :capacitor-app:javaPreCompileDebug
-> Task :capacitor-cordova-android-plugins:parseDebugLocalResources
 > Task :capacitor-local-notifications:parseDebugLocalResources
 
 > Task :capacitor-android:compileDebugJavaWithJavac
 Note: Some input files use unchecked or unsafe operations.
 Note: Recompile with -Xlint:unchecked for details.
 
-> Task :capacitor-cordova-android-plugins:generateDebugRFile
 > Task :capacitor-local-notifications:generateDebugRFile
 > Task :capacitor-android:bundleLibCompileToJarDebug
 > Task :capacitor-app:compileDebugJavaWithJavac
 > Task :capacitor-app:bundleLibCompileToJarDebug
+> Task :capacitor-local-notifications:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :capacitor-community-text-to-speech:javaPreCompileDebug
 > Task :capacitor-cordova-android-plugins:javaPreCompileDebug
 > Task :app:processDebugResources
@@ -153,7 +154,6 @@ Note: Recompile with -Xlint:unchecked for details.
 
 > Task :capacitor-community-text-to-speech:bundleLibCompileToJarDebug
 > Task :capacitor-cordova-android-plugins:compileDebugJavaWithJavac NO-SOURCE
-> Task :capacitor-local-notifications:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :capacitor-cordova-android-plugins:bundleLibCompileToJarDebug
 > Task :capacitor-local-notifications:javaPreCompileDebug
 > Task :app:mergeDebugShaders
@@ -180,12 +180,12 @@ Note: Recompile with -Xlint:unchecked for details.
 > Task :capacitor-local-notifications:generateDebugAssets UP-TO-DATE
 > Task :capacitor-local-notifications:mergeDebugAssets
 > Task :app:mergeDebugAssets
-> Task :capacitor-community-text-to-speech:bundleLibRuntimeToJarDebug
 > Task :capacitor-app:bundleLibRuntimeToJarDebug
+> Task :capacitor-community-text-to-speech:bundleLibRuntimeToJarDebug
 > Task :app:compressDebugAssets
 > Task :capacitor-android:bundleLibRuntimeToJarDebug
-> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarDebug
 > Task :app:desugarDebugFileDependencies
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarDebug
 > Task :app:processDebugJavaRes NO-SOURCE
 > Task :capacitor-android:processDebugJavaRes NO-SOURCE
 > Task :capacitor-app:processDebugJavaRes NO-SOURCE
@@ -195,13 +195,12 @@ Note: Recompile with -Xlint:unchecked for details.
 > Task :app:checkDebugDuplicateClasses
 > Task :capacitor-local-notifications:compileDebugKotlin
 > Task :capacitor-local-notifications:compileDebugJavaWithJavac NO-SOURCE
-> Task :capacitor-local-notifications:bundleLibCompileToJarDebug
 > Task :capacitor-local-notifications:bundleLibRuntimeToJarDebug
+> Task :capacitor-local-notifications:bundleLibCompileToJarDebug
 > Task :capacitor-local-notifications:processDebugJavaRes
 > Task :app:compileDebugJavaWithJavac
 > Task :app:dexBuilderDebug
 > Task :app:mergeDebugGlobalSynthetics
-> Task :app:mergeExtDexDebug
 > Task :capacitor-app:bundleLibRuntimeToDirDebug
 > Task :capacitor-local-notifications:bundleLibRuntimeToDirDebug
 > Task :capacitor-android:bundleLibRuntimeToDirDebug
@@ -209,12 +208,12 @@ Note: Recompile with -Xlint:unchecked for details.
 > Task :app:mergeProjectDexDebug
 > Task :app:mergeDebugJniLibFolders
 > Task :capacitor-android:mergeDebugJniLibFolders
+> Task :app:mergeDebugJavaResource
 > Task :capacitor-android:mergeDebugNativeLibs NO-SOURCE
 > Task :capacitor-android:copyDebugJniLibsProjectOnly
 > Task :capacitor-app:mergeDebugJniLibFolders
 > Task :capacitor-app:mergeDebugNativeLibs NO-SOURCE
 > Task :capacitor-app:copyDebugJniLibsProjectOnly
-> Task :app:mergeDebugJavaResource
 > Task :capacitor-community-text-to-speech:mergeDebugJniLibFolders
 > Task :capacitor-community-text-to-speech:mergeDebugNativeLibs NO-SOURCE
 > Task :capacitor-community-text-to-speech:copyDebugJniLibsProjectOnly
@@ -224,12 +223,13 @@ Note: Recompile with -Xlint:unchecked for details.
 > Task :capacitor-local-notifications:mergeDebugJniLibFolders
 > Task :capacitor-local-notifications:mergeDebugNativeLibs NO-SOURCE
 > Task :capacitor-local-notifications:copyDebugJniLibsProjectOnly
+> Task :app:mergeExtDexDebug
 > Task :app:validateSigningDebug
 > Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:stripDebugDebugSymbols NO-SOURCE
 > Task :app:writeDebugAppMetadata
-> Task :app:writeDebugSigningConfigVersions
 > Task :app:mergeLibDexDebug
+> Task :app:writeDebugSigningConfigVersions
 > Task :capacitor-android:checkDebugAarMetadata
 > Task :capacitor-android:stripDebugDebugSymbols NO-SOURCE
 > Task :capacitor-android:copyDebugJniLibsProjectAndLocalJars
@@ -237,16 +237,16 @@ Note: Recompile with -Xlint:unchecked for details.
 > Task :capacitor-android:extractDeepLinksForAarDebug
 > Task :capacitor-android:mergeDebugGeneratedProguardFiles
 > Task :capacitor-android:mergeDebugConsumerProguardFiles
-> Task :capacitor-android:prepareDebugArtProfile
-> Task :capacitor-android:prepareLintJarForPublish
-> Task :capacitor-android:mergeDebugJavaResource
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
+> Task :capacitor-android:prepareDebugArtProfile
+> Task :capacitor-android:prepareLintJarForPublish
+> Task :capacitor-android:mergeDebugJavaResource
+> Task :capacitor-app:checkDebugAarMetadata
 > Task :capacitor-android:syncDebugLibJars
 > Task :capacitor-android:bundleDebugAar
 > Task :capacitor-android:assembleDebug
-> Task :capacitor-app:checkDebugAarMetadata
 > Task :capacitor-app:stripDebugDebugSymbols NO-SOURCE
 > Task :capacitor-app:copyDebugJniLibsProjectAndLocalJars
 > Task :capacitor-app:extractDebugAnnotations
@@ -301,6 +301,6 @@ Note: Recompile with -Xlint:unchecked for details.
 
 [Incubating] Problems report is available at: file:///home/runner/work/Converge/Converge/android/build/reports/problems/problems-report.html
 
-BUILD SUCCESSFUL in 2m 7s
+BUILD SUCCESSFUL in 1m 23s
 184 actionable tasks: 184 executed
 step outcomes: gate=success node=success java=success apk=success upload=success release=success
