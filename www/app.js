@@ -710,7 +710,7 @@
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Preferences</h2><div class="setlist">' +
       tog('signal', S.signal, 'Signal Mode', 'Hide news, opinion and commentary; keep filings and quant updates') +
       tog('toponly', S.topOnly, 'Top performers only', 'Signal Feed shows only sources with the best track records') +
-      tog('csig', UI.csig !== false, 'Buy &amp; sell signals on charts', 'BUY / SELL / STOP labels and the backtest') +
+      tog('csig', UI.csig !== false, 'Buy &amp; sell signals on charts', 'BUY / SELL labels and the backtest') +
       selPref('range', S.range, RANGES, 'Portfolio chart range') +
       selPref('civ', S.prefs.civ || '1D', CINTERVALS, 'Default candle interval') +
       selPref('feed', S.feedFilter, [['mine', 'My holdings & watchlist'], ['all', 'All covered tickers']], 'Signal Feed shows') +
@@ -1007,7 +1007,7 @@
     var snap = snapshotSeries(t, iv); if (snap) return { s: snap, live: false };
     var hs = histSeries(t, iv); return { s: hs, live: false, hist: !!hs };
   }
-  // ---- stock directory (S&P 500 + Nasdaq-listed) and daily history for stocks outside the tracked list
+  // ---- stock directory (every US exchange-listed stock) and daily history for stocks outside the tracked list
   var DIR = { rows: null, map: null, loading: false, error: null, at: null };
   function loadDir() {
     if (DIR.rows || DIR.loading) return;
@@ -1069,7 +1069,7 @@
     if (SIGC[key]) return SIGC[key];
     var d = SG.detect(s, iv), bt = SG.backtest(s, iv, { detected: d }), marks = {};
     var put = function (i, id, side) { if (i >= 0) (marks[i] = marks[i] || []).push({ i: i, id: id, side: side }); };
-    // one BUY per trade (the candle whose signal opened it), then one SELL or STOP when it closes
+    // one BUY per trade (the candle whose signal opened it), then one SELL when it closes (a trailing-stop exit is a SELL too)
     bt.trades.forEach(function (tr) { put(tr.in - 1, tr.why, 'buy'); if (tr.exitWhy === 'atr') put(tr.out, 'atr', 'sell'); else put(tr.out - 1, tr.exitWhy, 'sell'); });
     if (bt.open) put(bt.open.in - 1, bt.open.why, 'buy');
     SIGC = {}; SIGC[key] = { d: d, bt: bt, marks: marks }; // keep one chart's worth
@@ -1132,7 +1132,7 @@
       body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + top.toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + hgt.toFixed(2) + '" fill="' + col + '"></rect>';
       if (vmax) { var vh = s.v[k] / vmax * VH; body += '<rect x="' + (x - bw / 2).toFixed(2) + '" y="' + (H - vh).toFixed(2) + '" width="' + bw.toFixed(2) + '" height="' + vh.toFixed(2) + '" fill="' + col + '" fill-opacity="0.35"></rect>'; }
     }
-    // BUY / SELL / STOP labels (staggered when they would overlap)
+    // BUY / SELL labels (staggered when they would overlap)
     var nlab = 0;
     if (SGN) {
       var endB = -1e9, endS = -1e9, rowB = 0, rowS = 0, LH = 12;
@@ -1141,7 +1141,7 @@
         var mx = (m - a) * step + step / 2, hasB = null, hasS = null;
         mk.forEach(function (g) { if (g.side === 'buy') hasB = hasB || g; else if (!hasS || hasS.id === 'atr') hasS = g; });
         var lab = function (txt, xx, yy, fill, ink) { var w = txt.length * 5.6 + 6; nlab++; xx = clamp(xx, w / 2 + 1, PW - w / 2 - 1); return '<g class="slab"><rect x="' + (xx - w / 2).toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + LH + '" rx="2.5" fill="' + fill + '"></rect><text x="' + xx.toFixed(1) + '" y="' + (yy + 9).toFixed(1) + '" text-anchor="middle" fill="' + ink + '">' + txt + '</text></g>'; };
-        if (hasS) { var txt = hasS.id === 'atr' ? 'STOP' : 'SELL', wS = 4 * 5.6 + 6; rowS = mx - wS / 2 < endS + 1 ? (rowS + 1) % 3 : 0; endS = mx + wS / 2; var ys = clamp(y(s.h[m]) - 4 - LH - rowS * (LH + 2), 0, PH - LH); body += '<line x1="' + mx.toFixed(1) + '" x2="' + mx.toFixed(1) + '" y1="' + y(s.h[m]).toFixed(1) + '" y2="' + (ys + LH).toFixed(1) + '" stroke="' + (hasS.id === 'atr' ? 'var(--accent)' : 'var(--bear)') + '" stroke-width="1" vector-effect="non-scaling-stroke"></line>' + lab(txt, mx, ys, hasS.id === 'atr' ? 'var(--accent)' : 'var(--bear)', hasS.id === 'atr' ? 'var(--accent-ink)' : 'var(--bear-ink)'); }
+        if (hasS) { var txt = 'SELL', wS = 4 * 5.6 + 6; rowS = mx - wS / 2 < endS + 1 ? (rowS + 1) % 3 : 0; endS = mx + wS / 2; var ys = clamp(y(s.h[m]) - 4 - LH - rowS * (LH + 2), 0, PH - LH); body += '<line x1="' + mx.toFixed(1) + '" x2="' + mx.toFixed(1) + '" y1="' + y(s.h[m]).toFixed(1) + '" y2="' + (ys + LH).toFixed(1) + '" stroke="' + 'var(--bear)' + '" stroke-width="1" vector-effect="non-scaling-stroke"></line>' + lab(txt, mx, ys, 'var(--bear)', 'var(--bear-ink)'); }
         if (hasB) { var wB = 3 * 5.6 + 6; rowB = mx - wB / 2 < endB + 1 ? (rowB + 1) % 3 : 0; endB = mx + wB / 2; var yb = clamp(y(s.l[m]) + 4 + rowB * (LH + 2), 0, PH - LH); body += '<line x1="' + mx.toFixed(1) + '" x2="' + mx.toFixed(1) + '" y1="' + y(s.l[m]).toFixed(1) + '" y2="' + yb.toFixed(1) + '" stroke="var(--bull)" stroke-width="1" vector-effect="non-scaling-stroke"></line>' + lab('BUY', mx, yb, 'var(--bull)', 'var(--bull-ink)'); }
       }
     }
@@ -1166,7 +1166,7 @@
       timePill = '<span class="tpill mono" style="left:' + clamp(sx / W * 100, 9, 100 * PW / W - 9).toFixed(2) + '%">' + esc(candleLabel(s.t[sel], iv)) + '</span>';
     }
     var chg = s.c[sel] - s.o[sel];
-    var selSig = SGN && SGN.marks[sel] ? '<div class="sigline">' + SGN.marks[sel].map(function (g) { var R = window.ConvergeSignals.BY_ID[g.id]; return '<span><b class="lbl ' + (g.side === 'buy' ? 'lbuy' : g.id === 'atr' ? 'lstop' : 'lsell') + '">' + (g.side === 'buy' ? 'BUY' : g.id === 'atr' ? 'STOP' : 'SELL') + '</b> ' + esc(R.name) + ' (L' + R.lesson + ')</span>'; }).join('') + '</div>' : '';
+    var selSig = SGN && SGN.marks[sel] ? '<div class="sigline">' + SGN.marks[sel].map(function (g) { var R = window.ConvergeSignals.BY_ID[g.id]; return '<span><b class="lbl ' + (g.side === 'buy' ? 'lbuy' : 'lsell') + '">' + (g.side === 'buy' ? 'BUY' : 'SELL') + '</b> ' + esc(R.name) + ' (L' + R.lesson + ')</span>'; }).join('') + '</div>' : '';
     var readout = '<div class="ohlc mono">' + (marked ? '<span class="selmark">' + esc(candleLabel(s.t[sel], iv)) + ' · ' + fmtP(markP) + '<button class="lnk" data-act="csel-clear" aria-label="Clear the marker">✕</button></span>' : '<span>' + esc(candleLabel(s.t[sel], iv)) + '</span>') + '<span>O ' + fmtP(s.o[sel]) + '</span><span>H ' + fmtP(s.h[sel]) + '</span><span>L ' + fmtP(s.l[sel]) + '</span><span class="' + (chg >= 0 ? 'up' : 'down') + '">C ' + fmtP(s.c[sel]) + '</span><span>Vol ' + bigNum(s.v[sel]) + '</span></div>';
     var srcLbl = r.live ? 'Live' : r.hist ? 'Daily history' + (DIR.through ? ' through ' + DIR.through : '') : 'Snapshot ' + (CD ? ago(CD.generatedAt) : '');
     var strip = '';
@@ -1174,7 +1174,7 @@
     return readout + selSig + '<div class="cwrap' + (UI.cfull ? ' full' : '') + '" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '" data-pr="' + (PW / W).toFixed(4) + '" data-hi="' + hi + '" data-lo="' + lo + '" data-ph="' + PH + '" data-w="' + W + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart with ' + nlab + ' signal labels">' + body + '</svg>' +
       axis + '<span class="cax last mono" style="top:' + Math.max(0, Math.min(PH - 16, ly - 8)).toFixed(0) + 'px;width:' + AX + 'px">' + fmtP(last) + '</span>' + curPill + '</div>' +
       '<div class="tax" style="margin-right:0">' + tax + timePill + '</div>' +
-      '<div class="siglegend">' + (SGN ? '<b class="lbl lbuy">BUY</b><b class="lbl lsell">SELL</b><b class="lbl lstop">STOP</b><span class="muted">One BUY, then nothing until its SELL or ATR STOP.</span>' : '') + '<span class="muted">Tap the chart to mark the time and price · pinch to zoom · ' + esc(srcLbl) + '</span></div>' + strip;
+      '<div class="siglegend">' + (SGN ? '<b class="lbl lbuy">BUY</b><b class="lbl lsell">SELL</b><span class="muted">One BUY, then nothing until its SELL; one SELL, then nothing until the next BUY.</span>' : '') + '<span class="muted">Tap the chart to mark the time and price · pinch to zoom · ' + esc(srcLbl) + '</span></div>' + strip;
   }
   function civRow(iv) { return '<div class="civ">' + CINTERVALS.map(function (x) { return '<button data-act="civ" data-iv="' + x + '" aria-pressed="' + (iv === x) + '">' + x + '</button>'; }).join('') + '</div>'; }
   function ctools() {
@@ -1219,11 +1219,11 @@
       var p = bt.per[R.id], na = (R.intraday && !intra) || (R.orb && !(intra && SG.INTRADAY[iv] <= 5));
       var right = p && p.done ? Math.round(p.hits / p.done * 100) + '%' : '—', mv = p && p.done ? pct(p.sum / p.done * 100, 2) : '—';
       if (R.id === 'atr') { right = '—'; mv = '—'; }
-      return '<button class="btr" data-act="sig-info" data-id="' + R.id + '"><span><b class="lbl ' + (R.side === 'buy' ? 'lbuy' : R.id === 'atr' ? 'lstop' : 'lsell') + '">' + (R.side === 'buy' ? 'BUY' : R.id === 'atr' ? 'STOP' : 'SELL') + '</b> ' + esc(R.name) + ' <em class="muted">L' + R.lesson + '</em></span><span class="mono">' + (na ? '<em class="muted">n/a</em>' : p ? p.n : 0) + '</span><span class="mono">' + right + '</span><span class="mono ' + (p && p.done ? cls(p.sum) : '') + '">' + mv + '</span></button>' +
+      return '<button class="btr" data-act="sig-info" data-id="' + R.id + '"><span><b class="lbl ' + (R.side === 'buy' ? 'lbuy' : 'lsell') + '">' + (R.side === 'buy' ? 'BUY' : 'SELL') + '</b> ' + esc(R.name) + ' <em class="muted">L' + R.lesson + '</em></span><span class="mono">' + (na ? '<em class="muted">n/a</em>' : p ? p.n : 0) + '</span><span class="mono">' + right + '</span><span class="mono ' + (p && p.done ? cls(p.sum) : '') + '">' + mv + '</span></button>' +
         (UI.sigInfo === R.id ? '<p class="prule" style="margin:0 0 6px">' + esc(R.rule) + (na ? ' Not used on ' + esc(iv) + ' candles.' : '') + '</p>' : '');
     }).join('') + '</div>';
     if (bt.trades.length) h += '<h3 class="eyebrow" style="margin:14px 0 6px">Last trades</h3>' + bt.trades.slice(-5).reverse().map(function (tr) {
-      return '<div class="bttr"><span><b class="lbl lbuy">BUY</b> ' + esc(candleLabel(s.t[tr.in], iv)) + ' · ' + esc(SG.BY_ID[tr.why].name) + '<br><b class="lbl ' + (tr.exitWhy === 'atr' ? 'lstop' : 'lsell') + '">' + (tr.exitWhy === 'atr' ? 'STOP' : 'SELL') + '</b> <span class="muted">' + esc(candleLabel(s.t[tr.out], iv)) + ' · ' + esc(SG.BY_ID[tr.exitWhy].name) + '</span></span><b class="mono ' + cls(tr.ret) + '">' + pct(tr.ret * 100, 2) + '</b></div>';
+      return '<div class="bttr"><span><b class="lbl lbuy">BUY</b> ' + esc(candleLabel(s.t[tr.in], iv)) + ' · ' + esc(SG.BY_ID[tr.why].name) + '<br><b class="lbl ' + ('lsell') + '">' + ('SELL') + '</b> <span class="muted">' + esc(candleLabel(s.t[tr.out], iv)) + ' · ' + esc(SG.BY_ID[tr.exitWhy].name) + '</span></span><b class="mono ' + cls(tr.ret) + '">' + pct(tr.ret * 100, 2) + '</b></div>';
     }).join('');
     if (!compact) h += '<div style="margin-top:10px">' + civRow(iv) + '</div>';
     h += '<p class="foot" style="text-align:left;margin:8px 0 0">Long only, on the ' + esc(iv) + ' candles shown above. Buys at the next candle’s open after any buy signal; sells at the next open after any sell signal, or when the 3× ATR trailing stop is hit. Includes 0.05% per side for costs and slippage' + (intra ? '; intraday trades can be held overnight' : '') + '. “Right” = price moved the signal’s way ' + bt.fwd + ' candles later. Rules from the Master Trader Manual, lessons 6–20. Past results don’t predict future returns; small samples are noisy. Not investment advice.</p>';
@@ -1698,15 +1698,15 @@
 
   function extResults(q, covered) {
     var seen = {}; covered.forEach(function (u) { seen[u.t] = 1; });
-    if (!q) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.rows ? 'Type a ticker or company name to search all ' + DIR.rows.length.toLocaleString('en-US') + ' S&amp;P 500 and Nasdaq-listed stocks.' : DIR.loading ? 'Loading the S&amp;P 500 and Nasdaq stock list…' : esc(DIR.error || '')) + '</p>';
-    if (!DIR.rows) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.loading ? 'Searching all S&amp;P 500 and Nasdaq stocks…' : esc(DIR.error || 'The full stock list isn’t available here.')) + '</p>';
+    if (!q) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.rows ? 'Type a ticker or company name to search all ' + DIR.rows.length.toLocaleString('en-US') + ' US-listed stocks (Nasdaq, NYSE, NYSE American).' : DIR.loading ? 'Loading the list of US stocks…' : esc(DIR.error || '')) + '</p>';
+    if (!DIR.rows) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.loading ? 'Searching all US stocks…' : esc(DIR.error || 'The full stock list isn’t available here.')) + '</p>';
     var hits = dirSearch(q, 40).filter(function (r) { return !seen[r[0]]; });
-    if (!hits.length) return covered.length ? '' : '<p class="muted" style="font-size:13px;margin:10px 2px">No S&amp;P 500 or Nasdaq stock matches “' + esc(q) + '”. OTC stocks aren’t included.</p>';
-    return '<h3 class="eyebrow" style="margin:14px 2px 6px">All S&amp;P 500 &amp; Nasdaq stocks</h3>' + hits.map(function (r) {
+    if (!hits.length) return covered.length ? '' : '<p class="muted" style="font-size:13px;margin:10px 2px">No US-listed stock matches “' + esc(q) + '”. OTC stocks aren’t included.</p>';
+    return '<h3 class="eyebrow" style="margin:14px 2px 6px">All US stocks</h3>' + hits.map(function (r) {
       return '<button class="pickrow" data-act="picked-ext" data-t="' + esc(r[0]) + '"><span class="tk">' + esc(r[0]) + '</span><span class="nm">' + esc(r[1]) + '<br><span class="muted" style="font-size:11px">' + (r[3] ? 'S&amp;P 500 · ' : '') + esc(r[2] === 'NASDAQ' ? 'Nasdaq' : r[2]) + (r[5] ? ' · ' + compact(r[5]).replace('$', '$') : '') + '</span></span><span class="mono ' + cls(r[7]) + '" style="font-size:12px">' + (r[7] != null ? arrowPct(r[7]) : '') + '</span></button>';
     }).join('');
   }
-  // ---- quote page for any S&P 500 / Nasdaq stock outside the tracked list
+  // ---- quote page for any US-listed stock outside the tracked list
   function scrQuote(t) {
     if (!DIR.rows && !DIR.loading) setTimeout(loadDir, 0);
     var dr = dirRow(t) || { t: t, n: '', ex: '', sp: false, sec: '', mc: null, p: null, ch: null };
@@ -1715,7 +1715,7 @@
     var h = '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px"><div style="min-width:0"><h1 class="disp" style="margin:0;font-size:24px;font-weight:700;line-height:1.15">' + esc(dr.n || t) + '</h1><div class="muted" style="font-size:12px;margin-top:2px">' + esc(t) + (dr.ex ? ' · ' + esc(dr.ex === 'NASDAQ' ? 'Nasdaq' : dr.ex) : '') + (dr.sp ? ' · S&amp;P 500' : '') + (dr.sec ? ' · ' + esc(dr.sec) : '') + (dr.mc ? ' · ' + compact(dr.mc) : '') + '</div></div>' +
       '<div style="text-align:right;flex:none"><div class="mono" style="font-size:22px">' + (price != null ? money(price) : '—') + '</div><div class="mono ' + cls(ch) + '" style="font-size:12px">' + (ch != null ? arrowPct(ch) : '') + '</div></div></div>';
     h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Chart · buy &amp; sell signals</h2></div>' + candleCard(t) + '</section>';
-    h += '<p class="note" style="margin:0">News, sentiment, quant grades and the discussion cover the ' + D.universe.length + ' tracked tickers. Charts, signals and backtests work for every S&amp;P 500 and Nasdaq stock.' + (dr.p != null && DIR.at ? ' Price as of ' + esc(ago(DIR.at)) + '.' : '') + '</p>';
+    h += '<p class="note" style="margin:0">News, sentiment, quant grades and the discussion cover the ' + D.universe.length + ' tracked tickers. Charts, signals and backtests work for every US-listed stock.' + (dr.p != null && DIR.at ? ' Price as of ' + esc(ago(DIR.at)) + '.' : '') + '</p>';
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">More on ' + esc(t) + '</h2><div class="lnkrow">' + extLinks(t) + '</div></section>';
     h += '<section class="card" id="btbox" data-t="' + esc(t) + '">' + backtestInner(t) + '</section>';
     h += '<p class="foot">Free public sources, may be delayed. Not investment advice.</p>';
@@ -1730,7 +1730,7 @@
       var q = UI.pickQuery.trim().toUpperCase();
       var list = D.universe.filter(function (u) { return !q || u.t.indexOf(q) >= 0 || (u.name || '').toUpperCase().indexOf(q) >= 0; });
       var multi = sh.mode === 'watch';
-      body = '<h2 class="disp" style="margin:0 0 10px;font-size:20px">' + (multi ? 'Watchlist' : 'Choose a ticker') + '</h2><label class="sr" for="pickq">Search tickers</label><input class="in" id="pickq" data-pickq="1" placeholder="' + (sh.mode === 'draft' ? 'Search ' + D.universe.length + ' tracked tickers' : 'Search S&amp;P 500 and Nasdaq stocks') + '" value="' + esc(UI.pickQuery) + '" autocomplete="off">' +
+      body = '<h2 class="disp" style="margin:0 0 10px;font-size:20px">' + (multi ? 'Watchlist' : 'Choose a ticker') + '</h2><label class="sr" for="pickq">Search tickers</label><input class="in" id="pickq" data-pickq="1" placeholder="' + (sh.mode === 'draft' ? 'Search ' + D.universe.length + ' tracked tickers' : 'Search all US stocks') + '" value="' + esc(UI.pickQuery) + '" autocomplete="off">' +
         '<div class="scroll">' + list.map(function (u) {
           var on = multi ? S.watchlist.indexOf(u.t) >= 0 : false, y = T(u.t);
           return '<button class="pickrow" data-act="picked" data-t="' + u.t + '" aria-pressed="' + on + '"><span class="tk">' + u.t + '</span><span class="nm">' + esc(u.name || '') + '</span><span class="mono ' + cls(y && y.changePct) + '" style="font-size:12px">' + (y ? arrowPct(y.changePct) : '') + '</span>' + (multi ? '<span style="width:20px;color:var(--accent)">' + (on ? ic('check', 18) : '') + '</span>' : '') + '</button>';

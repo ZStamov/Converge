@@ -1,4 +1,4 @@
-// Symbol directory + daily price history for every S&P 500 stock and every Nasdaq-listed stock (no OTC).
+// Symbol directory + daily price history for every US exchange-listed stock: Nasdaq, NYSE, NYSE American (no OTC).
 // Writes into <dir> (a checkout of the `history` branch):
 //   symbols.json  — searchable directory: [ticker, name, exchange, inS&P500, sector, marketCap, price, change%]
 //   h/<T>.json    — about 2 years of completed daily bars { t[], o[], h[], l[], c[], v[] } (t = Unix seconds)
@@ -51,28 +51,32 @@ try {
   for (const r of csv.slice(1)) { const t = (r[c('Symbol')] || '').trim(); if (t) dir.set(t, { t, n: r[c('Security')], ex: 'NYSE', sp: 1, sec: r[c('GICS Sector')] || '', mc: null, p: null, ch: null }); }
   spOk = dir.size > 400;
 } catch (e) { errors.push('sp500: ' + e.message); }
-// Nasdaq-listed common stocks (warrants, rights, units, notes and preferreds left out)
+// Every US exchange-listed common stock: Nasdaq, NYSE and NYSE American (no OTC; warrants, rights, units, notes and preferreds left out)
 const JUNK = /\b(warrants?|rights?|units?|notes? due|subordinated|debentures?|preferred|perpetual|% (series|fixed|senior))\b/i;
 const NH = { Accept: 'application/json, text/plain, */*', Origin: 'https://www.nasdaq.com', Referer: 'https://www.nasdaq.com/' };
-try {
-  const j = await get('https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&offset=0&exchange=nasdaq&download=true', { json: true, headers: NH });
-  for (const r of j?.data?.rows || []) {
-    const t = String(r.symbol || '').trim().replace('/', '.'); const n = String(r.name || '').trim();
-    if (!/^[A-Z]{1,5}(\.[A-Z])?$/.test(t) || JUNK.test(n)) continue;
-    const row = dir.get(t) || { t, n: n.replace(/\s+(Common Stock|Ordinary Shares|Class [A-Z] Ordinary Shares|American Depositary Shares|Common Shares|New York Registry Shares|Sponsored ADR).*$/i, '').replace(/\s+-\s*$/, '').trim() || n, sp: 0, sec: r.sector || '' };
-    row.ex = 'NASDAQ'; row.mc = num(r.marketCap); row.p = num(r.lastsale); row.ch = num(r.pctchange); if (!row.sec) row.sec = r.sector || '';
-    dir.set(t, row);
-  }
-  nasOk = [...dir.values()].filter((r) => r.ex === 'NASDAQ').length > 1500;
-  // prices for the NYSE-listed S&P 500 members from the full table
-  const all = await get('https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&offset=0&download=true', { json: true, headers: NH });
-  for (const r of all?.data?.rows || []) { const t = String(r.symbol || '').trim().replace('/', '.'); const row = dir.get(t); if (row && row.p == null) { row.mc = num(r.marketCap); row.p = num(r.lastsale); row.ch = num(r.pctchange); } }
-} catch (e) { errors.push('nasdaq: ' + e.message); }
-if ((!spOk || !nasOk) && prev) { // keep yesterday's directory rather than shrink it
+const EXCH = [['nasdaq', 'NASDAQ'], ['nyse', 'NYSE'], ['amex', 'NYSE American']];
+const exCount = {};
+for (const [q, label] of EXCH) {
+  try {
+    const j = await get(`https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=10000&offset=0&exchange=${q}&download=true`, { json: true, headers: NH });
+    let n0 = 0;
+    for (const r of j?.data?.rows || []) {
+      const t = String(r.symbol || '').trim().replace('/', '.'); const n = String(r.name || '').trim();
+      if (!/^[A-Z]{1,5}(\.[A-Z])?$/.test(t) || JUNK.test(n)) continue;
+      const row = dir.get(t) || { t, n: n.replace(/\s+(Common Stock|Ordinary Shares|Class [A-Z] Ordinary Shares|American Depositary Shares|Common Shares|New York Registry Shares|Sponsored ADR).*$/i, '').replace(/\s+-\s*$/, '').trim() || n, sp: 0, sec: r.sector || '' };
+      row.ex = label; row.mc = num(r.marketCap); row.p = num(r.lastsale); row.ch = num(r.pctchange); if (!row.sec) row.sec = r.sector || '';
+      dir.set(t, row); n0++;
+    }
+    exCount[label] = n0;
+  } catch (e) { errors.push(q + ': ' + e.message); exCount[label] = 0; }
+  await sleep(400);
+}
+nasOk = (exCount.NASDAQ || 0) > 1500 && (exCount.NYSE || 0) > 1000;
+if ((!spOk || !nasOk) && prev) { // keep the last good directory rather than shrink it
   for (const r of prev.rows) { const t = r[0]; if (!dir.has(t)) dir.set(t, { t, n: r[1], ex: r[2], sp: r[3], sec: r[4], mc: r[5], p: r[6], ch: r[7] }); }
 }
 const rows = [...dir.values()].sort((a, b) => (b.mc || 0) - (a.mc || 0));
-console.log(`directory: ${rows.length} stocks (S&P 500 ${rows.filter((r) => r.sp).length}, Nasdaq-listed ${rows.filter((r) => r.ex === 'NASDAQ').length})`);
+console.log(`directory: ${rows.length} stocks (S&P 500 ${rows.filter((r) => r.sp).length}; ` + EXCH.map(([, l]) => `${l} ${rows.filter((r) => r.ex === l).length}`).join(', ') + ')');
 
 // ---------------------------------------------------------------- daily history
 async function chart(t, range) {

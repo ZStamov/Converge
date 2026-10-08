@@ -58,11 +58,11 @@ The 24 tickers in `config/universe.json`. Add or remove symbols there; the next 
 
 Build results (with log tails) are written to the `ci-status` branch.
 
-## Search: every S&P 500 and Nasdaq stock
+## Search: every US-listed stock
 
-The search box finds all S&P 500 members and every Nasdaq-listed common stock (about 3,800; warrants, rights, units, notes, preferreds and OTC stocks are left out). Picking one outside the 24 tracked tickers opens a page with its candle chart, buy/sell signals and backtest.
+The search box finds every common stock listed on Nasdaq, NYSE and NYSE American, plus all S&P 500 members (warrants, rights, units, notes, preferreds and OTC stocks are left out). Picking one outside the 24 tracked tickers opens a page with its candle chart, buy/sell signals and backtest.
 
-`.github/workflows/history.yml` builds this from the S&P 500 list and the Nasdaq screener, and keeps 2 years of daily bars per stock on the `history` branch (`symbols.json`, `h/<TICKER>.json`). It runs after each US close and every 2 hours. On the website these stocks get 1D, 2D and 1W candles; the Android and iOS apps load every interval live from Yahoo Finance. News, sentiment, quant grades and the discussion stay limited to the tracked tickers.
+`.github/workflows/history.yml` builds this from the S&P 500 list and Nasdaq's screener for the Nasdaq, NYSE and NYSE American exchanges, and keeps 2 years of daily bars per stock on the `history` branch (`symbols.json`, `h/<TICKER>.json`). It runs after each US close and every 2 hours. On the website these stocks get 1D, 2D and 1W candles; the Android and iOS apps load every interval live from Yahoo Finance. News, sentiment, quant grades and the discussion stay limited to the tracked tickers.
 
 ## Market sentiment (5-minute)
 
@@ -114,7 +114,7 @@ Each ticker page has candles at 1m, 2m, 5m, 1h, 2h, 4h, 5h, 1D, 2D and 1W. The A
 
 - **Full screen:** tap *⤢ Full screen*; turn the phone sideways for a wide chart. Close with ✕ (or Back / Esc).
 - **Zoom:** pinch with two fingers (trackpad pinch or the mouse wheel in full screen on a computer), or use − / +. Drag to scroll back in time; tap a candle for its prices and any signal on it.
-- **Buy and sell signals** (`www/signals.js`, from the Master Trader Manual lessons 6–20) are written on every interval and follow the position: one green **BUY** label under the candle that opens a trade, then nothing until its orange **SELL** (or yellow **STOP** for the ATR trailing stop), then nothing until the next BUY. The labels are exactly the backtest trades.
+- **Buy and sell signals** (`www/signals.js`, from the Master Trader Manual lessons 6–20) are written on every interval and follow the position: one green **BUY** label under the candle that opens a trade, then nothing until its orange **SELL** (a sell signal or the 3× ATR trailing stop from lesson 20), then nothing until the next BUY. The labels are exactly the backtest trades.
 - **Time axis** along the bottom. Tap anywhere on the chart to mark that moment: the timestamp is highlighted on the time axis and the price under your finger on the right-hand scale (✕ clears it). Turn them off with *Signals on/off*.
 - **Price scale** on the right side of every candle chart.
 - **Backtest in view:** a summary sits right under the chart (tap *Results ↓* for the full card at the bottom of the page). In full screen the backtest results sit below the chart in portrait, and in a panel on the left with the price chart on the right in landscape.
