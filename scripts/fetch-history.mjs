@@ -72,15 +72,32 @@ for (const [q, label] of EXCH) {
   await sleep(400);
 }
 nasOk = (exCount.NASDAQ || 0) > 1500 && (exCount.NYSE || 0) > 1000;
-if ((!spOk || !nasOk) && prev) { // keep the last good directory rather than shrink it
-  for (const r of prev.rows) { const t = r[0]; if (!dir.has(t)) dir.set(t, { t, n: r[1], ex: r[2], sp: r[3], sec: r[4], mc: r[5], p: r[6], ch: r[7] }); }
+// every US-listed ETF (SPY, QQQ, sector, bond, leveraged...)
+let etfOk = false;
+try {
+  const j = await get('https://api.nasdaq.com/api/screener/etf?tableonly=true&limit=10000&offset=0&download=true', { json: true, headers: NH });
+  let n0 = 0;
+  for (const r of j?.data?.data?.rows || j?.data?.rows || []) {
+    const t = String(r.symbol || '').trim().replace('/', '.'); const n = String(r.companyName || r.name || '').trim();
+    if (!/^[A-Z]{1,5}(\.[A-Z])?$/.test(t) || dir.has(t)) continue;
+    dir.set(t, { t, n, ex: 'ETF', sp: 0, sec: 'ETF', mc: null, p: num(r.lastSalePrice), ch: num(r.percentageChange) }); n0++;
+  }
+  exCount.ETF = n0; etfOk = n0 > 1500;
+} catch (e) { errors.push('etf: ' + e.message); }
+// major indexes (Yahoo symbols differ from the familiar tickers)
+const INDEXES = [['SPX', 'S&P 500 Index', '^GSPC'], ['NDX', 'Nasdaq-100 Index', '^NDX'], ['DJI', 'Dow Jones Industrial Average', '^DJI'], ['IXIC', 'Nasdaq Composite Index', '^IXIC'], ['RUT', 'Russell 2000 Index', '^RUT'], ['VIX', 'CBOE Volatility Index', '^VIX']];
+for (const [t, n, y] of INDEXES) dir.set(t, { t, n, ex: 'Index', sp: 0, sec: 'Index', mc: null, p: null, ch: null, y });
+if ((!spOk || !nasOk || !etfOk) && prev) { // keep the last good directory rather than shrink it
+  for (const r of prev.rows) { const t = r[0]; if (!dir.has(t)) dir.set(t, { t, n: r[1], ex: r[2], sp: r[3], sec: r[4], mc: r[5], p: r[6], ch: r[7], y: r[8] || undefined }); }
 }
-const rows = [...dir.values()].sort((a, b) => (b.mc || 0) - (a.mc || 0));
-console.log(`directory: ${rows.length} stocks (S&P 500 ${rows.filter((r) => r.sp).length}; ` + EXCH.map(([, l]) => `${l} ${rows.filter((r) => r.ex === l).length}`).join(', ') + ')');
+const rank = (r) => r.ex === 'Index' ? 3 : 0;
+const rows = [...dir.values()].sort((a, b) => rank(b) - rank(a) || (b.mc || 0) - (a.mc || 0));
+console.log(`directory: ${rows.length} stocks (S&P 500 ${rows.filter((r) => r.sp).length}; ` + [...EXCH.map(([, l]) => l), 'ETF', 'Index'].map((l) => `${l} ${rows.filter((r) => r.ex === l).length}`).join(', ') + ')');
 
 // ---------------------------------------------------------------- daily history
+const YSYM = Object.fromEntries(rows.filter((r) => r.y).map((r) => [r.t, r.y]));
 async function chart(t, range) {
-  const j = await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yh(t))}?range=${range}&interval=1d&includePrePost=false`, { json: true });
+  const j = await get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(YSYM[t] || yh(t))}?range=${range}&interval=1d&includePrePost=false`, { json: true });
   const r = j?.chart?.result?.[0]; if (!r) throw new Error('no chart ' + t);
   const q = r.indicators?.quote?.[0] || {}, o = { t: [], o: [], h: [], l: [], c: [], v: [] };
   const rd = (x) => +(x >= 1000 ? x.toFixed(2) : x >= 1 ? x.toFixed(3) : x.toFixed(4));
@@ -101,7 +118,7 @@ console.log(`history: completed session ${completed}; ${missing.length} to backf
 let done = 0, filled = 0, updated = 0, failed = 0;
 async function work(list, range, merge) {
   let i = 0;
-  await Promise.all(Array.from({ length: 6 }, async () => {
+  await Promise.all(Array.from({ length: 8 }, async () => {
     while (i < list.length && left() > 60000) {
       const r = list[i++];
       try {
@@ -129,8 +146,8 @@ await work(stale, '1mo', true);
 const have = rows.filter((r) => fs.existsSync(fileOf(r.t))).length;
 fs.writeFileSync(symPath, JSON.stringify({
   app: 'Converge', kind: 'symbols', generatedAt: new Date().toISOString(), barsThrough: completed, count: rows.length, withHistory: have,
-  cols: ['t', 'n', 'ex', 'sp', 'sec', 'mc', 'p', 'ch'],
-  rows: rows.map((r) => [r.t, r.n, r.ex, r.sp ? 1 : 0, r.sec || '', r.mc, r.p, r.ch == null ? null : +r.ch.toFixed(2)])
+  cols: ['t', 'n', 'ex', 'sp', 'sec', 'mc', 'p', 'ch', 'y'],
+  rows: rows.map((r) => { const a = [r.t, r.n, r.ex, r.sp ? 1 : 0, r.sec || '', r.mc, r.p, r.ch == null ? null : +r.ch.toFixed(2)]; if (r.y) a.push(r.y); return a; })
 }));
 console.log(`history: +${filled} new, ${updated} updated, ${failed} failed; ${have}/${rows.length} stocks have history; ${Math.round((Date.now() - t0) / 1000)}s`);
 if (errors.length) console.log('errors:', errors.slice(0, 15).join(' | '));

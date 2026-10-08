@@ -19,7 +19,7 @@ concurrency:
 jobs:
   history:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 58
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +38,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Directory and daily bars
-        run: node scripts/fetch-history.mjs hist 1560
+        run: node scripts/fetch-history.mjs hist 2900
       - name: Publish
         run: |
           cd hist
