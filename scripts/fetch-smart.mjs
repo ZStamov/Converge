@@ -130,7 +130,7 @@ const tracked = JSON.parse(fs.readFileSync(new URL('../config/universe.json', im
 const stocks = (sym ? sym.rows.filter((r) => ['NASDAQ', 'NYSE', 'NYSE American'].includes(r[2])) : []).map((r) => ({ t: r[0], sp: r[3], mc: r[5] || 0 }));
 const prio = (s) => (tracked.includes(s.t) ? 2e15 : 0) + (s.sp ? 1e15 : 0) + s.mc;
 stocks.sort((a, b) => prio(b) - prio(a));
-const stale = stocks.filter((s) => !nas[s.t] || nas[s.t].v !== 2 || Date.now() - nas[s.t].at > 20 * 3600e3).sort((a, b) => ((nas[a.t] || {}).at || 0) - ((nas[b.t] || {}).at || 0) || prio(b) - prio(a));
+const stale = stocks.filter((s) => !nas[s.t] || nas[s.t].v !== 3 || Date.now() - nas[s.t].at > 20 * 3600e3).sort((a, b) => ((nas[a.t] || {}).at || 0) - ((nas[b.t] || {}).at || 0) || prio(b) - prio(a));
 console.log(`nasdaq: ${stocks.length} stocks, ${stale.length} due for refresh`);
 let nOk = 0, nFail = 0, consecutiveFail = 0;
 async function nasdaq(t) {
@@ -140,7 +140,7 @@ async function nasdaq(t) {
     get(`https://api.nasdaq.com/api/company/${q}/institutional-holdings?limit=300&type=TOTAL&sortColumn=marketValue&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null),
     get(`https://api.nasdaq.com/api/company/${q}/insider-trades?limit=20&type=buys&sortColumn=lastDate&sortOrder=DESC`, { headers: NH, as: 'json', tries: 2 }).catch(() => null)
   ]);
-  const rec = { at: Date.now(), v: 2 };
+  const rec = { at: Date.now(), v: 3 };
   const rowsOf = (x) => ((x && x.data && x.data.transactionTable && x.data.transactionTable.table && x.data.transactionTable.table.rows) || []);
   const mapT = (r) => ({ who: r.insider, rel: r.relation, date: isoUS(r.lastDate), type: r.transactionType, own: r.ownType, shares: num(r.sharesTraded), price: num(r.lastPrice), held: num(r.sharesHeld) });
   const d1 = ins && ins.data;
