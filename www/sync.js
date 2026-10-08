@@ -3,7 +3,7 @@
    deletions are remembered as tombstones), so two devices editing different lots never lose each other's work. */
 (function (root) {
   'use strict';
-  var KEYS = ['watchlist', 'watchTheses', 'signal', 'topOnly', 'range', 'brief', 'seenAlerts', 'muted', 'feedFilter', 'scan', 'prefs', 'onboarded'];
+  var KEYS = ['watchlist', 'watchTheses', 'signal', 'topOnly', 'range', 'brief', 'seenAlerts', 'muted', 'feedFilter', 'scan', 'prefs', 'onboarded', 'sigAlerts'];
   // canonical JSON (sorted object keys) so copies that went through the database compare equal
   function canon(x) {
     if (x === undefined || x === null) return 'null';

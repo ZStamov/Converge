@@ -8,11 +8,12 @@
     bundled: 'data/market.json',
     pulse: 'https://raw.githubusercontent.com/ZStamov/converge/pulse/pulse.json',
     smart: 'https://raw.githubusercontent.com/ZStamov/converge/smart/',
+    quotes: 'https://raw.githubusercontent.com/ZStamov/converge/quotes/',
     history: 'https://raw.githubusercontent.com/ZStamov/converge/history/',
     repo: 'https://github.com/ZStamov/converge'
   };
   var KEY = 'converge.v1';
-  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null, auth: null, demoTier: 'free', prefs: { civ: '1D', csig: true }, _sync: { k: {}, tomb: {} } };
+  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null, auth: null, demoTier: 'free', prefs: { civ: '1D', csig: true }, sigAlerts: [], sigLog: [], _sync: { k: {}, tomb: {} } };
 
   // ------------------------------------------------------------------ utils
   var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -111,6 +112,7 @@
       .then(function (r) {
         // keep the newer of what we have
         if (!D || Date.parse(r.d.generatedAt) >= Date.parse(D.generatedAt)) D = r.d;
+        if (LQ.q) Object.keys(D.tickers).forEach(function (t) { var q = LQ.q[t], x = D.tickers[t]; if (!q || !num(q[0])) return; x.price = q[0]; if (num(q[1])) { x.changePct = q[1]; x.prevClose = q[0] / (1 + q[1] / 100); } });
         DS.source = r.src; DS.error = null; DS.loading = false;
         if (!S.sel || !D.tickers[S.sel]) S.sel = firstTicker();
         notifyNewAlerts();
@@ -126,6 +128,22 @@
 
   // ------------------------------------------------------------------ derived data
   function T(t) { return D && D.tickers[t]; }
+  var XC = {};
+  function X(t) {
+    var x = T(t); if (x) return x;
+    if (!t) return null;
+    var q = LQ.q && LQ.q[t], dr = typeof dirRow === 'function' ? dirRow(t) : null, hh = HIST[t] && HIST[t].d;
+    if (!hh && !HIST[t] && !(window.__CONVERGE_ARTIFACT__ && !(window.__CONVERGE_HIST__ || {})[t])) setTimeout(function () { histSeries(t, '1D'); }, 0);
+    if (!dr && !DIR.rows && !DIR.loading && !DIR.error) setTimeout(loadDir, 0);
+    var price = q ? q[0] : dr && dr.p != null ? dr.p : hh ? hh.c[hh.c.length - 1] : null;
+    if (price == null) return null;
+    var ch = q ? q[1] : dr && dr.ch != null ? dr.ch : hh && hh.c.length > 1 ? (hh.c[hh.c.length - 1] / hh.c[hh.c.length - 2] - 1) * 100 : null;
+    var o = XC[t] || (XC[t] = { t: t, lite: true, quant: { score: null }, sentiment: { bull: null } });
+    o.name = (dr && dr.n) || o.name || t; o.price = price; o.changePct = ch; o.prevClose = ch != null ? price / (1 + ch / 100) : price;
+    if (hh && o._h !== hh) { o._h = hh; o.hist = { d: hh.t.map(function (sec) { return new Date((sec - 4 * 3600) * 1000).toISOString().slice(0, 10); }), c: hh.c.slice() }; }
+    if (!o.hist) o.hist = { d: [today()], c: [price] };
+    return o;
+  }
   function openLots() { return S.lots.filter(function (l) { return l.status !== 'closed'; }); }
   function holdings() {
     var m = {};
@@ -134,7 +152,7 @@
       h.shares += l.shares; h.cost += l.shares * l.price; h.lots.push(l);
     });
     return Object.keys(m).map(function (k) {
-      var h = m[k], x = T(k);
+      var h = m[k], x = X(k);
       h.price = x ? x.price : null; h.value = x ? h.shares * x.price : null;
       h.day = x ? h.shares * (x.price - x.prevClose) : 0; h.pl = h.value != null ? h.value - h.cost : null;
       return h;
@@ -142,7 +160,7 @@
   }
   function myTickers() {
     var s = {}; openLots().forEach(function (l) { s[l.t] = 1; }); S.watchlist.forEach(function (t) { s[t] = 1; });
-    return Object.keys(s).filter(function (t) { return T(t); });
+    return Object.keys(s).filter(function (t) { return X(t); });
   }
   function thesisFor(t) {
     var lots = openLots().filter(function (l) { return l.t === t && l.thesis; });
@@ -159,7 +177,7 @@
   function lotStatus(l) {
     if (l.status === 'closed') return 'done';
     if (l.thesis && l.thesis.status) return l.thesis.status;
-    var x = T(l.t); if (!x) return 'ok';
+    var x = X(l.t); if (!x) return 'ok';
     var plp = (x.price / l.price - 1) * 100;
     if (l.thesis && l.thesis.killed) return 'broken';
     if (plp <= -15) return 'review';
@@ -256,7 +274,7 @@
   }
   function portfolioSeries(r) {
     var hs = holdings(); if (!hs.length) return { k: [], c: [] };
-    var sers = hs.map(function (h) { return { h: h, s: rangeSlice(T(h.t), r) }; });
+    var sers = hs.filter(function (h) { return X(h.t); }).map(function (h) { return { h: h, s: rangeSlice(X(h.t), r) }; }); if (!sers.length) return { k: [], c: [] };
     var ref = sers.reduce(function (a, b) { return b.s.k.length > a.s.k.length ? b : a; }).s;
     return { k: ref.k, intraday: ref.intraday, c: ref.k.map(function (key) { var v = 0; sers.forEach(function (o) { var p = valueAt(o.s, key); v += o.h.shares * (p == null ? (o.s.c[0] || 0) : p); }); return v; }) };
   }
@@ -292,7 +310,7 @@
   function dataFoot() {
     if (!D) return '';
     var src = DS.source === 'live' ? 'Live feed' : DS.source === 'snapshot' ? 'Snapshot built into this page' : 'Copy bundled with the app';
-    return '<p class="foot">Market data as of ' + esc(new Date(D.generatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + ' · ' + src + '<br>Free public sources, may be delayed. Not investment advice.</p>';
+    return '<p class="foot">' + (LQ.at ? '<span id="livestamp">' + esc(liveStamp()) + '</span><br>News and scores as of ' : 'Market data as of ') + esc(new Date(D.generatedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + ' · ' + src + '<br>Free public sources, may be delayed. Not investment advice.</p>';
   }
   function alertKey(a) { return a.t + '|' + a.type + '|' + a.date.slice(0, 10); }
 
@@ -316,8 +334,9 @@
     }
     // watchlist
     h += '<section><div class="sechead"><h2 class="eyebrow">Watchlist &amp; holdings</h2><button class="lnk" data-act="pick" data-mode="watch">Edit</button></div><div class="wl">' +
-      myTickers().map(function (t) { var y = T(t); return '<button class="wlc" data-act="sel" data-t="' + t + '" aria-pressed="' + (t === sel) + '"><div class="tk">' + t + '</div><div class="ch ' + cls(y.changePct) + '">' + arrowPct(y.changePct) + '</div></button>'; }).join('') +
+      myTickers().map(function (t) { var y = X(t) || {}; return '<button class="wlc" data-act="sel" data-t="' + t + '" aria-pressed="' + (t === sel) + '"><div class="tk">' + t + '</div><div class="ch ' + cls(y.changePct) + '">' + arrowPct(y.changePct) + '</div></button>'; }).join('') +
       '<button class="wlc add" data-act="pick" data-mode="watch" aria-label="Add ticker">' + ic('plus', 18) + '</button></div></section>';
+    if ((S.sigAlerts || []).length || (S.sigLog || []).length) h += alertsCard();
     // split position / thesis
     if (x) {
       var hold = hs.filter(function (o) { return o.t === sel; })[0], th = thesisFor(sel);
@@ -476,7 +495,7 @@
     return topBar('The Vault', '<button class="btn pri sm" data-act="add" style="border-radius:999px">' + ic('plus', 16) + 'New lot</button>') + '<main class="main" id="main">' + h + dataFoot() + '</main>';
   }
   function lotCard(l) {
-    var x = T(l.t), st = lotStatus(l), cur = l.status === 'closed' ? l.sell.price : x ? x.price : null;
+    var x = X(l.t), st = lotStatus(l), cur = l.status === 'closed' ? l.sell.price : x ? x.price : null;
     var plp = cur != null ? (cur / l.price - 1) * 100 : null;
     return '<button class="card" data-act="lot" data-id="' + l.id + '" style="text-align:left;color:var(--fg);padding:14px;width:100%">' +
       '<span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="display:flex;align-items:baseline;gap:8px;min-width:0"><span class="disp" style="font-size:18px;font-weight:700">' + l.t + '</span><span class="muted" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + fmtDate(l.date) + ' · ' + fmtShares(l.shares) + ' sh</span></span><span class="status ' + STATUS[st][1] + '">' + STATUS[st][0] + '</span></span>' +
@@ -508,11 +527,11 @@
 
   // ---- add lot + thesis prompt
   function newDraft(t, mode) {
-    var x = t ? T(t) : null;
+    var x = t ? X(t) : null;
     return { mode: mode || 'lot', t: t || null, shares: '', price: x ? String(x.price) : '', date: today(), title: '', why: '', pins: [], target: '', horizon: '12M', kill: '', step: t ? 2 : 1, lotId: null, watchOnly: mode === 'watch' };
   }
   function scrAdd() {
-    var d = UI.draft, x = d.t ? T(d.t) : null, h = '';
+    var d = UI.draft, x = d.t ? X(d.t) : null, h = '';
     if (d.step === 1) {
       h += '<div><h1 class="disp" style="margin:0;font-size:26px;font-weight:700">Add a lot</h1><p class="muted" style="margin:4px 0 0;font-size:13px">Record a purchase. You can write a thesis for it later from Command or the Vault.</p></div>';
       h += '<div class="field"><span class="lab">Ticker</span><button class="in" data-act="pick" data-mode="draft" style="text-align:left;display:flex;align-items:center;justify-content:space-between">' + (d.t ? '<span><span class="mono">' + d.t + '</span> <span class="muted">' + esc(x ? x.name : '') + '</span></span>' : '<span class="muted">Choose a ticker</span>') + ic('chev', 16) + '</button></div>';
@@ -540,7 +559,7 @@
   function scrLot(id) {
     var l = S.lots.filter(function (z) { return z.id === id; })[0];
     if (!l) return subBar('Lot') + '<main class="main"><div class="empty"><h3>Lot not found</h3></div></main>';
-    var x = T(l.t), th = l.thesis, h = '';
+    var x = X(l.t), th = l.thesis, h = '';
     var closed = l.status === 'closed';
     var R = UI.reflect && UI.reflect.id === id ? UI.reflect : null;
     if (!th) {
@@ -599,8 +618,8 @@
   // ---- watchlist thesis view
   function scrWThesis(t) {
     var th = S.watchTheses[t]; if (!th) return subBar(t) + '<main class="main"><div class="empty"><h3>No thesis</h3></div></main>';
-    var fake = { t: t, price: th.snap && th.snap.price || (T(t) ? T(t).price : 0), date: th.createdAt.slice(0, 10), thesis: th, id: 'w-' + t };
-    var x = T(t);
+    var fake = { t: t, price: th.snap && th.snap.price || (X(t) ? X(t).price : 0), date: th.createdAt.slice(0, 10), thesis: th, id: 'w-' + t };
+    var x = X(t);
     var h = '<blockquote class="quote"><div class="mono" style="font-size:11px;color:var(--accent);letter-spacing:.8px">WATCHLIST THESIS · ' + t + '</div><p>“' + esc(th.title) + (th.why ? ' — ' + esc(th.why) : '') + '”</p></blockquote>' +
       '<section class="card"><h2 class="eyebrow" style="margin-bottom:10px">Then vs. now</h2><div style="display:flex;flex-direction:column;gap:10px">' + checks(fake, x).filter(function (s) { return s.indexOf('data-act="kill"') < 0; }).join('') + '</div></section>' +
       '<div class="btnrow"><button class="btn" data-act="del-wthesis" data-t="' + t + '">Delete thesis</button><button class="btn pri" data-act="add" data-t="' + t + '">Add a lot</button></div>';
@@ -717,6 +736,7 @@
       selPref('civ', S.prefs.civ || '1D', CINTERVALS, 'Default candle interval') +
       selPref('feed', S.feedFilter, [['mine', 'My holdings & watchlist'], ['all', 'All covered tickers']], 'Signal Feed shows') +
       (isNative && plugin('LocalNotifications') ? tog('notify', S.notify, 'Divergence alerts', 'Notifications on this device') : '') + '</div></section>';
+    h += alertsCard();
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Muted sources</h2>' + (S.muted.length ? S.muted.map(function (m) { return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0"><span>' + esc(m) + '</span><button class="btn sm" data-act="mute" data-name="' + esc(m) + '">Unmute</button></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">None. Mute a source from its profile.</p>') + '</section>';
     // --- data
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">' + (syncMode() === 'account' ? 'Stored on this device and in your Converge account. Only you can read it.' : syncMode() === 'page' ? 'Stored on this device and privately with your Claude account. Only you can read it.' : 'Stored only on this device.') + ' ' + S.lots.length + ' lot' + (S.lots.length === 1 ? '' : 's') + ', ' + S.watchlist.length + ' on the watchlist.</p>' +
@@ -1080,6 +1100,79 @@
   }
   function fmtP(x) { return x >= 1000 ? x.toFixed(1) : x >= 10 ? x.toFixed(2) : x.toFixed(3); }
   var SIGC = {};
+  function marksFor(s, iv) {
+    var SG = window.ConvergeSignals; if (!SG || !s || s.t.length < 30) return null;
+    var d = SG.detect(s, iv), bt = SG.backtest(s, iv, { detected: d }), marks = {};
+    var put = function (i, id, side) { if (i >= 0) (marks[i] = marks[i] || []).push({ i: i, id: id, side: side }); };
+    bt.trades.forEach(function (tr) { put(tr.in - 1, tr.why, 'buy'); if (tr.exitWhy === 'atr') put(tr.out, 'atr', 'sell'); else put(tr.out - 1, tr.exitWhy, 'sell'); });
+    if (bt.open) put(bt.open.in - 1, bt.open.why, 'buy');
+    return { d: d, bt: bt, marks: marks };
+  }
+  // newest BUY/SELL on completed candles (the live candle can still change)
+  function latestMark(t, iv, side) {
+    var r = candleSeries(t, iv), s = r.s; if (!s || s.t.length < 30) return null;
+    var M = marksFor(s, iv); if (!M) return null;
+    var lastOk = s.t.length - ((r.live && /m$|h$/.test(iv)) ? 2 : 1);
+    for (var i = lastOk; i >= 0; i--) { var mk = M.marks[i]; if (!mk) continue; for (var j = 0; j < mk.length; j++) if (side === 'both' || mk[j].side === side) return { at: s.t[i], side: mk[j].side, id: mk[j].id, price: s.c[i], i: i }; }
+    return null;
+  }
+  function alertFor(t, iv) { return (S.sigAlerts || []).filter(function (a) { return a.t === t && a.iv === iv; })[0] || null; }
+  var SAQ = { busy: false };
+  function checkSignalAlerts() {
+    var list = S.sigAlerts || []; if (!list.length || SAQ.busy) return;
+    SAQ.busy = true; var fired = [], changed = false;
+    list.forEach(function (a) {
+      try {
+        var m = latestMark(a.t, a.iv, a.side || 'both'); if (!m) return;
+        if (a.last == null) { a.last = m.at; changed = true; return; } // start from the current state; only new signals notify
+        if (m.at > a.last) { a.last = m.at; changed = true; fired.push({ a: a, m: m }); }
+      } catch (e) { /* skip this one */ }
+    });
+    SAQ.busy = false;
+    if (changed) save();
+    fired.forEach(function (f) { fireSignal(f.a, f.m); });
+  }
+  function fireSignal(a, m) {
+    var R = window.ConvergeSignals && window.ConvergeSignals.BY_ID[m.id], side = m.side === 'buy' ? 'BUY' : 'SELL';
+    var title = a.t + ' · ' + side + ' signal (' + a.iv + ')', body = (R ? R.name + ' (lesson ' + R.lesson + ')' : 'Signal') + ' · ' + money(m.price) + ' · ' + new Date(m.at * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    S.sigLog = (S.sigLog || []).concat([{ t: a.t, iv: a.iv, side: m.side, id: m.id, price: m.price, at: m.at, seen: false, when: Date.now() }]).slice(-30); persist();
+    var LN = isNative && plugin('LocalNotifications');
+    if (LN) LN.schedule({ notifications: [{ id: Math.floor(Date.now() / 1000) % 1000000, title: 'Converge · ' + title, body: body, extra: { t: a.t, sig: 1 } }] }).catch(function () { });
+    else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') { try { new Notification('Converge · ' + title, { body: body, tag: a.t + a.iv + m.at }); } catch (e) { } }
+    toast('🔔 ' + title);
+  }
+  function notifPermission() {
+    if (isNative) return plugin('LocalNotifications') ? 'app' : 'none';
+    if (typeof Notification === 'undefined') return 'none';
+    return Notification.permission; // granted | denied | default
+  }
+  function askNotify() {
+    var LN = isNative && plugin('LocalNotifications');
+    if (LN) return LN.requestPermissions().then(function (r) { return r && r.display === 'granted'; }).catch(function () { return false; });
+    if (typeof Notification !== 'undefined' && Notification.requestPermission) return Promise.resolve(Notification.requestPermission()).then(function (p) { return p === 'granted'; }).catch(function () { return false; });
+    return Promise.resolve(false);
+  }
+  function alertSheet() {
+    var sh = UI.sheet, t = sh.t, iv = sh.iv, a = alertFor(t, iv), side = UI.alertSide || (a ? a.side : 'both');
+    var perm = notifPermission(), cur = latestMark(t, iv, 'both');
+    var opt = function (v, l) { return '<button class="chip" data-act="alert-side" data-v="' + v + '" aria-pressed="' + (side === v) + '">' + l + '</button>'; };
+    return '<h2 class="disp" style="margin:0 0 4px;font-size:20px">Signal alert · ' + esc(t) + ' · ' + esc(iv) + '</h2>' +
+      '<p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Get a notification when the ' + esc(iv) + ' chart prints a new signal: one BUY, then nothing until its SELL, like the labels on the chart.' + (cur ? ' Latest: <b class="' + (cur.side === 'buy' ? 'up' : 'down') + '">' + (cur.side === 'buy' ? 'BUY' : 'SELL') + '</b> on ' + esc(new Date(cur.at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + '.' : '') + '</p>' +
+      '<div class="chips">' + opt('both', 'BUY and SELL') + opt('buy', 'BUY only') + opt('sell', 'SELL only') + '</div>' +
+      (perm === 'denied' ? '<p class="note" style="margin:10px 0 0">Notifications are blocked for this ' + (isNative ? 'app' : 'browser') + '. Alerts still show inside Converge; turn notifications on in your device settings to get them on your lock screen.</p>' : perm === 'none' ? '<p class="note" style="margin:10px 0 0">This view can’t show system notifications, so alerts appear inside Converge while it’s open. The Android and iOS apps and the website can notify you.</p>' : '') +
+      '<p class="muted" style="margin:10px 0 0;font-size:12px;line-height:1.5">Converge checks every minute while it’s open, and catches up on anything new as soon as you open it again.' + (!isNative && /m$|h$/.test(iv) && !T(t) ? ' On the website, intraday alerts work for the tracked tickers; pick 1D, 2D or 1W here, or use the apps.' : '') + '</p>' +
+      '<div class="btnrow" style="margin-top:12px">' + (a ? '<button class="btn sm dng" data-act="alert-del" data-t="' + esc(t) + '" data-iv="' + esc(iv) + '">Remove alert</button>' : '') + '<button class="btn sm pri" data-act="alert-save" data-t="' + esc(t) + '" data-iv="' + esc(iv) + '">' + (a ? 'Update alert' : 'Turn on alert') + '</button></div>';
+  }
+  function alertsCard() {
+    var list = S.sigAlerts || [], log = (S.sigLog || []).slice().reverse().slice(0, 8);
+    var h = '<section class="card"><div class="sechead"><h2 class="eyebrow">Signal alerts</h2><span class="muted" style="font-size:11px">' + list.length + ' active</span></div>';
+    if (!list.length) h += '<p class="muted" style="margin:0;font-size:13px;line-height:1.5">Open any chart and tap <b>🔔 Alert</b> to be notified of new BUY or SELL signals.</p>';
+    else h += '<div class="srows">' + list.map(function (a) { return '<div class="srow"><div><b>' + esc(a.t) + '</b> · ' + esc(a.iv) + '<br><span class="muted">' + (a.side === 'buy' ? 'BUY only' : a.side === 'sell' ? 'SELL only' : 'BUY and SELL') + '</span></div><div class="scol"><button class="lnk" data-act="alert-open" data-t="' + esc(a.t) + '" data-iv="' + esc(a.iv) + '">Edit</button> <button class="lnk" data-act="alert-del" data-t="' + esc(a.t) + '" data-iv="' + esc(a.iv) + '" style="color:var(--muted)">Remove</button></div></div>'; }).join('') + '</div>';
+    if (log.length) h += '<h3 class="eyebrow" style="margin:12px 0 4px">Recent signals</h3><div class="srows">' + log.map(function (g) { return '<div class="srow"><div><b>' + esc(g.t) + '</b> · ' + esc(g.iv) + '<br><span class="muted">' + esc(new Date(g.at * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + '</span></div><div class="scol"><b class="' + (g.side === 'buy' ? 'up' : 'down') + '">' + (g.side === 'buy' ? 'BUY' : 'SELL') + '</b><br><span class="muted mono">' + money(g.price) + '</span></div></div>'; }).join('') + '</div>';
+    var perm = notifPermission();
+    if (list.length && perm === 'default') h += '<button class="btn sm" data-act="alert-perm" style="margin-top:10px">Allow notifications on this device</button>';
+    return h + '</section>';
+  }
   function signalsFor(t, iv, s, live) {
     var SG = window.ConvergeSignals; if (!SG || !s || s.t.length < 30) return null;
     var key = t + '|' + iv + '|' + s.t.length + '|' + s.t[s.t.length - 1] + '|' + s.c[s.c.length - 1] + '|' + (live ? 1 : 0);
@@ -1197,6 +1290,7 @@
   function ctools() {
     return '<div class="ctools"><button class="btn sm" data-act="czoom" data-z="out" aria-label="Zoom out">−</button><button class="btn sm" data-act="czoom" data-z="in" aria-label="Zoom in">+</button><button class="btn sm" data-act="cpan" data-p="back" aria-label="Earlier">◀</button><button class="btn sm" data-act="cpan" data-p="fwd" aria-label="Later">▶</button><button class="btn sm" data-act="cpan" data-p="end">Latest</button>' +
       '<button class="btn sm" data-act="csig" aria-pressed="' + (UI.csig !== false) + '">Signals ' + (UI.csig === false ? 'off' : 'on') + '</button>' +
+      '<button class="btn sm" data-act="alert-open" data-t="' + esc(UI.chartT || '') + '" data-iv="' + esc(UI.civ || '1D') + '" aria-pressed="' + !!alertFor(UI.chartT, UI.civ || '1D') + '">' + (alertFor(UI.chartT, UI.civ || '1D') ? '🔔 Alert on' : '🔔 Alert') + '</button>' +
       (UI.cfull ? '' : '<button class="btn sm" data-act="cfull" aria-label="Full screen">⤢ Full screen</button>') + '</div>';
   }
   function candleCard(t) {
@@ -1633,6 +1727,52 @@
     }).join('') + '</section>';
   }
 
+  // ------------------------------------------------------------------ live quotes (every minute while open)
+  var LQ = { q: null, at: null, minute: null, busy: false, fails: 0 };
+  function minuteKey(ms) { return new Date(ms).toISOString().slice(0, 16).replace(/[-:T]/g, ''); }
+  function loadQuotes() {
+    if (LQ.busy) return;
+    if (window.__CONVERGE_ARTIFACT__ && !isNative && LQ.fails > 2) return; // this page can't reach the internet
+    LQ.busy = true;
+    var now = Date.now(), keys = [1, 2, 3, 4, 6, 9, 14].map(function (m) { return minuteKey(now - m * 60000); });
+    // small "hot" file every minute (S&P 500, popular ETFs, indexes); the full file every 10 minutes or when a stock you follow isn't in it
+    var need = myTickers().concat(UI.chartT ? [UI.chartT] : []), missing = LQ.hot && need.some(function (t) { return !LQ.hot[t]; });
+    var full = !LQ.fullAt || now - LQ.fullAt > 10 * 60000 || missing, dir = full ? 'q/' : 'h/';
+    (function next(i) {
+      if (i >= keys.length || (LQ.minute && keys[i] <= LQ.minute && !full)) { LQ.busy = false; if (i >= keys.length) LQ.fails++; return; }
+      fetchJson(CFG.quotes + dir + keys[i] + '.json', 9000).then(function (d) { if (!d || !d.q) throw new Error('bad'); if (full) LQ.fullAt = now; else LQ.hot = d.q; applyQuotes(d); LQ.busy = false; LQ.fails = 0; })
+        .catch(function () { next(i + 1); });
+    })(0);
+  }
+  function applyQuotes(d) {
+    // merge (the hot file has only part of the market)
+    LQ.q = LQ.q || {}; Object.keys(d.q).forEach(function (t) { var o = LQ.q[t], n = d.q[t]; if (o && o[2] && n[2] && n[2] < o[2]) return; LQ.q[t] = n; }); if (d.hot) LQ.hot = d.q;
+    LQ.at = d.at; LQ.minute = d.minute;
+    if (D && D.tickers) Object.keys(D.tickers).forEach(function (t) {
+      var q = d.q[t] && LQ.q[t], x = D.tickers[t]; if (!q || !num(q[0])) return;
+      x.price = q[0]; if (num(q[1])) { x.changePct = q[1]; x.prevClose = q[0] / (1 + q[1] / 100); }
+    });
+    checkSignalAlerts();
+    softRender();
+  }
+  function nativeLive() {
+    if (!isNative) return;
+    var list = myTickers().concat(UI.chartT ? [UI.chartT] : []).filter(function (t, i, a) { return t && a.indexOf(t) === i; }).slice(0, 60); if (!list.length) return;
+    var chunks = []; for (var k = 0; k < list.length; k += 20) chunks.push(list.slice(k, k + 20));
+    chunks.forEach(function (ch) {
+      fetchJson('https://query1.finance.yahoo.com/v7/finance/spark?symbols=' + ch.map(function (t) { return encodeURIComponent(ysym(t)); }).join(',') + '&range=1d&interval=1d', 9000).then(function (j) {
+        var q = {}; ((j && j.spark && j.spark.result) || []).forEach(function (r) { var m = r.response && r.response[0] && r.response[0].meta; if (!m || m.regularMarketPrice == null) return; var t = ch.filter(function (x) { return ysym(x) === r.symbol; })[0] || r.symbol, pc = m.chartPreviousClose != null ? m.chartPreviousClose : m.previousClose; q[t] = [m.regularMarketPrice, pc ? (m.regularMarketPrice / pc - 1) * 100 : null, m.regularMarketTime || 0]; });
+        if (Object.keys(q).length) applyQuotes({ q: q, at: new Date().toISOString(), minute: LQ.minute });
+      }).catch(function () { });
+    });
+  }
+  function softRender() {
+    var a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return; // don't disturb typing
+    if (UI.sheet || UI.cfull) { var lb = document.getElementById('livestamp'); if (lb) lb.textContent = liveStamp(); return; }
+    render();
+  }
+  function liveStamp() { return LQ.at ? 'Prices ' + ago(LQ.at) + ' · updates every minute' : ''; }
+
   // ------------------------------------------------------------------ market pulse (today's mood from 5-minute bars, refreshed every 5 minutes)
   var PULSE = { d: null, src: null, at: 0, loading: false };
   var PULSE_IDX = ['SPY', 'QQQ', 'DIA', 'IWM', '^VIX'];
@@ -1764,6 +1904,18 @@
   }
   window.__convergeImport = importText;
   var AA = {
+    'alert-open': function (el) { UI.alertSide = null; UI.sheet = { kind: 'sigalert', t: el.dataset.t || UI.chartT, iv: el.dataset.iv || UI.civ || '1D' }; render(); },
+    'alert-side': function (el) { UI.alertSide = el.dataset.v; render(); },
+    'alert-save': function (el) {
+      var t = el.dataset.t, iv = el.dataset.iv, side = UI.alertSide || ((alertFor(t, iv) || {}).side) || 'both';
+      S.sigAlerts = (S.sigAlerts || []).filter(function (a) { return !(a.t === t && a.iv === iv); });
+      var cur = latestMark(t, iv, side);
+      S.sigAlerts.push({ id: uid(), t: t, iv: iv, side: side, created: Date.now(), last: cur ? cur.at : null });
+      save(); UI.sheet = null; render();
+      askNotify().then(function (ok) { toast(ok ? '🔔 Alert on: ' + t + ' ' + iv : '🔔 Alert on (shows inside Converge)'); });
+    },
+    'alert-del': function (el) { var t = el.dataset.t, iv = el.dataset.iv; S.sigAlerts = (S.sigAlerts || []).filter(function (a) { return !(a.t === t && a.iv === iv); }); save(); if (UI.sheet && UI.sheet.kind === 'sigalert') UI.sheet = null; render(); toast('Alert removed'); },
+    'alert-perm': function () { askNotify().then(function (ok) { toast(ok ? 'Notifications allowed' : 'Notifications not allowed'); render(); }); },
     'data-copy': function () { UI.sheet = { kind: 'datacopy' }; render(); var ta = document.getElementById('datacopy'); if (ta) { ta.focus(); ta.select(); } },
     'data-copy-go': function () {
       var ta = document.getElementById('datacopy'), txt = dataText();
@@ -1827,14 +1979,15 @@
     'demo-tier': function () { S.demoTier = S.demoTier === 'premium' ? 'free' : 'premium'; save(); toast('Previewing the ' + planName() + ' plan'); render(); }
   };
 
-  function extResults(q, covered) {
+  function extResults(q, covered, mode) {
     var seen = {}; covered.forEach(function (u) { seen[u.t] = 1; });
     if (!q) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.rows ? 'Type a ticker or company name to search all ' + DIR.rows.length.toLocaleString('en-US') + ' US stocks, ETFs and indexes (Nasdaq, NYSE, NYSE American).' : DIR.loading ? 'Loading US stocks, ETFs and indexes…' : esc(DIR.error || '')) + '</p>';
     if (!DIR.rows) return '<p class="muted" style="font-size:12px;margin:10px 2px">' + (DIR.loading ? 'Searching all US stocks, ETFs and indexes…' : esc(DIR.error || 'The full stock list isn’t available here.')) + '</p>';
     var hits = dirSearch(q, 40).filter(function (r) { return !seen[r[0]]; });
     if (!hits.length) return covered.length ? '' : '<p class="muted" style="font-size:13px;margin:10px 2px">No US stock, ETF or index matches “' + esc(q) + '”. OTC stocks aren’t included.</p>';
     return '<h3 class="eyebrow" style="margin:14px 2px 6px">All US stocks, ETFs &amp; indexes</h3>' + hits.map(function (r) {
-      return '<button class="pickrow" data-act="picked-ext" data-t="' + esc(r[0]) + '"><span class="tk">' + esc(r[0]) + '</span><span class="nm">' + esc(r[1]) + '<br><span class="muted" style="font-size:11px">' + (r[3] ? 'S&amp;P 500 · ' : '') + esc(r[2] === 'NASDAQ' ? 'Nasdaq' : r[2]) + (r[5] ? ' · ' + compact(r[5]).replace('$', '$') : '') + '</span></span><span class="mono ' + cls(r[7]) + '" style="font-size:12px">' + (r[7] != null ? arrowPct(r[7]) : '') + '</span></button>';
+      var inWl = mode === 'watch' && S.watchlist.indexOf(r[0]) >= 0;
+      return '<button class="pickrow" data-act="' + (mode === 'watch' || mode === 'draft' ? 'picked' : 'picked-ext') + '" data-t="' + esc(r[0]) + '"' + (mode === 'watch' ? ' aria-pressed="' + inWl + '"' : '') + '><span class="tk">' + esc(r[0]) + '</span><span class="nm">' + esc(r[1]) + '<br><span class="muted" style="font-size:11px">' + (r[3] ? 'S&amp;P 500 · ' : '') + esc(r[2] === 'NASDAQ' ? 'Nasdaq' : r[2]) + (r[5] ? ' · ' + compact(r[5]).replace('$', '$') : '') + '</span></span><span class="mono ' + cls(r[7]) + '" style="font-size:12px">' + (r[7] != null ? arrowPct(r[7]) : '') + '</span>' + (mode === 'watch' ? '<span style="width:20px;color:var(--accent)">' + (inWl ? ic('check', 18) : '') + '</span>' : '') + '</button>';
     }).join('');
   }
   // ---- smart money: politicians' trades, hedge funds (13F), insider trades (Form 4)
@@ -1943,11 +2096,11 @@
       var q = UI.pickQuery.trim().toUpperCase();
       var list = D.universe.filter(function (u) { return !q || u.t.indexOf(q) >= 0 || (u.name || '').toUpperCase().indexOf(q) >= 0; });
       var multi = sh.mode === 'watch';
-      body = '<h2 class="disp" style="margin:0 0 10px;font-size:20px">' + (multi ? 'Watchlist' : 'Choose a ticker') + '</h2><label class="sr" for="pickq">Search tickers</label><input class="in" id="pickq" data-pickq="1" placeholder="' + (sh.mode === 'draft' ? 'Search ' + D.universe.length + ' tracked tickers' : 'Search stocks, ETFs, indexes') + '" value="' + esc(UI.pickQuery) + '" autocomplete="off">' +
+      body = '<h2 class="disp" style="margin:0 0 10px;font-size:20px">' + (multi ? 'Watchlist' : 'Choose a ticker') + '</h2><label class="sr" for="pickq">Search tickers</label><input class="in" id="pickq" data-pickq="1" placeholder="Search stocks, ETFs, indexes" value="' + esc(UI.pickQuery) + '" autocomplete="off">' +
         '<div class="scroll">' + list.map(function (u) {
           var on = multi ? S.watchlist.indexOf(u.t) >= 0 : false, y = T(u.t);
           return '<button class="pickrow" data-act="picked" data-t="' + u.t + '" aria-pressed="' + on + '"><span class="tk">' + u.t + '</span><span class="nm">' + esc(u.name || '') + '</span><span class="mono ' + cls(y && y.changePct) + '" style="font-size:12px">' + (y ? arrowPct(y.changePct) : '') + '</span>' + (multi ? '<span style="width:20px;color:var(--accent)">' + (on ? ic('check', 18) : '') + '</span>' : '') + '</button>';
-        }).join('') + (sh.mode === 'draft' ? (list.length ? '' : '<p class="muted" style="font-size:13px">Lots can be added for the ' + D.universe.length + ' tracked tickers. Add more in config/universe.json.</p>') : extResults(q, list)) + '</div>' +
+        }).join('') + extResults(q, list, sh.mode) + '</div>' +
         (multi ? '<button class="btn pri" data-act="sheet-close" style="margin-top:12px">Done</button>' : '');
     } else if (sh.kind === 'pin') {
       var d = UI.draft, t = d && d.t;
@@ -1963,6 +2116,7 @@
     if (sh.kind === 'scanrow') body = SC ? scanRowSheet(sh.t) : '';
     if (sh.kind === 'auth') body = authSheet();
     if (sh.kind === 'subscribe') body = subscribeSheet();
+    if (sh.kind === 'sigalert') body = alertSheet();
     if (sh.kind === 'datacopy') body = '<h2 class="disp" style="margin:0 0 4px;font-size:20px">Copy my data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Copy this text, then on the other device open Account &amp; settings → Import data and paste it. Your lots, theses, watchlist and settings merge in; nothing there is deleted.</p><textarea class="in mono" id="datacopy" rows="9" readonly style="font-size:11px">' + esc(dataText()) + '</textarea><button class="btn pri" data-act="data-copy-go" style="margin-top:10px">Copy to clipboard</button>';
     if (sh.kind === 'dataimport') body = '<h2 class="disp" style="margin:0 0 4px;font-size:20px">Import data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Paste the text from Copy my data on your other device. It’s merged with what’s here: matching lots keep their newest edit, new ones are added.</p><textarea class="in mono" id="dataimport" data-imp="1" rows="9" placeholder="Paste here" style="font-size:11px">' + esc(UI.impText || '') + '</textarea>' + (UI.impMsg ? '<p class="note" style="margin:8px 0 0">' + esc(UI.impMsg) + '</p>' : '') + '<button class="btn pri" data-act="data-import-go" style="margin-top:10px">Import</button>';
     return '<div class="sheet" data-act="sheet-bg"><div class="panel" role="dialog" aria-modal="true" data-stop="1"><div class="grab"></div>' + body + '</div></div>';
@@ -2024,14 +2178,14 @@
   function toast(msg) { UI.toast = msg; render(); clearTimeout(toastTimer); toastTimer = setTimeout(function () { UI.toast = null; render(); }, 2600); }
 
   // ------------------------------------------------------------------ actions
-  function snapFor(t) { var x = T(t); return x ? { price: x.price, quant: x.quant.score, bull: x.sentiment.bull, date: today() } : {}; }
+  function snapFor(t) { var x = X(t); return x ? { price: x.price, quant: x.quant.score, bull: x.sentiment.bull, date: today() } : {}; }
   function readNum(s) { var n = parseFloat(String(s).replace(/[$,\s]/g, '')); return isFinite(n) ? n : null; }
   var A = {
     tab: function (el) { NAV.tab = el.dataset.tab; NAV.stack = []; UI.reflect = null; render(); },
     back: function () { back(); },
     signal: function () { S.signal = !S.signal; save(); render(); },
     toponly: function () { S.topOnly = !S.topOnly; save(); render(); },
-    sel: function (el) { S.sel = el.dataset.t; save(); render(); },
+    sel: function (el) { var t = el.dataset.t; if (!T(t)) { UI.cOff = 0; UI.cSel = null; go({ name: 'quote', t: t }); return; } S.sel = t; save(); render(); },
     range: function (el) { S.range = el.dataset.r; save(); render(); },
     brange: function (el) { UI.battleRange = el.dataset.r; render(); },
     side: function (el) { UI.side = el.dataset.side; render(); },
@@ -2063,7 +2217,7 @@
         else { S.watchlist.push(t); save(); render(); }
         return;
       }
-      if (mode === 'draft') { UI.draft.t = t; UI.draft.price = String(T(t).price); }
+      if (mode === 'draft') { var xd = X(t); UI.draft.t = t; UI.draft.price = xd ? String(xd.price) : ''; }
       if (mode === 'battle') { S.sel = t; save(); }
       UI.sheet = null; render();
     },
@@ -2094,7 +2248,7 @@
     unpin: function (el) { UI.draft.pins.splice(+el.dataset.i, 1); render(); },
     'draft-later': function () { finishDraft(false); },
     'draft-save': function () { if (!UI.draft.title.trim()) return toast('Write your thesis in one line first'); finishDraft(true); },
-    sell: function (el) { var l = S.lots.filter(function (z) { return z.id === el.dataset.id; })[0]; var x = T(l.t); UI.reflect = { id: l.id, reason: null, price: x ? String(x.price) : String(l.price), date: today(), note: '' }; render(); },
+    sell: function (el) { var l = S.lots.filter(function (z) { return z.id === el.dataset.id; })[0]; var x = X(l.t); UI.reflect = { id: l.id, reason: null, price: x ? String(x.price) : String(l.price), date: today(), note: '' }; render(); },
     reason: function (el) { UI.reflect.reason = el.dataset.r; render(); },
     keep: function () { UI.reflect = null; toast('Kept. Good to check the thesis first.'); },
     'sell-confirm': function () {
@@ -2317,15 +2471,18 @@
       AppP.addListener('appStateChange', function (st) { if (st.isActive && D && Date.now() - Date.parse(D.generatedAt) > 10 * 60000) loadData(); });
     }
     var LN0 = plugin('LocalNotifications');
-    if (LN0) LN0.addListener('localNotificationActionPerformed', function (ev) { var t = ev && ev.notification && ev.notification.extra && ev.notification.extra.t; if (t && D) { NAV.stack = [{ name: 'alert', t: t }]; render(); } });
+    if (LN0) LN0.addListener('localNotificationActionPerformed', function (ev) { var ex = ev && ev.notification && ev.notification.extra, t = ex && ex.t; if (t && D) { if (ex.sig) { if (T(t)) { S.sel = t; NAV.tab = 'battle'; NAV.stack = []; } else NAV.stack = [{ name: 'quote', t: t }]; } else NAV.stack = [{ name: 'alert', t: t }]; render(); } });
   }
-  window.__convergeTest = { isProfane: isProfane, computePulse: computePulse, isPremium: isPremium };
+  window.__convergeTest = { isProfane: isProfane, computePulse: computePulse, isPremium: isPremium, checkSignalAlerts: checkSignalAlerts, state: function () { return S; }, loadQuotes: loadQuotes };
   if (window.__CONVERGE_ARTIFACT__) document.documentElement.classList.add('in-artifact');
 
   render();
   loadData();
   setInterval(function () { if (document.visibilityState === 'visible') loadData(); }, 15 * 60000);
   var rsT, lastW = window.innerWidth; window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { if (UI.cfull) render(); else if (Math.abs(window.innerWidth - lastW) > 8) { lastW = window.innerWidth; refreshCandleBox(); } }, 150); });
+  loadQuotes(); setTimeout(nativeLive, 1500);
+  setInterval(function () { if (document.visibilityState === 'visible') { loadQuotes(); nativeLive(); } }, 60000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadQuotes(); });
   loadPulse();
   setInterval(function () { if (document.visibilityState === 'visible') loadPulse(); }, 5 * 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && Date.now() - PULSE.at > 5 * 60000) loadPulse(); });

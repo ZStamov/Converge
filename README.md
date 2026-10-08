@@ -60,9 +60,25 @@ Build results (with log tails) are written to the `ci-status` branch.
 
 ## Search: every US stock, ETF and index
 
-The search box finds every common stock listed on Nasdaq, NYSE and NYSE American, every US-listed ETF (SPY, QQQ, VOO…), and the major indexes: SPX (S&P 500), NDX, DJI, IXIC (Nasdaq Composite), RUT and VIX. About 11,000 symbols; warrants, rights, units, notes, preferreds and OTC stocks are left out. Picking one outside the 24 tracked tickers opens a page with its candle chart, buy/sell signals and backtest.
+The search box finds every common stock listed on Nasdaq, NYSE and NYSE American, every US-listed ETF (SPY, QQQ, VOO…), and the major indexes: SPX (S&P 500), NDX, DJI, IXIC (Nasdaq Composite), RUT and VIX. About 11,000 symbols; warrants, rights, units, notes, preferreds and OTC stocks are left out. Picking one outside the 24 tracked tickers opens a page with its live price, candle chart, buy/sell signals, backtest, discussion and ownership; it can be added to the watchlist or bought as a lot.
 
 `.github/workflows/history.yml` builds this from the S&P 500 list and Nasdaq's screener for the Nasdaq, NYSE and NYSE American exchanges, and keeps 2 years of daily bars per stock on the `history` branch (`symbols.json`, `h/<TICKER>.json`). It runs after each US close and every 2 hours. On the website these stocks get 1D, 2D and 1W candles; the Android and iOS apps load every interval live from Yahoo Finance. News, sentiment, quant grades and the discussion stay limited to the tracked tickers.
+
+## Live prices every minute
+
+`.github/workflows/quotes.yml` runs through the US session (9:00–17:30 ET, weekdays) and publishes a quote file every minute to the `quotes` branch: `h/<YYYYMMDDHHmm>.json` (S&P 500, the 700 largest stocks, popular ETFs, indexes and every tracked ticker: refreshed every minute) and `q/<…>.json` (all ~12,000 symbols; the rest rotate through, about 1,000 a minute, starting from Nasdaq's closing prices). Each minute gets a new file name, so GitHub's 5-minute file cache doesn't hold prices back; a stale reply from Yahoo never replaces a newer quote.
+
+Every copy of the app checks for a new file every minute while open (and when it comes back to the foreground) and updates the watchlist, holdings, portfolio value, charts and search results in place. On the website prices trail the market by about 1–2 minutes; the Android and iOS apps also fetch the watchlist and holdings straight from Yahoo each minute. The one-file claude.ai page can't reach the network, so it shows prices from when it was published.
+
+### Any stock in the watchlist and holdings
+
+Every symbol from search (not only the 24 fully covered tickers) can be added to the watchlist, given a thesis, and bought as a lot. Those stocks are priced from the live quotes, with their daily history for the charts.
+
+## Buy/sell signal notifications
+
+On any chart, **🔔 Alert** sets a notification for that stock and interval: BUY and SELL, BUY only, or SELL only. The app checks the latest completed candle every minute; when a new BUY or SELL appears (the same marks as on the chart, one BUY until a SELL) it sends a notification (native notifications on Android and iOS, browser notifications on the web once allowed) and logs it on Command and in Settings → Signal alerts. Signals that already existed when the alert was set don't notify. Alerts are part of your synced data.
+
+Notifications are checked while the app is open or in the background on the phone; there's no server push yet, so a signal that appeared while the app was closed is reported the next time it opens.
 
 ## Market sentiment (5-minute)
 

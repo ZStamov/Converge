@@ -44,11 +44,13 @@ async function spark(list) {
     while (i < chunks.length) {
       const ch = chunks[i++];
       try {
-        const j = await get(`https://query1.finance.yahoo.com/v7/finance/spark?symbols=${ch.map((t) => encodeURIComponent(ysym(t))).join(',')}&range=1d&interval=1d`, { 'User-Agent': UA }, 15000);
+        const j = await get(`https://query1.finance.yahoo.com/v7/finance/spark?symbols=${ch.map((t) => encodeURIComponent(ysym(t))).join(',')}&range=1d&interval=1d&_=${Date.now()}`, { 'User-Agent': UA, 'Cache-Control': 'no-cache' }, 15000);
         for (const r of j?.spark?.result || []) {
           const m = r.response?.[0]?.meta; if (!m || m.regularMarketPrice == null) continue;
           const t = ch.find((x) => ysym(x) === r.symbol) || r.symbol, pc = m.chartPreviousClose ?? m.previousClose;
-          Q[t] = [+(+m.regularMarketPrice).toFixed(4), pc ? +((m.regularMarketPrice / pc - 1) * 100).toFixed(3) : null, m.regularMarketTime || 0]; ok++;
+          const ts = m.regularMarketTime || 0; ok++;
+          if (Q[t] && Q[t][2] && ts && ts < Q[t][2]) continue; // a stale cached reply: keep the newer quote
+          Q[t] = [+(+m.regularMarketPrice).toFixed(4), pc ? +((m.regularMarketPrice / pc - 1) * 100).toFixed(3) : null, ts];
         }
       } catch (e) { fail++; if (e.status === 429) limited++; }
     }
