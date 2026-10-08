@@ -1,0 +1,36 @@
+name: Live quotes (every minute)
+
+on:
+  schedule:
+    - cron: '0 13-20 * * 1-5'   # each run loops for ~58 minutes: 9 am–5 pm ET, Monday to Friday
+    - cron: '30 21 * * 1-5'     # one after-hours snapshot
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/fetch-quotes.mjs', '.github/workflows/quotes.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-quotes
+  cancel-in-progress: false
+
+jobs:
+  quotes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 62
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Quotes every minute
+        run: |
+          secs=3480
+          if [ "$(date -u +%H)" = "21" ]; then secs=50; fi
+          node scripts/fetch-quotes.mjs quotes-out "$secs"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
