@@ -160,7 +160,7 @@ async function nasdaq(t) {
     const os = d2.ownershipSummary || {};
     const H = ((d2.holdingsTransactions && d2.holdingsTransactions.table && d2.holdingsTransactions.table.rows) || []).map((r) => ({ who: r.ownerName, date: isoUS(r.date), shares: num(r.sharesHeld), chg: num(r.sharesChange), chgPct: num(r.sharesChangePCT), value: num(r.marketValue) }));
     rec.funds = {
-      instPct: num(os.SharesOutstandingPCT && os.SharesOutstandingPCT.value), holders: num(d2.holdingsTransactions && d2.holdingsTransactions.totalRecords),
+      instPct: num(os.SharesOutstandingPCT && os.SharesOutstandingPCT.value), shOut: num(os.ShareoutstandingTotal && os.ShareoutstandingTotal.value) != null ? Math.round(num(os.ShareoutstandingTotal.value) * 1e6) : null, holders: num(d2.holdingsTransactions && d2.holdingsTransactions.totalRecords),
       increased: pos['Increased Positions'] || null, decreased: pos['Decreased Positions'] || null, held: pos['Held Positions'] || null, newPos: pos['New Positions'] || null, soldOut: pos['Sold Out Positions'] || null,
       hedge: H.filter((h) => HEDGE.test(h.who)).slice(0, 20),
       buyers: H.filter((h) => h.chg > 0).sort((a, b) => b.chg - a.chg).slice(0, 6),
