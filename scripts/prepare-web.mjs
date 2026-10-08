@@ -44,7 +44,7 @@ if (fs.existsSync(src)) fs.copyFileSync(src, path.join(www, 'data', 'market.json
 const scan = path.join(root, 'data-out', 'scanner.json');
 if (fs.existsSync(scan)) fs.copyFileSync(scan, path.join(www, 'data', 'scanner.json'));
 // runtime config (forum backend) and the profanity list for the client-side filter
-fs.writeFileSync(path.join(www, 'config.js'), 'window.CONVERGE_CONFIG = ' + JSON.stringify({ supabaseUrl: process.env.SUPABASE_URL || '', supabaseKey: process.env.SUPABASE_ANON_KEY || '', premiumUrl: process.env.PREMIUM_CHECKOUT_URL || '', premiumPrice: process.env.PREMIUM_PRICE || '', premiumRequired: process.env.PREMIUM_REQUIRED === 'true' }) + ';\n');
+fs.writeFileSync(path.join(www, 'config.js'), 'window.CONVERGE_CONFIG = ' + JSON.stringify({ supabaseUrl: process.env.SUPABASE_URL || '', supabaseKey: process.env.SUPABASE_ANON_KEY || '', premiumUrl: process.env.PREMIUM_CHECKOUT_URL || '', premiumPrice: process.env.PREMIUM_PRICE || '', premiumRequired: process.env.PREMIUM_REQUIRED === 'true', premiumPortalUrl: process.env.PREMIUM_PORTAL_URL || '' }) + ';\n');
 const { createRequire } = await import('node:module');
 const words = createRequire(import.meta.url)('naughty-words').en;
 fs.writeFileSync(path.join(www, 'profanity.js'), '/* LDNOOBW word list (CC-BY-4.0) */ window.CONVERGE_BADWORDS = ' + JSON.stringify(words) + ';\n');

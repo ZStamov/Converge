@@ -14,6 +14,7 @@ let fonts = read('fonts/fonts.css').replace(/url\('([^']+)'\)/g, (_, f) => `url(
 const css = read('styles.css');
 const js = read('app.js');
 const sigjs = read('signals.js');
+const syncjs = read('sync.js');
 const data = fs.existsSync(dataPath) ? fs.readFileSync(dataPath, 'utf8') : 'null';
 const scanPath = path.join(path.dirname(dataPath), 'scanner.json');
 const scan = fs.existsSync(scanPath) ? fs.readFileSync(scanPath, 'utf8') : 'null';
@@ -52,6 +53,7 @@ const html = `<title>Converge</title>
 <script>window.__CONVERGE_ARTIFACT__=true;window.__CONVERGE_SNAPSHOT__=${safe(data)};window.__CONVERGE_SCANNER__=${safe(scan)};window.__CONVERGE_CANDLES__=${safe(candles)};window.__CONVERGE_AUDIO__=${safe(audio)};window.__CONVERGE_PULSE__=${safe(pulse)};window.__CONVERGE_SYMBOLS__=${safe(symbols)};</script>
 <script>${safe(profanity)}</script>
 <script>${safe(sigjs)}</script>
+<script>${safe(syncjs)}</script>
 <script>${safe(js)}</script>
 `;
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });

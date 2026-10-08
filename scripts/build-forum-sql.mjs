@@ -132,6 +132,33 @@ end $$;
 drop trigger if exists converge_check_post on public.forum_posts;
 create trigger converge_check_post before insert on public.forum_posts for each row execute function public.converge_check_post();
 
+-- account sync: one private document per member (portfolio lots, theses, watchlist, settings)
+create table if not exists public.user_state (
+  user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  data jsonb not null default '{}'::jsonb,
+  device text,
+  updated_at timestamptz not null default now(),
+  constraint user_state_size check (octet_length(data::text) < 2000000)
+);
+alter table public.user_state enable row level security;
+drop policy if exists "members read their own state" on public.user_state;
+create policy "members read their own state" on public.user_state for select to authenticated using (user_id = auth.uid());
+drop policy if exists "members create their own state" on public.user_state;
+create policy "members create their own state" on public.user_state for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists "members update their own state" on public.user_state;
+create policy "members update their own state" on public.user_state for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+grant select, insert, update on public.user_state to authenticated;
+
+-- members can delete their own account (posts, profile and synced data go with it)
+create or replace function public.converge_delete_me() returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if auth.uid() is null then raise exception 'Not signed in.' using errcode = 'P0001'; end if;
+  delete from auth.users where id = auth.uid();
+end $$;
+revoke all on function public.converge_delete_me() from public, anon;
+grant execute on function public.converge_delete_me() to authenticated;
+
 -- word list
 insert into public.banned_words (word, norm, squeezed) values
 ${words.map((w) => `  (${q(w)}, public.converge_norm(${q(w)}), regexp_replace(public.converge_norm(${q(w)}), '(.)\\1+', '\\1', 'g'))`).join(',\n')}

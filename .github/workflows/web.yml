@@ -39,6 +39,7 @@ jobs:
           PREMIUM_CHECKOUT_URL: ${{ vars.PREMIUM_CHECKOUT_URL }}
           PREMIUM_PRICE: ${{ vars.PREMIUM_PRICE }}
           PREMIUM_REQUIRED: ${{ vars.PREMIUM_REQUIRED }}
+          PREMIUM_PORTAL_URL: ${{ vars.PREMIUM_PORTAL_URL }}
         run: |
           set -o pipefail
           {

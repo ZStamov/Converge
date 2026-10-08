@@ -143,9 +143,22 @@ Each ticker page has candles at 1m, 2m, 5m, 1h, 2h, 4h, 5h, 1D, 2D and 1W. The A
 
 Five toggles in the Scanner (scalping, short-term swing, medium-term swing, position/trend, multi-year value) apply the criteria from the strategy playbook. Criteria that need data free sources don't provide (float, VWAP) are listed and skipped; fundamental criteria need the `SEC_USER_AGENT` secret.
 
-## Your data
+## Your data and syncing across devices
 
-Lots, theses, watchlist and settings are stored only on your device (browser local storage or the app's WebView storage). Nothing is sent to a server.
+Signed out, lots, theses, the watchlist and settings stay on the device. Signed in, they sync through your account, so the iPhone app, the Android app and the website show the same thing with the same login:
+
+- Synced: lots (with theses, pinned evidence, targets, closed trades and sell reasons), watchlist and watchlist theses, scanner screens and strategy toggles, muted sources, Signal Mode, Top performers, portfolio chart range, default candle interval, chart signals on/off, feed filter, briefing picks. Notification permission stays per device.
+- When: right after a change (about 1 second), when you sign in, when the app opens or comes back to the front, and every 30 seconds while it's open.
+- Conflicts: each setting keeps its latest change; lots merge one by one (newest edit wins, deletions carry over), so edits made on two devices at once don't overwrite each other. Data already on a device when you first sign in is merged into the account, not thrown away.
+- Storage: one private row per member in `public.user_state` (row-level security: only you can read or write yours). Run the updated `supabase/schema.sql` once more to add it.
+
+### Account & settings (gear icon)
+
+Profile (display name, email, password), sign out, sign out and clear this device, sync status and *Sync now*, plan and subscription (upgrade, manage or cancel via `PREMIUM_PORTAL_URL`, refresh plan), all preferences, muted sources, export your data as JSON, erase everywhere, and delete account (removes your account, synced data, plan and posts). The sign-in sheet has *Forgot password?*; the reset link signs you in and opens this screen to set a new password. In Supabase, add your site to Authentication → URL Configuration → Redirect URLs.
+
+### Parity tests
+
+`scripts/test/parity.mjs` signs one account in on five simulated devices (iPhone SE and iPhone Pro Max running the iOS app code path, Pixel 7 running the Android app code path, iPad and desktop as the website), checks that lots, theses, watchlist, settings and portfolio value match, that changes and deletions flow between them, that another account sees none of it, and that every tab fits each screen without sideways scrolling. `scripts/test/sync-unit.cjs` covers the merge rules.
 
 ## Development
 

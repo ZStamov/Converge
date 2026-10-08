@@ -104,7 +104,7 @@ await page.keyboard.press('Escape'); await page.waitForTimeout(150);
 // switch to premium
 await click('[data-act="tab"][data-tab="command"]');
 await click('[data-act="settings"]');
-check('settings shows Free plan for the free user', /Plan: Free/.test(await text('#main')));
+check('settings shows Free plan for the free user: ' + await text('.planrow'), /^Free/.test(await text('.planrow')));
 await shot('settings-free');
 await click('[data-act="forum-signout"]');
 await click('[data-act="back"]');
@@ -128,7 +128,7 @@ check('premium user: preset switches on', await page.$eval('[data-act="preset"][
 await shot('scanner-premium-swing');
 await click('[data-act="tab"][data-tab="command"]');
 await click('[data-act="settings"]');
-check('settings shows plan: ' + (await text('#main')).match(/Plan: \w+/)?.[0], /Plan: Premium/.test(await text('#main')));
+check('settings shows plan: ' + await text('.planrow'), /^Premium/.test(await text('.planrow')));
 await shot('settings-premium');
 console.log(errs.length ? errs.join('\n') : 'no errors');
 await browser.close(); srv.close();

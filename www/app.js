@@ -11,7 +11,7 @@
     repo: 'https://github.com/ZStamov/converge'
   };
   var KEY = 'converge.v1';
-  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null, auth: null, demoTier: 'free' };
+  var DEFAULT = { watchlist: ['AAPL', 'NVDA', 'MSFT', 'AMZN'], lots: [], watchTheses: {}, signal: false, topOnly: false, range: '1M', brief: { day: null, picked: [], skipped: [] }, seenAlerts: [], muted: [], sel: null, notify: false, feedFilter: 'mine', onboarded: false, scan: null, auth: null, demoTier: 'free', prefs: { civ: '1D', csig: true }, _sync: { k: {}, tomb: {} } };
 
   // ------------------------------------------------------------------ utils
   var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -64,12 +64,27 @@
     var out = {}; for (var k in DEFAULT) out[k] = s[k] !== undefined ? s[k] : JSON.parse(JSON.stringify(DEFAULT[k]));
     return out;
   })();
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable: session-only */ } }
+  var SY = { status: 'idle', at: null, err: null, busy: false, again: false, timer: null, applying: false };
+  var SYNCSNAP = window.ConvergeSync ? window.ConvergeSync.snapshot(S) : null;
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable: session-only */ } }
+  function save() {
+    var Y = window.ConvergeSync;
+    if (Y && !SY.applying) {
+      if (!S._sync) S._sync = { k: {}, tomb: {} };
+      if (SYNCSNAP && Y.stamp(S, S._sync, SYNCSNAP, Date.now())) { SYNCSNAP = Y.snapshot(S); schedulePush(); }
+      else if (!SYNCSNAP) SYNCSNAP = Y.snapshot(S);
+    }
+    persist();
+  }
+  function schedulePush() { if (!S.auth) return; clearTimeout(SY.timer); SY.timer = setTimeout(function () { syncNow('change'); }, 1200); }
 
   var D = null;            // market data
   var DS = { source: null, error: null, loading: true };
   var NAV = { tab: 'command', stack: [] };
   var UI = { side: 'bull', battleRange: '6M', vaultTab: 'lots', draft: null, sheet: null, toast: null, reflect: null, briefIdx: 0, speaking: false, speakIdx: -1, pickQuery: '' };
+  if (!S.prefs) S.prefs = { civ: '1D', csig: true };
+  UI.civ = S.prefs.civ || '1D'; if (S.prefs.csig === false) UI.csig = false;
+  UI.acct = { name: '', email: '', pw1: '', pw2: '', del: '' };
 
   // ------------------------------------------------------------------ native bridges (Capacitor) with web fallbacks
   var Cap = window.Capacitor;
@@ -658,21 +673,62 @@
   }
 
   // ---- settings
+  function selPref(name, cur, opts, label) {
+    return '<label class="setrow"><span>' + label + '</span><select class="in sm" data-pref="' + name + '">' + opts.map(function (o) { var v = Array.isArray(o) ? o[0] : o, t = Array.isArray(o) ? o[1] : o; return '<option value="' + esc(v) + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></label>';
+  }
+  function tog(act, on, t1, t2) { return '<button class="rowtoggle flat" data-act="' + act + '" aria-pressed="' + !!on + '"><span><span class="t1">' + t1 + '</span>' + (t2 ? '<span class="t2">' + t2 + '</span>' : '') + '</span><span class="sw"></span></button>'; }
   function scrSettings() {
-    var h = '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Market data</h2><p style="margin:0;font-size:13px;line-height:1.5">Updated ' + esc(new Date(D.generatedAt).toLocaleString()) + ' (' + ago(D.generatedAt) + ').<br>Loaded from: ' + (DS.source === 'live' ? 'the live feed' : DS.source === 'snapshot' ? 'the snapshot built into this page' : 'the copy bundled with the app') + '.</p>' +
+    var A0 = UI.acct, h = '', msg = UI.acctMsg ? '<p class="note" style="margin:0 0 10px">' + esc(UI.acctMsg) + '</p>' : '';
+    // --- account
+    if (accountsReady() && S.auth) {
+      var nm = S.auth.name || (S.auth.user.email || '').split('@')[0];
+      h += '<section class="card" id="acct-profile"><div class="acct-h"><span class="avatar">' + esc((nm[0] || '?').toUpperCase()) + '</span><div style="min-width:0"><div style="font-weight:700;font-size:16px">' + esc(nm) + '</div><div class="muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis">' + esc(S.auth.user.email || '') + '</div></div><span class="badge-prem" style="margin-left:auto">' + planName().toUpperCase() + '</span></div>' + msg +
+        '<div class="field"><label for="ac-name">Display name <span class="opt">(shown on your posts)</span></label><div class="inrow"><input class="in" id="ac-name" data-acct="name" maxlength="30" autocomplete="nickname" value="' + esc(A0.name || nm) + '"><button class="btn sm" data-act="acct-name">Save</button></div></div>' +
+        '<div class="field"><label for="ac-email">Email</label><div class="inrow"><input class="in" id="ac-email" data-acct="email" type="email" autocomplete="email" value="' + esc(A0.email || S.auth.user.email || '') + '"><button class="btn sm" data-act="acct-email">Change</button></div></div>' +
+        '<div class="field"><label for="ac-pw1">New password</label><input class="in" id="ac-pw1" data-acct="pw1" type="password" autocomplete="new-password" placeholder="At least 8 characters" value="' + esc(A0.pw1) + '"></div>' +
+        '<div class="field"><label for="ac-pw2">Repeat new password</label><div class="inrow"><input class="in" id="ac-pw2" data-acct="pw2" type="password" autocomplete="new-password" value="' + esc(A0.pw2) + '"><button class="btn sm" data-act="acct-pass">Update</button></div></div>' +
+        '<div class="btnrow" style="margin-top:12px"><button class="btn sm" data-act="forum-signout">Sign out</button><button class="btn sm" data-act="device-wipe">Sign out &amp; clear this device</button></div></section>';
+    } else if (accountsReady()) {
+      h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Your account</h2>' + msg + '<p style="margin:0 0 10px;font-size:13px;line-height:1.5">Sign in to see the same lots, theses, watchlist and settings on your phone, tablet and computer. Anything you’ve already added on this device is kept and merged into your account.</p><button class="btn sm pri" data-act="forum-auth">Sign in or create an account</button></section>';
+    } else {
+      h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Your account</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (window.__CONVERGE_ARTIFACT__ ? 'This page has no sign-in. Accounts, sync across devices and subscriptions live in the Converge app and website.' : 'Accounts aren’t connected yet. The owner needs to add the Supabase settings (see the README).') + ' Everything here is saved on this device only.</p></section>';
+    }
+    // --- sync
+    h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Sync across devices</h2>' + (S.auth && accountsReady() ? '<button class="lnk" data-act="sync-now">Sync now</button>' : '') + '</div><p id="syncstat" class="syncstat ' + SY.status + '">' + syncLine() + '</p><p class="muted" style="margin:6px 0 0;font-size:12px;line-height:1.5">Synced: lots and their theses, closed trades and sell reasons, watchlist and watchlist theses, scanner screens and strategy toggles, muted sources, today’s briefing picks and the preferences below. Each device keeps its own notification permission.</p></section>';
+    // --- plan & subscription
+    var price = FCONF.premiumPrice, portal = safeUrl(FCONF.premiumPortalUrl), checkout = safeUrl(FCONF.premiumUrl);
+    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Plan &amp; subscription</h2>' +
+      '<div class="planrow"><div><div style="font-size:16px;font-weight:700" class="' + (isPremium() ? 'up' : '') + '">' + planName() + '</div><div class="muted" style="font-size:12px">' + (isPremium() ? 'Strategy scanners and posting unlocked' : 'Strategy scanners and posting are Premium') + (S.auth && S.auth.premium_until && premiumRequired() ? ' · until ' + esc(new Date(S.auth.premium_until).toLocaleDateString()) : '') + '</div></div>' + (price ? '<span class="mono">' + esc(price) + '</span>' : '') + '</div>' +
+      (!premiumRequired() ? '<p class="note" style="margin:10px 0 0">Testing mode: every account has all Premium features and billing is off. The paywall turns on when the owner sets PREMIUM_REQUIRED to true.</p>' : '') +
+      '<div class="btnrow" style="margin-top:10px">' +
+      (premiumRequired() && !isPremium() ? '<button class="btn sm pri" data-act="subscribe">' + (checkout ? 'Upgrade to Premium' : 'See Premium') + '</button>' : '') +
+      (premiumRequired() && isPremium() && portal ? '<a class="btn sm" href="' + esc(portal) + '" target="_blank" rel="noopener">Manage or cancel subscription</a>' : '') +
+      (S.auth && accountsReady() ? '<button class="btn sm" data-act="tier-refresh">Refresh plan</button>' : '') + '</div>' +
+      (premiumRequired() && isPremium() && !portal ? '<p class="muted" style="margin:8px 0 0;font-size:12px">To change or cancel, contact the Converge team (the billing portal isn’t connected yet).</p>' : '') +
+      (!accountsReady() && premiumRequired() ? tog('demo-tier', S.demoTier === 'premium', 'Preview Premium', 'This copy has no accounts') : '') + '</section>';
+    // --- preferences
+    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Preferences</h2><div class="setlist">' +
+      tog('signal', S.signal, 'Signal Mode', 'Hide news, opinion and commentary; keep filings and quant updates') +
+      tog('toponly', S.topOnly, 'Top performers only', 'Signal Feed shows only sources with the best track records') +
+      tog('csig', UI.csig !== false, 'Buy &amp; sell signals on charts', 'BUY / SELL / STOP labels and the backtest') +
+      selPref('range', S.range, RANGES, 'Portfolio chart range') +
+      selPref('civ', S.prefs.civ || '1D', CINTERVALS, 'Default candle interval') +
+      selPref('feed', S.feedFilter, [['mine', 'My holdings & watchlist'], ['all', 'All covered tickers']], 'Signal Feed shows') +
+      (isNative && plugin('LocalNotifications') ? tog('notify', S.notify, 'Divergence alerts', 'Notifications on this device') : '') + '</div></section>';
+    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Muted sources</h2>' + (S.muted.length ? S.muted.map(function (m) { return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0"><span>' + esc(m) + '</span><button class="btn sm" data-act="mute" data-name="' + esc(m) + '">Unmute</button></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">None. Mute a source from its profile.</p>') + '</section>';
+    // --- data
+    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">' + (S.auth && accountsReady() ? 'Stored on this device and in your account. Only you can read it.' : 'Stored only on this device.') + ' ' + S.lots.length + ' lot' + (S.lots.length === 1 ? '' : 's') + ', ' + S.watchlist.length + ' on the watchlist.</p>' +
+      '<div class="btnrow"><button class="btn sm" data-act="export-data">Export my data</button><button class="btn sm dng" data-act="reset">' + (UI.confirmReset ? 'Tap again to erase' + (S.auth ? ' everywhere' : '') : 'Erase all my data' + (S.auth ? ' (all devices)' : '')) + '</button></div></section>';
+    if (accountsReady() && S.auth) h += '<section class="card dzone"><h2 class="eyebrow" style="margin-bottom:6px">Delete account</h2><p class="muted" style="margin:0 0 8px;font-size:13px;line-height:1.5">Permanently deletes your account, your synced data, your plan and your discussion posts. Type DELETE to confirm.</p><div class="inrow"><input class="in" id="ac-del" data-acct="del" autocomplete="off" placeholder="DELETE" value="' + esc(A0.del) + '"><button class="btn sm dng" data-act="acct-delete"' + (A0.del === 'DELETE' ? '' : ' disabled') + '>Delete</button></div></section>';
+    // --- market data (unchanged information)
+    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Market data</h2><p style="margin:0;font-size:13px;line-height:1.5">Updated ' + esc(new Date(D.generatedAt).toLocaleString()) + ' (' + ago(D.generatedAt) + ').<br>Loaded from: ' + (DS.source === 'live' ? 'the live feed' : DS.source === 'snapshot' ? 'the snapshot built into this page' : 'the copy bundled with the app') + '.</p>' +
       '<p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.5">Sources: ' + esc((D.method && D.method.sources || []).join(' · ')) + '. Refreshed automatically every hour.</p>' +
       '<button class="btn sm" data-act="refresh" style="margin-top:10px">' + ic('refresh', 16) + 'Refresh now</button></section>';
     var ss = (D.method && D.method.sourceStatus) || {};
     h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">News &amp; data sources</h2>' + Object.keys(ss).map(function (k) { var x = ss[k], ok = x.ok > 0; return '<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>' + esc(k) + '</span><span class="mono ' + (ok ? 'up' : 'down') + '">' + (ok ? 'Live · ' + x.items + ' items' : 'Unavailable') + '</span></div>'; }).join('') +
       '<p class="muted" style="margin:8px 0 0;font-size:12px;line-height:1.5">Finviz, StockAnalysis and X open as links from each ticker. Their terms or paid APIs don’t allow pulling their data into the app.</p></section>';
-    if (isNative && plugin('LocalNotifications')) h += '<button class="rowtoggle" data-act="notify" aria-pressed="' + S.notify + '"><span><span class="t1">Divergence alerts</span><span class="t2">Notify me when a stock I hold or watch diverges</span></span><span class="sw"></span></button>';
-    if (!premiumRequired()) h += '<p class="note" style="margin:0">Testing mode: every account has all Premium features (strategy scanners and posting). The Premium paywall turns on when the owner sets PREMIUM_REQUIRED to true.</p>';
-    if (accountsReady()) h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Account &amp; plan</h2>' + (S.auth ? '<p style="margin:0 0 4px;font-size:13px">Signed in as <b>' + esc(S.auth.name || S.auth.user.email) + '</b></p><p style="margin:0 0 10px;font-size:13px">Plan: <b class="' + (isPremium() ? 'up' : '') + '">' + planName() + '</b>' + (isPremium() && S.auth.premium_until ? ' · until ' + esc(new Date(S.auth.premium_until).toLocaleDateString()) : '') + '</p><div class="btnrow">' + (isPremium() ? '' : '<button class="btn sm pri" data-act="subscribe">Upgrade to Premium</button>') + '<button class="btn sm" data-act="tier-refresh">Refresh plan</button><button class="btn sm" data-act="forum-signout">Sign out</button></div>' : '<p class="muted" style="margin:0 0 10px;font-size:13px">Free accounts can read the discussions. Premium adds strategy scanners and posting.</p><button class="btn sm pri" data-act="forum-auth">Sign in or create an account</button>') + '</section>';
-    else if (premiumRequired()) h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Plan preview</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (window.__CONVERGE_ARTIFACT__ ? 'This page has no account system, so sign-in, subscriptions and posting live in the Converge app and website.' : 'Accounts aren’t connected yet (see the README’s Supabase steps).') + ' Switch below to see what each plan unlocks.</p></section><button class="rowtoggle" data-act="demo-tier" aria-pressed="' + (S.demoTier === 'premium') + '"><span><span class="t1">Preview Premium</span><span class="t2">Currently showing the ' + planName() + ' plan</span></span><span class="sw"></span></button>';
-    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Muted sources</h2>' + (S.muted.length ? S.muted.map(function (m) { return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0"><span>' + esc(m) + '</span><button class="btn sm" data-act="mute" data-name="' + esc(m) + '">Unmute</button></div>'; }).join('') : '<p class="muted" style="margin:0;font-size:13px">None. Mute a source from its profile.</p>') + '</section>';
-    h += '<section class="card"><h2 class="eyebrow" style="margin-bottom:8px">Your data</h2><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:1.5">Lots, theses and your watchlist are stored only on this device.</p><button class="btn sm dng" data-act="reset">' + (UI.confirmReset ? 'Tap again to erase everything' : 'Erase all my data') + '</button></section>';
-    h += '<p class="foot">Converge · Covers ' + D.universe.length + ' tickers · <a href="' + CFG.repo + '" target="_blank" rel="noopener noreferrer">Source code</a><br>Information only, not investment advice.</p>';
-    return subBar('Settings') + '<main class="main" id="main">' + h + '</main>';
+    h += '<p class="foot">Converge · ' + esc(deviceName()) + ' · Covers ' + D.universe.length + ' tickers · <a href="' + CFG.repo + '" target="_blank" rel="noopener noreferrer">Source code</a><br>Information only, not investment advice.</p>';
+    return subBar('Account & settings') + '<main class="main" id="main">' + h + '</main>';
   }
 
   // ------------------------------------------------------------------ scanner (Finviz-style screener)
@@ -1021,7 +1077,7 @@
   }
   function isLand() { return window.innerWidth > window.innerHeight && window.innerWidth >= 600; }
   function chartDims() {
-    if (!UI.cfull) return { W: 330, PH: 176, VH: 34, AX: 46 };
+    if (!UI.cfull) { var box = document.getElementById('candlebox'), bw0 = box && box.clientWidth; var w0 = bw0 > 200 ? bw0 : Math.min(window.innerWidth, window.innerWidth >= 768 ? 760 : 480) - 66; var wide = w0 > 420; return { W: Math.round(w0), PH: wide ? 230 : 176, VH: wide ? 44 : 34, AX: 46 }; }
     var land = isLand(), w = land ? Math.round(window.innerWidth * 0.66) - 28 : Math.min(window.innerWidth, 1600) - 24;
     var hAll = land ? Math.max(150, window.innerHeight - (window.innerHeight < 500 ? 190 : 220)) : Math.max(240, Math.round(window.innerHeight * 0.52));
     return { W: Math.max(280, w), PH: Math.round(hAll * 0.84), VH: Math.round(hAll * 0.16) - 8, AX: 58 };
@@ -1115,7 +1171,7 @@
     var srcLbl = r.live ? 'Live' : r.hist ? 'Daily history' + (DIR.through ? ' through ' + DIR.through : '') : 'Snapshot ' + (CD ? ago(CD.generatedAt) : '');
     var strip = '';
     if (SGN && !UI.cfull) { var bt = SGN.bt; strip = '<button class="btstrip" data-act="bt-jump"><span>Backtest · ' + esc(iv) + '</span><b class="mono ' + cls(bt.total) + '">' + pct(bt.total * 100, 1) + '</b><span class="muted">vs hold <span class="mono ' + cls(bt.hold) + '">' + pct(bt.hold * 100, 1) + '</span> · ' + bt.n + ' trades' + (bt.winRate != null ? ' · ' + Math.round(bt.winRate * 100) + '% win' : '') + '</span><span class="go">Results ↓</span></button>'; }
-    return readout + selSig + '<div class="cwrap' + (UI.cfull ? ' full' : '') + '" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '" data-pr="' + (PW / W).toFixed(4) + '" data-hi="' + hi + '" data-lo="' + lo + '" data-ph="' + PH + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart with ' + nlab + ' signal labels">' + body + '</svg>' +
+    return readout + selSig + '<div class="cwrap' + (UI.cfull ? ' full' : '') + '" id="cwrap" data-a="' + a + '" data-n="' + N + '" data-len="' + len + '" data-pr="' + (PW / W).toFixed(4) + '" data-hi="' + hi + '" data-lo="' + lo + '" data-ph="' + PH + '" data-w="' + W + '"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="height:' + H + 'px" role="img" aria-label="' + esc(t) + ' ' + iv + ' candlestick chart with ' + nlab + ' signal labels">' + body + '</svg>' +
       axis + '<span class="cax last mono" style="top:' + Math.max(0, Math.min(PH - 16, ly - 8)).toFixed(0) + 'px;width:' + AX + 'px">' + fmtP(last) + '</span>' + curPill + '</div>' +
       '<div class="tax" style="margin-right:0">' + tax + timePill + '</div>' +
       '<div class="siglegend">' + (SGN ? '<b class="lbl lbuy">BUY</b><b class="lbl lsell">SELL</b><b class="lbl lstop">STOP</b><span class="muted">One BUY, then nothing until its SELL or ATR STOP.</span>' : '') + '<span class="muted">Tap the chart to mark the time and price · pinch to zoom · ' + esc(srcLbl) + '</span></div>' + strip;
@@ -1234,6 +1290,51 @@
     S.auth = { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, user: { id: j.user && j.user.id, email: j.user && j.user.email }, name: (j.user && j.user.user_metadata && j.user.user_metadata.display_name) || (S.auth && S.auth.name) || '' };
     save();
   }
+  function deviceName() {
+    var plat = isNative && Cap.getPlatform ? (Cap.getPlatform() === 'ios' ? 'iOS app' : Cap.getPlatform() === 'android' ? 'Android app' : 'App') : 'Web';
+    var w = Math.min(window.screen && window.screen.width || window.innerWidth, window.innerWidth);
+    return plat + ' · ' + (w < 600 ? 'phone' : w < 1100 ? 'tablet' : 'computer');
+  }
+  function syncNow(why) {
+    var Y = window.ConvergeSync;
+    if (!Y || !accountsReady() || !S.auth) return Promise.resolve(null);
+    if (SY.busy) { SY.again = true; return SY.p; }
+    SY.busy = true; SY.status = 'syncing'; refreshSyncUi();
+    SY.p = ensureSession().then(function (sess) {
+      if (!sess) throw new Error('Your session expired. Please sign in again.');
+      var uid = sess.user.id;
+      if (why !== 'change' && why !== 'poll') sb('/auth/v1/user', { auth: true }).then(function (u) { if (!u || !S.auth) return; var nm = u.user_metadata && u.user_metadata.display_name; var ch = (nm && nm !== S.auth.name) || (u.email && u.email !== S.auth.user.email); if (nm) S.auth.name = nm; if (u.email) S.auth.user.email = u.email; if (ch) { persist(); render(); } }).catch(function () { });
+      return sb('/rest/v1/user_state?select=data,updated_at,device&user_id=eq.' + encodeURIComponent(uid), { auth: true }).then(function (rows) {
+        var row = rows && rows[0], remote = row && row.data && row.data.keys ? row.data : null;
+        var local = Y.exportDoc(S, S._sync), merged = Y.merge(local, remote), changed = !Y.same(merged, local);
+        if (changed) { SY.applying = true; Y.applyDoc(S, S._sync, merged); SYNCSNAP = Y.snapshot(S); persist(); SY.applying = false; UI.civ = (S.prefs && S.prefs.civ) || UI.civ; if (S.prefs && S.prefs.csig === false) UI.csig = false; }
+        SY.remoteDevice = row && row.device; SY.remoteAt = row && row.updated_at;
+        if (remote && Y.same(merged, remote)) return changed;
+        return sb('/rest/v1/user_state?on_conflict=user_id', { method: 'POST', auth: true, prefer: 'resolution=merge-duplicates,return=minimal', body: { user_id: uid, data: merged, device: deviceName(), updated_at: new Date().toISOString() } })
+          .then(function () { SY.remoteDevice = deviceName(); SY.remoteAt = new Date().toISOString(); return changed; });
+      });
+    }).then(function (changed) {
+      SY.status = 'synced'; SY.at = Date.now(); SY.err = null;
+      if (changed && D) { if (!S.sel || !T(S.sel)) S.sel = firstTicker(); render(); }
+      return changed;
+    }).catch(function (e) {
+      SY.status = 'error'; SY.err = /user_state|relation|schema cache/i.test(e.message) ? 'The account database isn’t set up for sync yet (run supabase/schema.sql).' : e.message;
+    }).then(function (x) {
+      SY.busy = false; refreshSyncUi();
+      if (SY.again) { SY.again = false; setTimeout(function () { syncNow('again'); }, 50); }
+      return x;
+    });
+    return SY.p;
+  }
+  function syncLine() {
+    if (!accountsReady()) return 'Sync needs the Converge app or website.';
+    if (!S.auth) return 'Not signed in: everything stays on this device.';
+    if (SY.status === 'syncing') return 'Syncing…';
+    if (SY.status === 'error') return 'Couldn’t sync: ' + esc(SY.err || 'try again');
+    if (SY.at) return 'Synced ' + esc(ago(new Date(SY.at).toISOString())) + (SY.remoteDevice ? ' · last saved from ' + esc(SY.remoteDevice) : '');
+    return 'Waiting to sync…';
+  }
+  function refreshSyncUi() { var el = document.getElementById('syncstat'); if (el) { el.innerHTML = syncLine(); el.className = 'syncstat ' + SY.status; } }
   function ensureSession() {
     if (!S.auth) return Promise.resolve(null);
     if (Date.now() < S.auth.expires_at - 60000) return Promise.resolve(S.auth);
@@ -1302,13 +1403,14 @@
   }
   function authSheet() {
     var m = FORUM.mode, f = FORUM.form;
-    return '<h2 class="disp" style="margin:0 0 4px;font-size:22px">' + (m === 'signup' ? 'Create your account' : 'Sign in') + '</h2><p class="muted" style="margin:0 0 12px;font-size:13px">Your account is used only for the stock discussions.</p>' +
+    return '<h2 class="disp" style="margin:0 0 4px;font-size:22px">' + (m === 'signup' ? 'Create your account' : 'Sign in') + '</h2><p class="muted" style="margin:0 0 12px;font-size:13px">One account keeps your lots, theses, watchlist and settings in sync on every device, and lets you join the discussions.</p>' +
       '<div class="scroll" style="padding-top:0">' + (m === 'signup' ? '<div class="field"><label for="au-name">Display name</label><input class="in" id="au-name" data-au="name" maxlength="30" autocomplete="nickname" value="' + esc(f.name) + '"></div>' : '') +
       '<div class="field"><label for="au-email">Email</label><input class="in" id="au-email" data-au="email" type="email" autocomplete="email" value="' + esc(f.email) + '"></div>' +
       '<div class="field"><label for="au-pass">Password</label><input class="in" id="au-pass" data-au="password" type="password" autocomplete="' + (m === 'signup' ? 'new-password' : 'current-password') + '" value="' + esc(f.password) + '"></div>' +
       (FORUM.authMsg ? '<p class="note" style="margin:4px 0 0">' + esc(FORUM.authMsg) + '</p>' : '') + '</div>' +
       '<button class="btn pri" data-act="forum-auth-go" style="margin-top:12px"' + (FORUM.busy ? ' disabled' : '') + '>' + (FORUM.busy ? 'Please wait…' : m === 'signup' ? 'Create account' : 'Sign in') + '</button>' +
-      '<button class="btn sm" data-act="forum-auth-mode" style="margin-top:8px;border:0;color:var(--accent)">' + (m === 'signup' ? 'I already have an account' : 'New here? Create an account') + '</button>';
+      '<button class="btn sm" data-act="forum-auth-mode" style="margin-top:8px;border:0;color:var(--accent)">' + (m === 'signup' ? 'I already have an account' : 'New here? Create an account') + '</button>' +
+      (m === 'signup' ? '' : '<button class="btn sm" data-act="acct-forgot" style="margin-top:2px;border:0;color:var(--muted)">Forgot password?</button>');
   }
   var FA = {
     'forum-refresh': function (el) { loadPosts(el.dataset.t, true); },
@@ -1332,10 +1434,12 @@
       p.then(function (res) {
         FORUM.busy = false; f.password = '';
         if (res === 'confirm') { FORUM.mode = 'signin'; FORUM.authMsg = 'Check your email to confirm your account, then sign in.'; render(); return; }
-        UI.sheet = null; toast('Signed in as ' + (S.auth.name || email)); render(); fetchTier();
+        UI.sheet = null; render(); fetchTier();
+        var before = S.lots.length;
+        syncNow('signin').then(function () { var n = S.lots.length; toast(SY.status === 'synced' ? 'Signed in · ' + n + ' lot' + (n === 1 ? '' : 's') + ' synced' + (n !== before ? ' (' + (n - before >= 0 ? '+' : '') + (n - before) + ' from your account)' : '') : 'Signed in as ' + (S.auth.name || email)); });
       }).catch(function (e) { FORUM.busy = false; FORUM.authMsg = /invalid login/i.test(e.message) ? 'Wrong email or password.' : e.message; render(); });
     },
-    'forum-signout': function () { var tok = S.auth; S.auth = null; save(); if (tok) sb('/auth/v1/logout', { method: 'POST', auth: false }).catch(function () { }); toast('Signed out'); render(); },
+    'forum-signout': function () { var tok = S.auth; clearTimeout(SY.timer); (tok ? syncNow('signout') : Promise.resolve()).then(function () { S.auth = null; SY.status = 'idle'; SY.at = null; persist(); if (tok) sb('/auth/v1/logout', { method: 'POST', auth: false }).catch(function () { }); toast('Signed out. Your data stays on this device and in your account.'); render(); }); },
     'forum-post': function (el) {
       var t = el.dataset.t, body = (FORUM.draft || '').trim();
       if (!body) return toast('Write something first');
@@ -1539,6 +1643,52 @@
     return h + '<p class="note" style="margin:12px 0 0">Online checkout isn’t open yet. ' + (accountsReady() ? 'Ask the Converge team to upgrade your account, then tap Refresh.' : 'This copy of Converge has no account system, so you can preview Premium in Settings.') + '</p>' +
       (accountsReady() ? '<button class="btn sm" data-act="tier-refresh" style="margin-top:8px">Refresh my plan</button>' : '<button class="btn sm pri" data-act="settings" style="margin-top:8px">Open Settings</button>');
   }
+  function authPut(body) { return ensureSession().then(function (sess) { if (!sess) throw new Error('Please sign in again.'); return sb('/auth/v1/user', { method: 'PUT', auth: true, body: body }); }); }
+  function acctDone(m) { UI.acctMsg = m; render(); }
+  var AA = {
+    'acct-name': function () {
+      var n = (UI.acct.name || '').trim();
+      if (n.length < 2) return acctDone('Pick a display name of at least 2 characters.');
+      if (isProfane(n)) return acctDone('Please choose a different display name.');
+      authPut({ data: { display_name: n } }).then(function () { S.auth.name = n; persist(); UI.acct.name = ''; acctDone('Display name saved.'); }).catch(function (e) { acctDone(e.message); });
+    },
+    'acct-email': function () {
+      var e1 = (UI.acct.email || '').trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e1)) return acctDone('Enter a valid email address.');
+      if (e1 === S.auth.user.email) return acctDone('That’s already your email.');
+      authPut({ email: e1 }).then(function () { UI.acct.email = ''; acctDone('Check your inbox (and your current one) to confirm the change. Your email updates after you confirm.'); }).catch(function (e) { acctDone(e.message); });
+    },
+    'acct-pass': function () {
+      var a = UI.acct.pw1 || '', b = UI.acct.pw2 || '';
+      if (a.length < 8) return acctDone('Use a password of at least 8 characters.');
+      if (a !== b) return acctDone('The two passwords don’t match.');
+      authPut({ password: a }).then(function () { UI.acct.pw1 = UI.acct.pw2 = ''; acctDone('Password updated.'); }).catch(function (e) { acctDone(/reauth|recent/i.test(e.message) ? 'For security, sign out and back in, then change your password.' : e.message); });
+    },
+    'acct-forgot': function () {
+      var em = (FORUM.form.email || '').trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { FORUM.authMsg = 'Enter your email above, then tap “Forgot password?”.'; return render(); }
+      sb('/auth/v1/recover', { method: 'POST', body: { email: em } }).then(function () { FORUM.authMsg = 'If that email has an account, a reset link is on its way. Open it on this device to set a new password.'; render(); }).catch(function (e) { FORUM.authMsg = e.message; render(); });
+    },
+    'acct-delete': function () {
+      if (UI.acct.del !== 'DELETE') return;
+      ensureSession().then(function (sess) { if (!sess) throw new Error('Please sign in again.'); return sb('/rest/v1/rpc/converge_delete_me', { method: 'POST', auth: true, body: {} }); })
+        .then(function () { try { localStorage.removeItem(KEY); } catch (e) { } location.reload(); })
+        .catch(function (e) { acctDone('Couldn’t delete the account: ' + e.message); });
+    },
+    'sync-now': function () { syncNow('manual').then(function () { toast(SY.status === 'synced' ? 'Synced' : 'Couldn’t sync'); }); },
+    'device-wipe': function () {
+      var go2 = function () { try { localStorage.removeItem(KEY); } catch (e) { } location.reload(); };
+      syncNow('wipe').then(function () { if (S.auth) sb('/auth/v1/logout', { method: 'POST', auth: true }).catch(function () { }); setTimeout(go2, 300); });
+    },
+    'export-data': function () {
+      var doc = { app: 'Converge', exportedAt: new Date().toISOString(), account: S.auth ? S.auth.user.email : null, data: window.ConvergeSync ? window.ConvergeSync.exportDoc(S, S._sync || {}) : { lots: S.lots } };
+      var txt = JSON.stringify(doc, null, 2);
+      try {
+        var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = 'converge-data-' + today() + '.json'; document.body.appendChild(a); a.click(); a.remove();
+        if (isNative && navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { toast('Your data is copied to the clipboard'); });
+      } catch (e) { if (navigator.clipboard) navigator.clipboard.writeText(txt).then(function () { toast('Your data is copied to the clipboard'); }); }
+    }
+  };
   var TA = {
     'pulse-open': function () { UI.pulseOpen = !UI.pulseOpen; refreshPulse(); },
     subscribe: function (el) { UI.sheet = { kind: 'subscribe', why: el && el.dataset.why }; render(); },
@@ -1644,6 +1794,7 @@
     if (focusId) { var f = document.getElementById(focusId); if (f) { f.focus(); try { if (selStart != null) f.setSelectionRange(selStart, selStart); } catch (e) { } } }
     bindSwipe();
     bindCandles();
+    var cw = document.getElementById('cwrap'); if (cw && !UI.cfull && cw.clientWidth && Math.abs(cw.clientWidth - +cw.dataset.w) > 6 && !UI._fit) { UI._fit = true; refreshCandleBox(); UI._fit = false; }
   }
   function go(scr) { NAV.stack.push(scr); render(); }
   function back() {
@@ -1745,7 +1896,14 @@
     'del-wthesis': function (el) { delete S.watchTheses[el.dataset.t]; save(); NAV.stack.pop(); toast('Thesis deleted'); },
     mute: function (el) { var n = el.dataset.name, i = S.muted.indexOf(n); if (i >= 0) S.muted.splice(i, 1); else S.muted.push(n); save(); toast(i >= 0 ? 'Unmuted ' + n : 'Muted ' + n); },
     refresh: function () { loadData(true).then(function () { if (D) toast('Data refreshed'); }); },
-    reset: function () { if (!UI.confirmReset) { UI.confirmReset = true; render(); return; } try { localStorage.removeItem(KEY); } catch (e) { } location.reload(); },
+    reset: function () {
+      if (!UI.confirmReset) { UI.confirmReset = true; render(); return; }
+      if (S.auth && accountsReady()) {
+        S.lots = []; S.watchTheses = {}; S.watchlist = DEFAULT.watchlist.slice(); S.muted = []; S.scan = null; S.brief = { day: null, picked: [], skipped: [] }; S.seenAlerts = [];
+        UI.confirmReset = false; save(); syncNow('erase').then(function () { toast('Erased on every device'); render(); }); return;
+      }
+      try { localStorage.removeItem(KEY); } catch (e) { } location.reload();
+    },
     notify: function () {
       var LN = plugin('LocalNotifications'); if (!LN) return;
       if (S.notify) { S.notify = false; save(); render(); return; }
@@ -1754,7 +1912,7 @@
     civ: function (el) { UI.civ = el.dataset.iv; UI.cOff = 0; UI.cSel = null; render(); },
     cmode: function (el) { UI.cmode = el.dataset.m; render(); },
     czoom: function (el) { var n = UI.cN || (UI.cfull ? 120 : 60); UI.cN = Math.max(15, Math.min(600, Math.round(el.dataset.z === 'in' ? n / 1.5 : n * 1.5))); UI.cSel = null; refreshCandleBox(); },
-    csig: function () { UI.csig = UI.csig === false; render(); },
+    csig: function () { UI.csig = UI.csig === false; S.prefs.csig = UI.csig !== false; save(); render(); },
     cfull: function () { UI.cfull = true; UI.cSel = null; render(); },
     'csel-clear': function () { UI.cSel = null; UI.cSelP = null; refreshCandleBox(); },
     'bt-jump': function () { var bb = document.getElementById('btbox'); if (bb) bb.scrollIntoView({ behavior: 'smooth', block: 'start' }); },
@@ -1787,6 +1945,7 @@
   };
   Object.keys(FA).forEach(function (k) { A[k] = FA[k]; });
   Object.keys(TA).forEach(function (k) { A[k] = TA[k]; });
+  Object.keys(AA).forEach(function (k) { A[k] = AA[k]; });
   function finishDraft(withThesis) {
     var d = UI.draft, thesis = null;
     if (withThesis) {
@@ -1913,9 +2072,15 @@
     if (el.dataset.pickq) { UI.pickQuery = el.value; render(); }
     if (el.dataset.au) FORUM.form[el.dataset.au] = el.value;
     if (el.id === 'forum-text') FORUM.draft = el.value;
+    if (el.dataset.acct) { UI.acct[el.dataset.acct] = el.value; if (el.dataset.acct === 'del') { var bd = document.querySelector('[data-act="acct-delete"]'); if (bd) bd.disabled = el.value !== 'DELETE'; } }
   });
   document.addEventListener('change', function (e) {
     var el = e.target;
+    if (el.dataset && el.dataset.pref) {
+      var k = el.dataset.pref, v = el.value;
+      if (k === 'range') S.range = v; else if (k === 'civ') { S.prefs.civ = v; UI.civ = v; } else if (k === 'feed') S.feedFilter = v;
+      save(); toast('Saved'); return;
+    }
     if (el.dataset && el.dataset.scanf) { var st = scanState(); if (el.value) st.f[el.dataset.scanf] = el.value; else delete st.f[el.dataset.scanf]; UI.scanLimit = 100; save(); render(); }
     if (el.dataset && el.dataset.scan === 'signal') { var st2 = scanState(); st2.signal = el.value; var d = sigDef(el.value); if (d[3]) st2.sort = { k: d[3].k, dir: d[3].dir }; UI.scanLimit = 100; save(); render(); }
   });
@@ -1935,9 +2100,28 @@
   render();
   loadData();
   setInterval(function () { if (document.visibilityState === 'visible') loadData(); }, 15 * 60000);
-  var rsT; window.addEventListener('resize', function () { if (!UI.cfull) return; clearTimeout(rsT); rsT = setTimeout(render, 120); });
+  var rsT, lastW = window.innerWidth; window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(function () { if (UI.cfull) render(); else if (Math.abs(window.innerWidth - lastW) > 8) { lastW = window.innerWidth; refreshCandleBox(); } }, 150); });
   loadPulse();
   setInterval(function () { if (document.visibilityState === 'visible') loadPulse(); }, 5 * 60000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && Date.now() - PULSE.at > 5 * 60000) loadPulse(); });
   fetchTier();
+  // account links (password reset / email confirmation) land with a session in the URL hash
+  (function () {
+    var hs = location.hash || ''; if (!/access_token=/.test(hs) || !accountsReady()) return;
+    var P = {}; hs.slice(1).split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) P[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1)); });
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+    S.auth = { access_token: P.access_token, refresh_token: P.refresh_token, expires_at: Date.now() + (+P.expires_in || 3600) * 1000, user: {} };
+    sb('/auth/v1/user', { auth: true }).then(function (u) {
+      saveSession({ access_token: P.access_token, refresh_token: P.refresh_token, expires_in: +P.expires_in || 3600, user: u });
+      NAV.stack = [{ name: 'settings' }];
+      UI.acctMsg = P.type === 'recovery' ? 'You’re signed in from the reset link. Set a new password below.' : 'Your email is confirmed.';
+      render(); fetchTier(); syncNow('link');
+    }).catch(function () { S.auth = null; persist(); });
+  })();
+  if (S.auth) setTimeout(function () { syncNow('boot'); }, 600);
+  setInterval(function () { if (S.auth && document.visibilityState === 'visible') syncNow('poll'); }, 30000);
+  document.addEventListener('visibilitychange', function () { if (S.auth && document.visibilityState === 'visible') syncNow('focus'); });
+  window.addEventListener('focus', function () { if (S.auth) syncNow('focus'); });
+  if (isNative && plugin('App')) plugin('App').addListener('appStateChange', function (st) { if (st.isActive && S.auth) syncNow('resume'); });
+  window.__convergeSyncNow = syncNow;
 })();
