@@ -1,0 +1,44 @@
+                                                                                                                                  Filing ID #20033783
+
+                           P                               T                                             R
+               Clerk of the House of Representatives • Legislative Resource Center • B81 Cannon Building • Washington, DC 20515
+
+
+F          I
+Name:                 Hon. Roger Williams
+Status:               Member
+State/District: TX25
+
+
+T
+ID         Owner Asset                                            Transaction Date                 Notification Amount                     Cap.
+                                                                  Type                             Date                                    Gains >
+                                                                                                                                           $200?
+
+                       Chevron Corporation Common Stock           S (partial)       12/22/2025 12/22/2025             $15,001 -
+                       (CVX) [ST]                                                                                     $50,000
+                       F      S      : New
+                       S            O : Charles Schwab 4067
+
+
+                       Diamondback Energy, Inc. - Common S (partial)                12/22/2025 12/22/2025             $1,001 - $15,000
+                       Stock (FANG) [ST]
+                       F      S      : New
+                       S            O : Charles Schwab 4067
+
+
+                       JP Morgan Chase & Co. Common               P                 12/22/2025 12/22/2025             $1,001 - $15,000
+                       Stock (JPM) [ST]
+                       F      S      : New
+                       S            O : Charles Schwab 4067
+
+
+           SP          RTX Corporation Common Stock (RTX)         P                 12/22/2025 12/22/2025             $1,001 - $15,000
+                       [ST]
+                       F      S      : New
+                       S            O : Charles Schwab 4067
+
+
+                       Treasury Bill (3-Month, Matures            P                 07/13/2026 07/13/2026             $15,001 -
+                       10/15/2026) [GS]                                                                               $50,000
+                       F      S      : New
