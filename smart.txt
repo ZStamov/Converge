@@ -1,13 +1,13 @@
 job: smart
 status: success
-time: 2026-10-08T11:29:16Z
-commit: 5c2b7465305a1f9d0255d3191db7853cd3331e73
-run: https://github.com/ZStamov/Converge/actions/runs/37770282149
+time: 2026-10-08T18:55:42Z
+commit: 90d8d7e6b2385e2a46f6060f7d303f04a46dd79b
+run: https://github.com/ZStamov/Converge/actions/runs/37827967938
 ----
 house 2025: 515 PTRs, 0 new
-house 2026: 415 PTRs, 0 new
+house 2026: 417 PTRs, 2 new
 senate: 330 reports since 2024-10-08, 0 new
-congress: 10909 stock trades (House +0, Senate +0 new filings)
-nasdaq: 5872 stocks, 2 due for refresh
-nasdaq: 0 refreshed, 2 failed
-files: 6143; 9s; errors: 0
+congress: 10953 stock trades (House +2, Senate +0 new filings)
+nasdaq: 5874 stocks, 5 due for refresh
+nasdaq: 3 refreshed, 2 failed
+files: 6146; 7s; errors: 0
