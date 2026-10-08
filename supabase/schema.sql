@@ -28,15 +28,17 @@ end $$;
 
 create or replace function public.converge_is_profane(t text) returns boolean
 language plpgsql stable as $$
-declare n text; s text; j text; -- roots below are blocked even inside longer words
+declare n text; s text; j text; r text; -- roots below are blocked even inside longer words
 begin
   n := public.converge_norm(t);
   s := regexp_replace(n, '(.)\1+', '\1', 'g');
   j := replace(s, ' ', '');
+  -- stretched spellings: squeeze only the words that repeat a letter, so "but" never matches "butt"
+  select coalesce(string_agg(regexp_replace(w, '(.)\1+', '\1', 'g'), ' '), '') into r from unnest(string_to_array(n, ' ')) w where w ~ '(.)\1';
   return exists (
     select 1 from public.banned_words b
     where position(' ' || b.norm || ' ' in ' ' || n || ' ') > 0
-       or position(' ' || b.squeezed || ' ' in ' ' || s || ' ') > 0
+       or (position(' ' in b.squeezed) = 0 and position(' ' || b.squeezed || ' ' in ' ' || r || ' ') > 0)
        or (length(b.squeezed) >= 5 and position(' ' in b.squeezed) = 0 and position(b.squeezed in j) > 0)
   ) or j ~ '(fuck|fuk|shit|bitch|nigg|whore|motherf|cocksuck|dickhead|asshole|bastard|retard)';
 end $$;

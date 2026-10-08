@@ -97,7 +97,20 @@ where id = (select id from auth.users where email = 'someone@example.com');
 
 Copies without an account system (the one-file page, or before Supabase is set up) have a labeled *Preview Premium* switch in Settings so you can see what each plan unlocks.
 
+## Politicians, hedge funds and insiders (every stock)
+
+Under each stock's discussion, three panels (`.github/workflows/smart.yml`, every 4 hours, `smart` branch: `congress.json`, `s/<TICKER>.json`):
+
+- **Politicians:** stock and option trades disclosed by members of Congress in the last 2 years, parsed from the official STOCK Act Periodic Transaction Reports: the House Clerk's PTR PDFs and the Senate's eFD reports, with party and state from the open `unitedstates/congress-legislators` dataset. Shows who, buy or sell, the reported amount range, whose account (self, spouse…), trade and filing dates, and a link to the filing. Scanned paper filings can't be read and are skipped.
+- **Hedge funds & institutions:** 13F holdings via Nasdaq: institutional ownership, how many holders increased, decreased, opened or closed positions, well-known hedge funds among the 300 largest holders (matched by name), and the quarter's biggest buyers and sellers.
+- **Insider buys:** Form 4 insider trades via Nasdaq: open-market buys and sells over 3 and 12 months, and the latest trades (buys only, or all trades).
+
+The claude.ai page carries this data for the tracked tickers and the popular names it embeds.
+
 ## Discussion board (per stock)
+
+Every stock page (tracked tickers, and any stock opened from search or the scanner) has a discussion. In the apps and on the website it runs on the Supabase backend below. In the claude.ai page it uses the page's own shared storage: posts are live for everyone viewing the page, show each poster's Claude name, and can be written by the owner and the people the owner invites (link viewers can read); the owner can remove any post.
+
 
 Premium members can comment under each ticker. Posts with foul language are blocked twice: in the app, and on the server by a database trigger (it also catches leetspeak, spaced-out letters and stretched spellings, and limits posting to 5 per minute). Word list: [LDNOOBW](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words) (CC-BY-4.0).
 

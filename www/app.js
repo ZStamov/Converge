@@ -7,6 +7,7 @@
     remote: 'https://raw.githubusercontent.com/ZStamov/converge/data/market.json',
     bundled: 'data/market.json',
     pulse: 'https://raw.githubusercontent.com/ZStamov/converge/pulse/pulse.json',
+    smart: 'https://raw.githubusercontent.com/ZStamov/converge/smart/',
     history: 'https://raw.githubusercontent.com/ZStamov/converge/history/',
     repo: 'https://github.com/ZStamov/converge'
   };
@@ -443,6 +444,7 @@
     var st = streamFor([sel], { limit: 10 });
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">Latest on ' + sel + '</h2><div class="list">' + (st.length ? st.map(itemRow).join('') : '<p class="muted" style="font-size:13px;margin:0">No recent items.</p>') + '</div></section>';
     h += forumCard(sel);
+    h += smartCards(sel);
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">More on ' + sel + '</h2><div class="lnkrow">' + extLinks(sel) + '</div></section>';
     var watching = S.watchlist.indexOf(sel) >= 0;
     h += '<div class="btnrow"><button class="btn" data-act="watch" data-t="' + sel + '">' + (watching ? 'Watching ✓' : 'Watch') + '</button><button class="btn pri" data-act="add" data-t="' + sel + '">Add a lot</button></div>';
@@ -1316,6 +1318,10 @@
       var db = x[0], user = x[1]; if (!db || !user) return null;
       return user.id().then(function (id) {
         if (!id) return;
+        PF.db = db; PF.user = user; PF.me = id;
+        user.isOwner().then(function (o) { PF.owner = !!o; });
+        if (user.can) user.can('data.write').then(function (w) { PF.canWrite = w; if (document.getElementById('forumbox')) refreshForum(document.getElementById('forumbox').dataset.t); });
+        if (document.getElementById('forumbox')) { var ft = document.getElementById('forumbox').dataset.t; refreshForumCard(ft); }
         ADB.ref = db.doc('data/users/' + id + '/state'); ADB.ready = true;
         syncNow('boot').then(function () {
           // live: another device saved -> merge it in (only writes back if this device has something newer)
@@ -1414,19 +1420,42 @@
     return BAD;
   }
   function isProfane(text) {
-    var n = normText(text), sq = n.replace(/(.)\1+/g, '$1'), pn = ' ' + n + ' ', ps = ' ' + sq + ' ', joined = sq.replace(/ /g, '');
+    var n = normText(text), sq = n.replace(/(.)\1+/g, '$1'), pn = ' ' + n + ' ', joined = sq.replace(/ /g, '');
+    // stretched spellings ("fuuuck"): only words that actually repeat a letter are squeezed, so "but" never matches "butt"
+    var ps = ' ' + n.split(' ').filter(function (w) { return /(.)\1/.test(w); }).map(function (w) { return w.replace(/(.)\1+/g, '$1'); }).join(' ') + ' ';
     if (/(fuck|fuk|shit|bitch|nigg|whore|motherf|cocksuck|dickhead|asshole|bastard|retard)/.test(joined)) return true;
-    return badList().some(function (w) { return pn.indexOf(' ' + w.n + ' ') >= 0 || ps.indexOf(' ' + w.sq + ' ') >= 0 || (w.sq.length >= 5 && w.sq.indexOf(' ') < 0 && joined.indexOf(w.sq) >= 0); });
+    return badList().some(function (w) { return pn.indexOf(' ' + w.n + ' ') >= 0 || (w.sq.indexOf(' ') < 0 && ps.indexOf(' ' + w.sq + ' ') >= 0) || (w.sq.length >= 5 && w.sq.indexOf(' ') < 0 && joined.indexOf(w.sq) >= 0); });
+  }
+  var PF = { db: null, user: null, me: null, owner: false, canWrite: null, subs: {}, order: [], names: {}, sent: [] };
+  function boardMode() { return forumReady() ? 'account' : PF.db && PF.me ? 'page' : null; }
+  function refreshForumCard(t) { var box = document.getElementById('forumbox'); if (box) box.outerHTML = forumCard(t); }
+  function pageSubscribe(t) {
+    if (PF.subs[t] || !PF.db) return;
+    // keep a few live boards (the platform allows 64 subscriptions per view)
+    PF.order.push(t); while (PF.order.length > 4) { var old = PF.order.shift(); try { PF.subs[old](); } catch (e) { } delete PF.subs[old]; }
+    FORUM.loading[t] = true;
+    PF.subs[t] = PF.db.collection('forum/' + t + '/posts').orderBy('at', 'desc').limit(80).onSnapshot(function (snap) {
+      var rows = snap.docs.map(function (d) { var x = d.data() || {}; return { id: d.id, user_id: x.uid, body: x.body, created_at: x.at }; }).filter(function (p) { return p.body && p.created_at; });
+      FORUM.posts[t] = rows; FORUM.loading[t] = false; FORUM.error[t] = null;
+      var ids = rows.map(function (p) { return p.user_id; }).filter(function (id, i, a) { return id && a.indexOf(id) === i && PF.names[id] === undefined; });
+      if (ids.length && PF.user && PF.user.profiles) PF.user.profiles(ids).then(function (ps) { ids.forEach(function (id) { PF.names[id] = (ps[id] && ps[id].name) || ''; }); refreshForum(t); });
+      refreshForum(t);
+    }, function (e) { FORUM.loading[t] = false; FORUM.error[t] = 'Couldn’t load the discussion (' + ((e && e.code) || 'error') + ').'; refreshForum(t); });
   }
   function forumCard(t) {
+    if (boardMode() === 'page') {
+      setTimeout(function () { pageSubscribe(t); }, 0);
+      return '<section class="card" id="forumbox" data-t="' + esc(t) + '">' + forumInner(t) + '</section>';
+    }
     if (!forumReady()) {
-      var msg = window.__CONVERGE_ARTIFACT__ ? 'The discussion is available in the Converge app and on the Converge website, where you can sign in.' : 'The discussion board isn’t connected yet. The owner needs to add the Supabase settings described in the README.';
+      var msg = window.__CONVERGE_ARTIFACT__ ? 'Connecting to the discussion… If this stays, sign in to Claude to read and post.' : 'The discussion board isn’t connected yet. The owner needs to add the Supabase settings described in the README.';
       return '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Discussion · ' + esc(t) + '</h2>' + (isPremium() ? '' : '<button class="upsell" data-act="subscribe" data-why="forum" style="margin-bottom:8px">' + ic('bolt', 16) + '<span>Want to comment? Posting is for Premium members. <b>Subscribe to Premium</b></span></button>') + '<p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + msg + '</p></section>';
     }
     if (FORUM.posts[t] === undefined && !FORUM.loading[t]) setTimeout(function () { loadPosts(t); }, 0);
     return '<section class="card" id="forumbox" data-t="' + esc(t) + '">' + forumInner(t) + '</section>';
   }
   function forumInner(t) {
+    if (boardMode() === 'page') return pageForumInner(t);
     var h = '<div class="sechead"><h2 class="eyebrow">Discussion · ' + esc(t) + '</h2><button class="lnk" data-act="forum-refresh" data-t="' + esc(t) + '" style="color:var(--muted)">Refresh</button></div>';
     if (S.auth && !isPremium()) {
       h += '<button class="upsell" data-act="subscribe" data-why="forum">' + ic('bolt', 16) + '<span>Want to join the conversation? Commenting is for Premium members. <b>Subscribe to Premium</b></span></button>';
@@ -1447,6 +1476,21 @@
     h += '<p class="foot" style="text-align:left;margin:10px 0 0">Posts with offensive language are blocked. Not investment advice.</p>';
     return h;
   }
+  function pageForumInner(t) {
+    var posts = FORUM.posts[t], h = '<div class="sechead"><h2 class="eyebrow">Discussion · ' + esc(t) + '</h2><span class="muted" style="font-size:11px">' + (posts ? posts.length + ' post' + (posts.length === 1 ? '' : 's') : '') + '</span></div>';
+    if (PF.canWrite === false) h += '<p class="note" style="margin:0 0 8px">You can read this discussion. Posting is open to people the owner has invited to this page.</p>';
+    else h += '<div class="field"><label for="forum-text">Post as <b>you</b> <span class="opt">(your Claude name is shown)</span></label><textarea class="in" id="forum-text" rows="3" maxlength="1000" placeholder="Share your take on ' + esc(t) + '. Keep it civil.">' + esc(FORUM.draft) + '</textarea></div>' +
+      '<div class="btnrow" style="margin-top:8px"><button class="btn sm pri" data-act="pforum-post" data-t="' + esc(t) + '"' + (FORUM.busy ? ' disabled' : '') + '>' + (FORUM.busy ? 'Posting…' : 'Post') + '</button></div>';
+    if (FORUM.error[t]) h += '<p class="note" style="margin:10px 0 0">' + esc(FORUM.error[t]) + '</p>';
+    if (!posts) h += '<p class="muted" style="margin:12px 0 0;font-size:13px">Loading…</p>';
+    else if (!posts.length) h += '<p class="muted" style="margin:12px 0 0;font-size:13px">No comments yet. Start the conversation.</p>';
+    else h += '<div class="posts">' + posts.map(function (p) {
+      var mine = p.user_id === PF.me, nm = mine ? 'You' : (PF.names[p.user_id] || 'Member');
+      return '<article class="post"><div class="post-h"><b>' + esc(nm) + '</b><span class="muted">' + esc(ago(p.created_at)) + '</span>' + (mine || PF.owner ? '<button class="lnk" data-act="pforum-del" data-id="' + esc(p.id) + '" data-t="' + esc(t) + '" style="color:var(--muted);padding:0;margin-left:auto">Delete</button>' : '') + '</div><p>' + esc(p.body) + '</p></article>';
+    }).join('') + '</div>';
+    h += '<p class="foot" style="text-align:left;margin:10px 0 0">Live for everyone viewing this page. Posts with offensive language are blocked. Not investment advice.</p>';
+    return h;
+  }
   function authSheet() {
     var m = FORUM.mode, f = FORUM.form;
     return '<h2 class="disp" style="margin:0 0 4px;font-size:22px">' + (m === 'signup' ? 'Create your account' : 'Sign in') + '</h2><p class="muted" style="margin:0 0 12px;font-size:13px">One account keeps your lots, theses, watchlist and settings in sync on every device, and lets you join the discussions.</p>' +
@@ -1459,6 +1503,18 @@
       (m === 'signup' ? '' : '<button class="btn sm" data-act="acct-forgot" style="margin-top:2px;border:0;color:var(--muted)">Forgot password?</button>');
   }
   var FA = {
+    'pforum-post': function (el) {
+      var t = el.dataset.t, body = (FORUM.draft || '').trim();
+      if (!body) return toast('Write something first');
+      if (body.length > 1000) { FORUM.error[t] = 'Keep posts under 1,000 characters.'; return refreshForum(t); }
+      if (isProfane(body)) { FORUM.error[t] = 'Your post contains language that isn’t allowed here. Please rephrase it.'; return refreshForum(t); }
+      var now = Date.now(); PF.sent = PF.sent.filter(function (x) { return now - x < 60000; });
+      if (PF.sent.length >= 5) { FORUM.error[t] = 'You are posting too fast. Please wait a minute.'; return refreshForum(t); }
+      FORUM.busy = true; FORUM.error[t] = null; refreshForum(t);
+      PF.db.collection('forum/' + t + '/posts').add({ uid: PF.me, body: body, at: new Date().toISOString(), t: t }).then(function () { PF.sent.push(Date.now()); FORUM.draft = ''; FORUM.busy = false; refreshForum(t); toast('Posted'); })
+        .catch(function (e) { FORUM.busy = false; var c = e && e.code; FORUM.error[t] = c === 'not_granted' || c === 'invalid_argument' ? 'Posting is open to people the owner has invited to this page.' : c === 'quota_exceeded' ? 'The discussion is full right now. Older posts need to be cleared first.' : 'Couldn’t post (' + (c || 'error') + '). Try again.'; if (c === 'not_granted') PF.canWrite = false; refreshForum(t); });
+    },
+    'pforum-del': function (el) { var t = el.dataset.t; PF.db.doc('forum/' + t + '/posts/' + el.dataset.id).delete().then(function () { toast('Post deleted'); }).catch(function (e) { toast('Couldn’t delete (' + ((e && e.code) || 'error') + ')'); }); },
     'forum-refresh': function (el) { loadPosts(el.dataset.t, true); },
     'forum-auth': function () { FORUM.authMsg = ''; UI.sheet = { kind: 'auth' }; render(); },
     'forum-auth-mode': function () { FORUM.mode = FORUM.mode === 'signup' ? 'signin' : 'signup'; FORUM.authMsg = ''; render(); },
@@ -1778,6 +1834,67 @@
       return '<button class="pickrow" data-act="picked-ext" data-t="' + esc(r[0]) + '"><span class="tk">' + esc(r[0]) + '</span><span class="nm">' + esc(r[1]) + '<br><span class="muted" style="font-size:11px">' + (r[3] ? 'S&amp;P 500 · ' : '') + esc(r[2] === 'NASDAQ' ? 'Nasdaq' : r[2]) + (r[5] ? ' · ' + compact(r[5]).replace('$', '$') : '') + '</span></span><span class="mono ' + cls(r[7]) + '" style="font-size:12px">' + (r[7] != null ? arrowPct(r[7]) : '') + '</span></button>';
     }).join('');
   }
+  // ---- smart money: politicians' trades, hedge funds (13F), insider trades (Form 4)
+  var SMART = {};
+  function loadSmart(t) {
+    if (SMART[t]) return;
+    var emb = window.__CONVERGE_SMART__;
+    if (emb && emb[t]) { SMART[t] = { d: emb[t] }; return; }
+    if (window.__CONVERGE_ARTIFACT__ && !isNative) { SMART[t] = { none: true, page: true }; return; }
+    SMART[t] = { loading: true };
+    fetchJson(CFG.smart + 's/' + encodeURIComponent(t) + '.json?t=' + Math.floor(Date.now() / 3600000), 15000)
+      .then(function (d) { SMART[t] = { d: d }; }).catch(function () { SMART[t] = { none: true }; })
+      .then(function () { var b = document.getElementById('smartbox'); if (b && b.dataset.t === t) b.innerHTML = smartInner(t); });
+  }
+  function smartCards(t) { loadSmart(t); return '<div id="smartbox" data-t="' + esc(t) + '" class="smart">' + smartInner(t) + '</div>'; }
+  function fdate(iso) { if (!iso) return '—'; var d = new Date(iso + (iso.length === 10 ? 'T12:00:00' : '')); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+  function nfmt(x) { return num(x) ? x.toLocaleString('en-US') : '—'; }
+  function moreBtn(key, n, shown) { return n > shown ? '<button class="lnk" data-act="smart-more" data-k="' + key + '">Show all ' + n + '</button>' : ''; }
+  function smartInner(t) {
+    var S0 = SMART[t] || {}, d = S0.d, open = UI.smartOpen || {};
+    var head = function (k, title, sub) { return '<div class="sechead"><h2 class="eyebrow">' + title + '</h2>' + (sub ? '<span class="muted" style="font-size:11px">' + sub + '</span>' : '') + '</div>'; };
+    if (S0.loading) return '<section class="card"><p class="muted" style="margin:0;font-size:13px">Loading politicians, hedge funds and insider trades…</p></section>';
+    if (!d) return '<section class="card"><h2 class="eyebrow" style="margin-bottom:6px">Politicians · Hedge funds · Insiders</h2><p class="muted" style="margin:0;font-size:13px;line-height:1.5">' + (S0.page ? 'This page carries this data for the tracked tickers, the major indexes’ biggest stocks and popular names. ' + esc(t) + '’s opens in the Converge app and website.' : 'No congressional trades, fund filings or insider trades on record for ' + esc(t) + ' yet. The data refreshes every 4 hours.') + '</p></section>';
+    var h = '';
+    // 1. politicians
+    var C = d.congress || [], ck = t + ':c', nC = open[ck] ? C.length : 5, buys = C.filter(function (x) { return x.type === 'buy'; }).length;
+    h += '<section class="card smartc">' + head('c', 'Politicians', C.length ? buys + ' buys · ' + (C.length - buys) + ' sells · 2 yrs' : '') +
+      (C.length ? '<div class="srows">' + C.slice(0, nC).map(function (x) {
+        var tag = (x.party || '?') + (x.state ? '-' + x.state + (x.ch === 'House' && x.district != null ? String(x.district).padStart(2, '0') : '') : '');
+        return '<div class="srow"><div><b>' + esc(x.who) + '</b> <span class="ptag p' + esc(x.party || 'x') + '">' + esc(tag) + '</span><br><span class="muted">' + esc(x.ch) + (x.owner && x.owner !== 'Self' ? ' · ' + esc(x.owner) : '') + (x.option ? ' · option' : '') + ' · traded ' + esc(fdate(x.date)) + (x.filed ? ' · filed ' + esc(fdate(x.filed)) : '') + '</span></div><div class="sr"><b class="' + (x.type === 'buy' ? 'up' : 'down') + '">' + esc(x.type === 'buy' ? 'BUY' : x.type === 'exchange' ? 'EXCH' : 'SELL') + '</b><br><span class="muted mono">' + esc(x.amount || '') + '</span>' + (safeUrl(x.url) ? '<br><a class="lnk" href="' + esc(x.url) + '" target="_blank" rel="noopener noreferrer">Filing ↗</a>' : '') + '</div></div>';
+      }).join('') + '</div>' + moreBtn(ck, C.length, nC) : '<p class="muted" style="margin:0;font-size:13px">No member of Congress disclosed a trade in ' + esc(t) + ' in the last 2 years.</p>') +
+      '<p class="foot" style="text-align:left;margin:8px 0 0">STOCK Act Periodic Transaction Reports from the House Clerk and Senate eFD. Amounts are the ranges members must report; filings can come up to 45 days after the trade.</p></section>';
+    // 2. hedge funds
+    var F = d.funds, fk = t + ':f';
+    h += '<section class="card smartc">' + head('f', 'Hedge funds &amp; institutions', F && F.instPct != null ? F.instPct + '% held by institutions' : '');
+    if (!F) h += '<p class="muted" style="margin:0;font-size:13px">No 13F filings available for ' + esc(t) + '.</p>';
+    else {
+      h += '<div class="kv smallkv"><div><div class="k">Holders</div><div class="v">' + nfmt(F.holders) + '</div></div><div><div class="k">Increased</div><div class="v up">' + nfmt(F.increased && F.increased[0]) + '</div></div><div><div class="k">Decreased</div><div class="v down">' + nfmt(F.decreased && F.decreased[0]) + '</div></div><div><div class="k">New</div><div class="v up">' + nfmt(F.newPos && F.newPos[0]) + '</div></div><div><div class="k">Sold out</div><div class="v down">' + nfmt(F.soldOut && F.soldOut[0]) + '</div></div></div>';
+      var HF = F.hedge || [], nH = open[fk] ? HF.length : 5;
+      var frow = function (x) { return '<div class="srow"><div><b>' + esc(x.who) + '</b><br><span class="muted">' + nfmt(x.shares) + ' shares · as of ' + esc(fdate(x.date)) + '</span></div><div class="sr"><b class="mono ' + cls(x.chg) + '">' + (x.chg > 0 ? '+' : '') + nfmt(x.chg) + '</b><br><span class="muted mono">' + (num(x.chgPct) ? pct(x.chgPct, 1) : '') + (num(x.value) ? ' · ' + compact(x.value * 1000) : '') + '</span></div></div>'; };
+      h += '<h3 class="eyebrow" style="margin:12px 0 4px">Hedge funds</h3>' + (HF.length ? '<div class="srows">' + HF.slice(0, nH).map(frow).join('') + '</div>' + moreBtn(fk, HF.length, nH) : '<p class="muted" style="margin:0;font-size:13px">No well-known hedge funds among the ' + nfmt(F.scanned) + ' largest holders.</p>');
+      if ((F.buyers || []).length) h += '<h3 class="eyebrow" style="margin:12px 0 4px">Biggest buyers last quarter</h3><div class="srows">' + F.buyers.slice(0, 3).map(frow).join('') + '</div>';
+      if ((F.sellers || []).length) h += '<h3 class="eyebrow" style="margin:12px 0 4px">Biggest sellers last quarter</h3><div class="srows">' + F.sellers.slice(0, 3).map(frow).join('') + '</div>';
+    }
+    h += '<p class="foot" style="text-align:left;margin:8px 0 0">13F holdings via Nasdaq. Funds report 45 days after each quarter ends; hedge funds are matched by name from a list of well-known managers.</p></section>';
+    // 3. insiders
+    var I = d.insider, ik = t + ':i', showSells = !!open[t + ':is'];
+    h += '<section class="card smartc">' + head('i', 'Insider buys', I && I.buys ? I.buys[0] + ' buys in 3 mo · ' + I.buys[1] + ' in 12 mo' : '');
+    if (!I) h += '<p class="muted" style="margin:0;font-size:13px">No Form 4 insider filings available for ' + esc(t) + '.</p>';
+    else {
+      var all = I.trades || [], isBuy = function (x) { return /buy|purchase/i.test(x.type || ''); };
+      var list = showSells ? all : all.filter(isBuy), nI = open[ik] ? list.length : 5;
+      h += '<div class="kv smallkv"><div><div class="k">Buys 12 mo</div><div class="v up">' + nfmt(I.buys && I.buys[1]) + '</div></div><div><div class="k">Sells 12 mo</div><div class="v down">' + nfmt(I.sells && I.sells[1]) + '</div></div><div><div class="k">Shares bought</div><div class="v">' + nfmt(I.sharesBought && I.sharesBought[1]) + '</div></div><div><div class="k">Shares sold</div><div class="v">' + nfmt(I.sharesSold && I.sharesSold[1]) + '</div></div></div>';
+      h += '<div class="chips" style="margin:10px 0 2px"><button class="chip" data-act="smart-sells" data-t="' + esc(t) + '" aria-pressed="' + !showSells + '">Buys only</button><button class="chip" data-act="smart-sells" data-t="' + esc(t) + '" aria-pressed="' + showSells + '">All trades</button></div>';
+      h += list.length ? '<div class="srows">' + list.slice(0, nI).map(function (x) {
+        var buy = isBuy(x);
+        return '<div class="srow"><div><b>' + esc(x.who) + '</b><br><span class="muted">' + esc(x.rel || '') + ' · ' + esc(fdate(x.date)) + (x.own ? ' · ' + esc(x.own) : '') + '</span></div><div class="sr"><b class="' + (buy ? 'up' : /sell/i.test(x.type || '') ? 'down' : '') + '">' + esc(x.type || '') + '</b><br><span class="muted mono">' + nfmt(x.shares) + (num(x.price) ? ' @ ' + money(x.price) : '') + '</span></div></div>';
+      }).join('') + '</div>' + moreBtn(ik, list.length, nI) : '<p class="muted" style="margin:6px 0 0;font-size:13px">No open-market insider buys in the latest filings' + (all.length ? ' (' + all.length + ' other trades, mostly sales and option exercises).' : '.') + '</p>';
+    }
+    h += '<p class="foot" style="text-align:left;margin:8px 0 0">SEC Form 4 filings via Nasdaq. Insider buys with their own money are the stronger signal; many sales are planned (10b5-1) or for taxes.' + (d.nasdaqAt ? ' Updated ' + esc(ago(d.nasdaqAt)) + '.' : '') + '</p></section>';
+    return h;
+  }
+
   // ---- quote page for any US-listed stock outside the tracked list
   function scrQuote(t) {
     if (!DIR.rows && !DIR.loading && !DIR.error) setTimeout(loadDir, 0);
@@ -1789,7 +1906,9 @@
     var h = '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px"><div style="min-width:0"><h1 class="disp" style="margin:0;font-size:24px;font-weight:700;line-height:1.15">' + esc(dr.n || t) + '</h1><div class="muted" style="font-size:12px;margin-top:2px">' + esc(t) + (dr.ex ? ' · ' + esc(dr.ex === 'NASDAQ' ? 'Nasdaq' : dr.ex) : '') + (dr.sp ? ' · S&amp;P 500' : '') + (dr.sec ? ' · ' + esc(dr.sec) : '') + (dr.mc ? ' · ' + compact(dr.mc) : '') + '</div></div>' +
       '<div style="text-align:right;flex:none"><div class="mono" style="font-size:22px">' + (price != null ? money(price) : '—') + '</div><div class="mono ' + cls(ch) + '" style="font-size:12px">' + (ch != null ? arrowPct(ch) : '') + '</div></div></div>';
     h += '<section class="card"><div class="sechead"><h2 class="eyebrow">Chart · buy &amp; sell signals</h2></div>' + candleCard(t) + '</section>';
-    h += '<p class="note" style="margin:0">News, sentiment, quant grades and the discussion cover the ' + D.universe.length + ' tracked tickers. Charts, signals and backtests work for every US stock, ETF and index.' + (dr.p != null && DIR.at ? ' Price as of ' + esc(ago(DIR.at)) + '.' : '') + '</p>';
+    h += '<p class="note" style="margin:0">News, sentiment and quant grades cover the ' + D.universe.length + ' tracked tickers. Charts, signals, backtests, the discussion and the politicians, hedge funds and insiders panels work for every US stock.' + (dr.p != null && DIR.at ? ' Price as of ' + esc(ago(DIR.at)) + '.' : '') + '</p>';
+    h += forumCard(t);
+    h += smartCards(t);
     h += '<section><h2 class="eyebrow" style="margin-bottom:8px">More on ' + esc(t) + '</h2><div class="lnkrow">' + extLinks(t) + '</div></section>';
     h += '<section class="card" id="btbox" data-t="' + esc(t) + '">' + backtestInner(t) + '</section>';
     h += '<p class="foot">Free public sources, may be delayed. Not investment advice.</p>';
@@ -2009,6 +2128,8 @@
       if (T(t)) { S.sel = t; save(); NAV.tab = 'battle'; NAV.stack = []; render(); return; }
       go({ name: 'quote', t: t });
     },
+    'smart-more': function (el) { UI.smartOpen = UI.smartOpen || {}; UI.smartOpen[el.dataset.k] = true; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
+    'smart-sells': function (el) { UI.smartOpen = UI.smartOpen || {}; var k = el.dataset.t + ':is'; UI.smartOpen[k] = !UI.smartOpen[k]; var b = document.getElementById('smartbox'); if (b) b.innerHTML = smartInner(b.dataset.t); },
     'scan-edit': function () { var st = scanState(); UI.scanCollapsed = false; st.open = true; save(); render(); },
     'scan-more': function () { UI.scanLimit = (UI.scanLimit || 100) + 100; render(); },
     'scan-reset': function () { var st = scanState(); st.f = {}; st.signal = 'none'; save(); render(); },
