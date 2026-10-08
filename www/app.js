@@ -751,6 +751,9 @@
   }
   function scanState() {
     if (!S.scan) S.scan = { f: {}, signal: 'none', view: 'overview', sort: { k: 'mc', dir: -1 }, saved: [], group: 'Descriptive', open: true };
+    // one strategy scanner at a time (older saved screens could have several switched on)
+    var on = Object.keys(S.scan.presets || {}).filter(function (k) { return S.scan.presets[k]; });
+    if (on.length > 1) { S.scan.presets = {}; S.scan.presets[on[on.length - 1]] = true; }
     return S.scan;
   }
   function nz(x) { return x != null && isFinite(x); }
