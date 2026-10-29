@@ -1,8 +1,8 @@
 job: data
 status: success
-time: 2026-10-29T01:54:22Z
+time: 2026-10-29T08:36:48Z
 commit: 90d8d7e6b2385e2a46f6060f7d303f04a46dd79b
-run: https://github.com/ZStamov/Converge/actions/runs/40802612966
+run: https://github.com/ZStamov/Converge/actions/runs/40842707451
 ----
 prices SPY 251 Yahoo Finance
 prices AAPL 251 Yahoo Finance
@@ -29,36 +29,36 @@ prices PEP 251 Yahoo Finance
 prices XOM 251 Yahoo Finance
 prices UNH 251 Yahoo Finance
 prices LLY 251 Yahoo Finance
-ticker AAPL news 206 filings 0 fund -
-ticker MSFT news 187 filings 0 fund -
-ticker NVDA news 176 filings 0 fund -
-ticker AMZN news 120 filings 0 fund -
-ticker GOOGL news 180 filings 0 fund -
-ticker META news 152 filings 0 fund -
-ticker TSLA news 222 filings 0 fund -
-ticker AVGO news 114 filings 0 fund -
-ticker AMD news 113 filings 0 fund -
-ticker NFLX news 165 filings 0 fund -
-ticker ORCL news 133 filings 0 fund -
-ticker CRM news 80 filings 0 fund -
-ticker JPM news 101 filings 0 fund -
-ticker V news 84 filings 0 fund -
-ticker MA news 64 filings 0 fund -
-ticker PYPL news 83 filings 0 fund -
-ticker COST news 59 filings 0 fund -
+ticker AAPL news 205 filings 0 fund -
+ticker MSFT news 184 filings 0 fund -
+ticker NVDA news 178 filings 0 fund -
+ticker AMZN news 131 filings 0 fund -
+ticker GOOGL news 188 filings 0 fund -
+ticker META news 165 filings 0 fund -
+ticker TSLA news 233 filings 0 fund -
+ticker AVGO news 117 filings 0 fund -
+ticker AMD news 114 filings 0 fund -
+ticker NFLX news 161 filings 0 fund -
+ticker ORCL news 128 filings 0 fund -
+ticker CRM news 118 filings 0 fund -
+ticker JPM news 115 filings 0 fund -
+ticker V news 112 filings 0 fund -
+ticker MA news 66 filings 0 fund -
+ticker PYPL news 92 filings 0 fund -
+ticker COST news 60 filings 0 fund -
 ticker WMT news 111 filings 0 fund -
-ticker DIS news 91 filings 0 fund -
-ticker KO news 74 filings 0 fund -
-ticker PEP news 120 filings 0 fund -
+ticker DIS news 89 filings 0 fund -
+ticker KO news 73 filings 0 fund -
+ticker PEP news 107 filings 0 fund -
 ticker XOM news 109 filings 0 fund -
 ticker UNH news 110 filings 0 fund -
-ticker LLY news 121 filings 0 fund -
-done: 24 tickers, 1277 stories, 2 alerts, 202 sources (45 rated), 48 errors
+ticker LLY news 75 filings 0 fund -
+done: 24 tickers, 1305 stories, 2 alerts, 202 sources (45 rated), 48 errors
 universe 503
 bars ready 507 in 0 s
 live prices 503
 nasdaq rows 7010
 sec fundamentals no
 scanner: 502 rows, fundamentals=false, 3 errors, 2s
-[0;93m2026-10-29 01:50:56.440186038 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-tts: 82 clips referenced, 40 newly synthesized, voice af_heart
+[0;93m2026-10-29 08:33:31.493527594 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+tts: 82 clips referenced, 35 newly synthesized, voice af_heart
