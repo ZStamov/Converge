@@ -1,64 +1,64 @@
 job: data
 status: success
-time: 2026-11-03T06:56:32Z
+time: 2026-11-03T15:17:37Z
 commit: 90d8d7e6b2385e2a46f6060f7d303f04a46dd79b
-run: https://github.com/ZStamov/Converge/actions/runs/41592523987
+run: https://github.com/ZStamov/Converge/actions/runs/41661155663
 ----
-prices SPY 251 Yahoo Finance
-prices AAPL 251 Yahoo Finance
-prices MSFT 251 Yahoo Finance
-prices NVDA 251 Yahoo Finance
-prices AMZN 251 Yahoo Finance
-prices GOOGL 251 Yahoo Finance
-prices META 251 Yahoo Finance
-prices TSLA 251 Yahoo Finance
-prices AVGO 251 Yahoo Finance
-prices AMD 251 Yahoo Finance
-prices NFLX 251 Yahoo Finance
-prices ORCL 251 Yahoo Finance
-prices CRM 251 Yahoo Finance
-prices JPM 251 Yahoo Finance
-prices V 251 Yahoo Finance
-prices MA 251 Yahoo Finance
-prices PYPL 251 Yahoo Finance
-prices COST 251 Yahoo Finance
-prices WMT 251 Yahoo Finance
-prices DIS 251 Yahoo Finance
-prices KO 251 Yahoo Finance
-prices PEP 251 Yahoo Finance
-prices XOM 251 Yahoo Finance
-prices UNH 251 Yahoo Finance
-prices LLY 251 Yahoo Finance
-ticker AAPL news 206 filings 0 fund -
-ticker MSFT news 169 filings 0 fund -
-ticker NVDA news 182 filings 0 fund -
-ticker AMZN news 153 filings 0 fund -
-ticker GOOGL news 160 filings 0 fund -
-ticker META news 174 filings 0 fund -
-ticker TSLA news 216 filings 0 fund -
-ticker AVGO news 111 filings 0 fund -
-ticker AMD news 115 filings 0 fund -
-ticker NFLX news 157 filings 0 fund -
-ticker ORCL news 133 filings 0 fund -
-ticker CRM news 118 filings 0 fund -
-ticker JPM news 119 filings 0 fund -
-ticker V news 78 filings 0 fund -
-ticker MA news 86 filings 0 fund -
-ticker PYPL news 92 filings 0 fund -
-ticker COST news 76 filings 0 fund -
-ticker WMT news 126 filings 0 fund -
-ticker DIS news 52 filings 0 fund -
+prices SPY 252 Yahoo Finance
+prices AAPL 252 Yahoo Finance
+prices MSFT 252 Yahoo Finance
+prices NVDA 252 Yahoo Finance
+prices AMZN 252 Yahoo Finance
+prices GOOGL 252 Yahoo Finance
+prices META 252 Yahoo Finance
+prices TSLA 252 Yahoo Finance
+prices AVGO 252 Yahoo Finance
+prices AMD 252 Yahoo Finance
+prices NFLX 252 Yahoo Finance
+prices ORCL 252 Yahoo Finance
+prices CRM 252 Yahoo Finance
+prices JPM 252 Yahoo Finance
+prices V 252 Yahoo Finance
+prices MA 252 Yahoo Finance
+prices PYPL 252 Yahoo Finance
+prices COST 252 Yahoo Finance
+prices WMT 252 Yahoo Finance
+prices DIS 252 Yahoo Finance
+prices KO 252 Yahoo Finance
+prices PEP 252 Yahoo Finance
+prices XOM 252 Yahoo Finance
+prices UNH 252 Yahoo Finance
+prices LLY 252 Yahoo Finance
+ticker AAPL news 203 filings 0 fund -
+ticker MSFT news 161 filings 0 fund -
+ticker NVDA news 185 filings 0 fund -
+ticker AMZN news 152 filings 0 fund -
+ticker GOOGL news 163 filings 0 fund -
+ticker META news 171 filings 0 fund -
+ticker TSLA news 245 filings 0 fund -
+ticker AVGO news 114 filings 0 fund -
+ticker AMD news 111 filings 0 fund -
+ticker NFLX news 162 filings 0 fund -
+ticker ORCL news 132 filings 0 fund -
+ticker CRM news 119 filings 0 fund -
+ticker JPM news 107 filings 0 fund -
+ticker V news 81 filings 0 fund -
+ticker MA news 90 filings 0 fund -
+ticker PYPL news 111 filings 0 fund -
+ticker COST news 77 filings 0 fund -
+ticker WMT news 130 filings 0 fund -
+ticker DIS news 104 filings 0 fund -
 ticker KO news 77 filings 0 fund -
-ticker PEP news 121 filings 0 fund -
-ticker XOM news 119 filings 0 fund -
-ticker UNH news 116 filings 0 fund -
+ticker PEP news 122 filings 0 fund -
+ticker XOM news 116 filings 0 fund -
+ticker UNH news 114 filings 0 fund -
 ticker LLY news 107 filings 0 fund -
-done: 24 tickers, 1280 stories, 3 alerts, 237 sources (48 rated), 48 errors
+done: 24 tickers, 1280 stories, 4 alerts, 254 sources (51 rated), 48 errors
 universe 503
-bars ready 507 in 0 s
+bars ready 507 in 1 s
 live prices 503
-nasdaq rows 6974
+nasdaq rows 6998
 sec fundamentals no
 scanner: 502 rows, fundamentals=false, 3 errors, 2s
-[0;93m2026-11-03 06:53:50.275884947 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
-tts: 82 clips referenced, 41 newly synthesized, voice af_heart
+[0;93m2026-11-03 15:13:20.594260996 [W:onnxruntime:Default, device_discovery.cc:95 GetPciBusId] Skipping pci_bus_id for PCI path at "/sys/devices/LNXSYSTM:00/LNXSYBUS:00/ACPI0004:00/MSFT1000:00/5620e0c7-8062-4dce-aeb7-520c7ef76171" because filename "5620e0c7-8062-4dce-aeb7-520c7ef76171" did not match expected pattern of [0-9a-f]+:[0-9a-f]+:[0-9a-f]+[.][0-9a-f]+[m
+tts: 82 clips referenced, 57 newly synthesized, voice af_heart
